@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Dart port of `frontend-web/lib/mock-db.ts`. Same lazy-seed-on-first-read
@@ -16,6 +17,12 @@ class MockDb {
   static Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
   }
+
+  /// Drops the cached handle. Without this a test that calls
+  /// `SharedPreferences.setMockInitialValues({})` still reads the previous
+  /// test's data, because [init] would keep the handle it already had.
+  @visibleForTesting
+  static void resetForTesting() => _prefs = null;
 
   static SharedPreferences get _instance {
     final prefs = _prefs;
@@ -47,6 +54,19 @@ class MockDb {
     final seeded = seed();
     setCollection(key, seeded, toJson);
     return seeded;
+  }
+
+  /// Drops every collection this app owns.
+  ///
+  /// Only the `gz-db-v1:` keys are removed, never the whole preference store —
+  /// other plugins keep their own keys in there, and an account deletion has
+  /// no business clearing them. Backs the in-app delete-account flow, which
+  /// Google Play requires of any app with accounts.
+  static Future<void> clearAll() async {
+    final keys = _instance.getKeys().where((k) => k.startsWith(_prefix)).toList();
+    for (final key in keys) {
+      await _instance.remove(key);
+    }
   }
 
   /// Overwrites collection [key] — mirrors `setCollection` in `mock-db.ts`.

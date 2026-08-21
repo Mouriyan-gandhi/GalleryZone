@@ -1,6 +1,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The artist portal's artwork upload asks for no runtime permissions,
+         deliberately. `image_picker` captures through ACTION_IMAGE_CAPTURE and
+         reads through the system photo picker; both hand back a result the app
+         never had permission to fetch itself.
+
+         Declaring CAMERA here would make things worse, not more explicit:
+         Android requires a *declared* CAMERA permission to also be granted
+         before it will serve ACTION_IMAGE_CAPTURE, so adding it turns a
+         working flow into a SecurityException unless a runtime request is
+         added alongside. Same for READ_MEDIA_IMAGES — from API 33 the photo
+         picker supplies the image directly and the permission is never needed.
+
+         `required="false"` keeps the Play listing available to devices with no
+         camera, where the gallery path still works. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
     <application
-        android:label="gallery_zone"
+        android:label="GalleryZone"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -40,6 +58,22 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Required by url_launcher. Android 11+ hides other packages from the
+             app unless they are declared here, and without these three
+             `launchUrl` fails silently for the marketing links (https), the
+             support contact address (mailto) and its phone number (tel). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
         </intent>
     </queries>
 </manifest>

@@ -17,4 +17,8 @@ abstract class ArtworkRepository {
   Future<Artwork?> get(String id);
   Future<List<Artwork>> listByArtist(String artistId);
   Future<ArtistProfile?> getArtistProfile(String id);
+
+  /// Every public artist profile. The Following list joins against this
+  /// rather than fanning out one [getArtistProfile] call per followed id.
+  Future<List<ArtistProfile>> listArtists();
 }

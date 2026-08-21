@@ -76,6 +76,13 @@ class AppTheme {
       onPrimary: AppColors.darkBackground,
       secondary: AppColors.darkSecondary,
       onSecondary: AppColors.darkForeground,
+      // `tertiary` carries the brand's gold-bright accent (links, icon
+      // glyphs, active toggles) — the reference design's second gold, which
+      // Material's scheme has no dedicated slot for. Reusing an existing
+      // ColorScheme role instead of a ThemeExtension keeps it reachable as
+      // plain `colorScheme.tertiary` everywhere.
+      tertiary: AppColors.darkGoldBright,
+      onTertiary: AppColors.darkBackground,
       error: AppColors.destructive,
       outline: AppColors.darkBorder,
     );
@@ -90,6 +97,8 @@ class AppTheme {
       onPrimary: AppColors.lightCard,
       secondary: AppColors.lightSecondary,
       onSecondary: AppColors.lightForeground,
+      tertiary: AppColors.lightGoldBright,
+      onTertiary: AppColors.lightCard,
       error: AppColors.destructive,
       outline: AppColors.lightBorder,
     );
@@ -126,6 +135,44 @@ class AppTheme {
           minimumSize: const Size(0, 32),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
         ),
+      ),
+      // Inputs match the reference's `Input` primitive: filled card
+      // surface, hairline ring, gold ring on focus — no Material underline.
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: card,
+        hintStyle: TextStyle(color: mutedForeground),
+        prefixIconColor: mutedForeground,
+        suffixIconColor: mutedForeground,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: scheme.outline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: scheme.outline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: scheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide(color: scheme.error, width: 1.5),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        side: BorderSide(color: scheme.outline),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? scheme.primary : Colors.transparent,
+        ),
+        checkColor: WidgetStateProperty.all(scheme.onPrimary),
       ),
       badgeTheme: BadgeThemeData(
         backgroundColor: scheme.primary,

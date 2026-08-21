@@ -4,15 +4,27 @@ import '../models/artwork_filters.dart';
 import '../repositories/artwork_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_utils.dart';
+import 'seed/artist_seed.dart';
 import 'seed/artists_seed.dart';
 import 'seed/artworks_seed.dart';
 
 const _artworksKey = 'artworks';
 
+/// Seed for the `artworks` collection: the public fixtures plus the demo
+/// artist's already-approved work — the same merge the web makes, so a piece
+/// she sees as "live" in the portal is the same record a collector browses.
+/// Her drafts and in-review submissions are deliberately absent: those live
+/// in `pendingArtworks`.
+///
+/// Every reader of this collection must seed it through this function. A
+/// second reader seeding it with `[]` would persist an empty marketplace for
+/// whichever repository happened to touch it first.
+List<Artwork> seedArtworksCollection() => [...seedArtworks(), ...seedArtistListedArtworks()];
+
 class MockArtworkRepository implements ArtworkRepository {
   List<Artwork> _readAll() => MockDb.getCollection(
     _artworksKey,
-    seedArtworks,
+    seedArtworksCollection,
     Artwork.fromJson,
     (a) => a.toJson(),
   );
@@ -79,4 +91,7 @@ class MockArtworkRepository implements ArtworkRepository {
     }
     return null;
   });
+
+  @override
+  Future<List<ArtistProfile>> listArtists() => mockDelay(seedArtists);
 }
