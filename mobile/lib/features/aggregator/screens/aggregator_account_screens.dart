@@ -34,18 +34,18 @@ class AggregatorGallerySpacesScreen extends ConsumerWidget {
         .length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gallery spaces')),
+      appBar: AppBar(title: const Text('Display Spaces')),
       body: spaces.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
           icon: LucideIcons.triangleAlert,
-          title: "Couldn't load your gallery spaces",
+          title: "Couldn't load your display spaces",
           description: 'Something went wrong. Try again in a moment.',
         ),
         data: (list) => list.isEmpty
             ? const EmptyState(
                 icon: LucideIcons.building2,
-                title: 'No gallery spaces on file',
+                title: 'No display spaces on file',
                 description:
                     'Your display premises appear here once registered with '
                     'GalleryZone.',
@@ -716,6 +716,8 @@ class _AggregatorSupportScreenState extends ConsumerState<AggregatorSupportScree
                       ),
                     ),
                   ),
+                const SizedBox(height: 24),
+                const SupportFaqPanel(),
                 const SizedBox(height: 24),
                 Text('Raise a ticket', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),

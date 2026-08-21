@@ -159,8 +159,11 @@ class MockAggregatorRepository implements AggregatorRepository {
   Future<List<Artwork>> listReservableInventory() => mockDelay(() {
         final claimed = _readHoldings().map((h) => h.artworkId).toSet();
         return _readArtworks()
+            // Ask the predicate, not the literal: an aggregator-only piece is
+            // reservable here even though it never appears in the marketplace
+            // grid.
             .where((a) =>
-                a.listingType == ListingType.marketplaceAndAggregator &&
+                isAggregatorListed(a.listingType) &&
                 a.status == ArtworkStatus.marketplace &&
                 !claimed.contains(a.id))
             .toList();

@@ -44,7 +44,7 @@ class AggregatorDashboardScreen extends ConsumerWidget {
     ),
     (
       icon: LucideIcons.building2,
-      label: 'Gallery spaces',
+      label: 'Display Spaces',
       subtitle: 'Your premises and their occupancy',
       route: '/aggregator/dashboard/gallery-spaces'
     ),

@@ -126,8 +126,10 @@ tap-and-screenshot loops cost a lot of session for little signal.
 
 ## What's actually built (code)
 
-**All eight phases are built**, plus two post-phase features (follow-an-artist
-and account deletion). `flutter analyze` is clean, `flutter test` is 74 green, the debug APK builds, and `flutter build appbundle --release`
+**All eight phases are built**, plus follow-an-artist, account deletion, the
+August meeting's Batch A, the `e1b65fc` feature set, and the demo chain that
+makes the app work end to end. `flutter analyze` is clean, `flutter test` is
+102 green, the debug APK builds, and `flutter build appbundle --release`
 succeeds with R8 on. Phase 6 was verified on `gz_pixel` (all four aggregator
 tabs screenshotted); Phases 7 and 8 are **not** runtime-verified — see their
 sections. What remains is not a phase: the open decisions below, the unwired
@@ -413,13 +415,145 @@ user supplied on 20 Aug 2026.
   has no business clearing them. It wipes data *before* signing out; the other
   order would bounce to `/login` with the records still on disk.
 
+**Post-phase — Batch A (the August client meeting), ported 2026-08-21**
+Ported from `frontend-web`'s Batch A commit (`0aeeb6a`). The rules all live in
+`lib/data/models/artwork.dart` beside the model they describe, mirroring
+`types/artwork.ts`; `test/batch_a_test.dart` is the Dart port of that file's
+`artwork.check.ts` self-check plus the repository behaviour around it.
+- **A third sales channel.** `ListingType.aggregatorOnly`, with
+  `isMarketplaceListed()` / `isAggregatorListed()` as the only way to ask.
+  Never compare against a literal — adding a fourth channel later shouldn't
+  mean hunting every `== marketplaceAndAggregator` down again.
+- **One public-listing gate**, `isPubliclyListed()` in
+  `mock_artwork_repository.dart`, applied by `list()` and `listByArtist()`.
+  `get(id)` deliberately skips it: a passport or COA link must still resolve
+  after the piece has left every channel. The aggregator's
+  `listReservableInventory()` asks `isAggregatorListed()`, so an
+  aggregator-only piece is reservable while never appearing in the grid.
+- **The 7-day edit window.** `artworkEditState()`, and with it an edit route.
+  `ArtworkUploadScreen` takes an optional `artworkId` and doubles as the edit
+  form rather than a second screen existing — a countdown with nowhere to tap
+  would have been decoration. `updateArtwork()` re-checks the window in the
+  repository, so a locked piece fails on save rather than writing silently.
+  On an edit, an empty image list means "keep the existing photos": picked
+  images are device file paths and the seeded ones are bundled assets, so
+  preloading the strip would try `Image.file` on an asset path.
+- **Sold on another platform.** `markSoldElsewhere()` moves the piece to
+  `soldExternally`, writes an explicit custody record, and queues an
+  `ExternalSalePenalty` of 1% of the listed price. It is charged on the next
+  **non-draft** submit (`_settlePendingPenalties`), as a wallet adjustment
+  floored at 0. The submit form shows the outstanding figure before you
+  commit; the withdraw dialog names the exact rupee amount.
+- **Ownership, custody and location as three states.** `ArtworkCustody` +
+  `resolveCustody()`, with the same status-derived fallback map the web has.
+  Shown as a three-cell trio on the passport and as rows on the artist's
+  COA/NFC board.
+- **Insurance is forced on for an aggregator listing** — in the repository,
+  not only in the form, so the rule holds whatever calls it. The switch
+  renders locked-on with a "required" label.
+- Also: the COA "number issued on approval" notice on the submit form, an
+  optional GSTIN with local-format validation only (no GST portal call, by
+  business decision), the founding-member subscription card in artist
+  Settings, and both prices labelled "Your price" / "Listed price".
+- **Naming.** "Gallery" is gone from the channel in artist-facing copy: the
+  aggregator's premises page is **Display Spaces**, the artist's placement
+  page is **Aggregator Display**. Routes still say `gallery-spaces`, matching
+  the web, which kept its paths too.
+- **FAQs in Support are a link-out**, not a copy of `faq-data.ts`. Batch A
+  folds the FAQs into Support; Phase 7 decided marketing and legal copy stays
+  on galleryzone.in. `SupportFaqPanel` in `portal_widgets.dart` reconciles
+  both — one row into `/faq` plus the video-walkthrough placeholder, in all
+  three portals. Duplicating 19 answers into a third repo is the drift Phase 7
+  exists to avoid.
+- **Not ported, deliberately:** everything from `e1b65fc` — ownership
+  transfer, the artist MOU, `FramingState`, and the physical-COA queue. That
+  is a separate commit's worth of work, not part of Batch A.
+- **A note on formatting.** Dart 3.9's tall-style `dart format` rewrites this
+  codebase wholesale — running it across `lib/` churned 89 files. Format only
+  the files you actually edit, or the diff stops being reviewable.
+
+**Post-phase — the end-to-end demo chain (2026-08-21)**
+Before this, the app could not complete a purchase. Four links were missing,
+each of them the kind of gap that only shows up when someone actually walks
+the flow: nothing approved a submission, there was no payment step, an order
+was created at `pending` and never moved again, and a sale credited nobody.
+- **Approval on a timer.** `demoReviewDelay` (15s) and `enqueueForReview()` /
+  `promoteApprovedSubmissions()` in `mock_artwork_repository.dart`. Every
+  reader of `artworks` or `pendingArtworks` calls the promotion first, because
+  approval has no other trigger in this build. It works off a **queue of
+  submitted ids**, not a timestamp on the artwork: the fixtures include a
+  piece that has been "in review" since long before the app started, and it
+  has to stay that way. Drafts never promote — `submitForReview()` is what
+  starts their clock, so "Save draft" is no longer a dead end.
+  `promoteApprovedSubmissions(now:)` takes an injectable clock so a test
+  doesn't sit through the delay.
+- **A mock payment step.** `_PaymentStep` in `checkout_screen.dart`: UPI /
+  card / net banking, prefilled test values, and a **simulate-declined
+  toggle** — a demo that can only succeed hides the path that matters when a
+  real gateway lands. No gateway is contacted and the screen says so.
+  `createOrder` takes the method and a `simulateFailure` flag; a real gateway
+  drops in behind that same call, which is why the failure path is exercised
+  rather than assumed. Orders are created at `paid`, with the `pending` event
+  still on the timeline.
+- **Orders advance by hand.** `advanceOrder()` walks `orderProgression`
+  (pending → paid → confirmed → packed → transit → delivered), driven by a
+  button on the order detail screen that labels itself a demo control and
+  disappears at `delivered`. There is no warehouse behind it; pretending
+  otherwise with a timer would be worse.
+- **Delivery moves the record and the money together.** At `delivered` the
+  artwork goes to `delivered` with custody `customer/customer`, and the
+  artist's pending credit becomes withdrawable. Sale-side helpers live in
+  `mock_artist_repository.dart` (`creditArtistForSale`,
+  `settleArtistForOrder`, `artistPayoutFor`) so wallet logic stays with the
+  wallet's owner; checkout calls them. Same mechanic as the aggregator's
+  commission: pending on the sale, released on settlement, and **the pending
+  ledger row is rewritten into the settlement row** rather than a second line
+  appearing. `artistPayoutFor()` is the one place the payout formula lives —
+  still provisional, and `ProvisionalPayoutNotice` says so on the wallet.
+
+**Post-phase — the `e1b65fc` feature set, ported 2026-08-21**
+- **Ownership transfer.** `OwnershipRepository` +
+  `MockOwnershipRepository` + `/transfer/:transferId` (public and unguarded,
+  like the passport — whoever is handed a piece may not have an account).
+  The owner names the next one from their Collection and gets a copyable
+  link; **ownership moves only when the recipient accepts**. Only one
+  transfer can be open per artwork, or two people could each claim the same
+  piece. On accept, custody follows ownership *only if the artist was still
+  holding it* — a piece sitting with an aggregator stays there. The passport
+  grows an `OwnershipHistory` section.
+- **Resale purchase.** Listing a piece puts it back on the marketplace at the
+  asking price (there is no separate resale storefront, and building one for
+  a handful of rows would duplicate the marketplace it belongs in). Buying it
+  runs the ordinary checkout. **The reseller is paid, not the artist** —
+  `activeResaleListing()` decides which, and paying the artist twice for one
+  artwork is the obvious bug here. There is a test pinning it.
+- **The artist MOU.** `lib/features/artist/mou_data.dart` — 25 clauses at
+  `mouVersion = "2026.1"`, transcribed from `frontend-web/features/dashboard/
+  mou-data.ts` **by dumping it to JSON with node and generating the Dart**,
+  not by retyping: the wording is the company's and a transcription error in
+  a legal document is not a cosmetic bug. Correct the source PDF and
+  re-transcribe rather than editing the Dart. Acceptance is stored against the
+  version, so a revision asks again.
+- **Framing and physical details.** `FramingState`, `ArtworkPhysical` and
+  `missingForAggregator()` in `artwork.dart`; the submit form grows a "The
+  physical piece" section **only when the aggregator channel is picked**, and
+  names exactly what is still missing. MOU §12 wants framed or
+  stretched-canvas, hangers included, packing confirmed.
+- **Paper certificates.** `PhysicalCoaRequest`: the collector requests one
+  from their Collection, the artist sees the queue on COA & NFC and marks it
+  dispatched with a courier reference. One shared `physicalCoaRequests`
+  collection written by one side and read by the other — the same arrangement
+  as `artworks` and `holdings`.
+
 ## What's NOT built yet
 
-- The artist wallet/settlement **side effect of a sale** is still not wired:
-  placing an order marks the artwork sold but doesn't credit the artist's
-  wallet or create a settlement (the web's `settleIntoArtistWallet`). The
-  collections now exist, so this is a small addition — it was left out
-  because the payout formula is one of the open decisions below.
+- **A real payment gateway.** The sheet is a mock and says so.
+- **An admin lane.** Approval is a timer, not a person. Nothing moderates
+  artists, artworks or KYC; the web's 22 admin routes have no mobile
+  equivalent and are not planned.
+- **Multi-user anything.** One device, one mock DB: the "other collector" who
+  buys your resale listing is you. Follower counts, message replies and
+  alerts all wait on a real backend for the same reason.
 - Alerts / saved searches. Artsy splits Saves, Follows and Alerts; this app
   has the first two. Alerts need push, which does not exist — see below.
 - No Play Store listing copy, screenshots, feature graphic or privacy-policy
@@ -443,9 +577,14 @@ user supplied on 20 Aug 2026.
 
 ## Recommended next step
 
-The phase plan is finished, so the next session picks from these rather than
-following a sequence:
+The phase plan is finished and the demo chain is closed, so the next session
+picks from these rather than following a sequence:
 
+0. **Port the demo chain back to `frontend-web`.** The direction of drift has
+   reversed: the website still cannot complete a purchase — no approval, no
+   payment step, no order progression, no artist settlement, no resale
+   purchase. Demoing the two side by side would show the web app as the
+   broken one.
 1. **Answer the open decisions below.** Three of the four now gate real work
    rather than hypothetical work: payment blocks a real checkout, the payout
    formula blocks the settlement, the domain blocks deep links.

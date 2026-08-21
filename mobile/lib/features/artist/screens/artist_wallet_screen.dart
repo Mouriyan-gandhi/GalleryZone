@@ -34,6 +34,8 @@ class ArtistWalletScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const ProvisionalPayoutNotice(),
+                const SizedBox(height: 12),
                 PortalCard(
                   gold: true,
                   padding: const EdgeInsets.all(20),

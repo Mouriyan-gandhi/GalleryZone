@@ -60,6 +60,10 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   statusHistory: (json['statusHistory'] as List<dynamic>)
       .map((e) => OrderStatusEvent.fromJson(e as Map<String, dynamic>))
       .toList(),
+  paymentMethod: $enumDecodeNullable(
+    _$PaymentMethodEnumMap,
+    json['paymentMethod'],
+  ),
 );
 
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
@@ -72,4 +76,11 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'status': _$OrderStatusEnumMap[instance.status]!,
   'createdAt': instance.createdAt,
   'statusHistory': instance.statusHistory,
+  'paymentMethod': _$PaymentMethodEnumMap[instance.paymentMethod],
+};
+
+const _$PaymentMethodEnumMap = {
+  PaymentMethod.upi: 'upi',
+  PaymentMethod.card: 'card',
+  PaymentMethod.netbanking: 'netbanking',
 };

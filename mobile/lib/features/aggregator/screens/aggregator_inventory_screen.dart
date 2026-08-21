@@ -39,7 +39,7 @@ class AggregatorBrowseScreen extends ConsumerWidget {
                 icon: LucideIcons.packageSearch,
                 title: 'No reservable artworks right now',
                 description:
-                    'Every marketplace-and-galleries artwork is already claimed. '
+                    'Every aggregator-listed artwork is already claimed. '
                     'Check back as new work is listed.',
               )
             : RefreshIndicator(

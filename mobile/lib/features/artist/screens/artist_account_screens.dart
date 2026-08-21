@@ -81,8 +81,9 @@ class ArtistSettlementsScreen extends ConsumerWidget {
                                       Expanded(
                                         child: Text(
                                           settlement.artworkTitle,
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(fontWeight: FontWeight.w600),
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
                                       Text(
@@ -176,18 +177,23 @@ class ArtistVerificationScreen extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   'Tier ${tier.tier}: ${tier.title}',
-                                  style: theme.textTheme.titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                               if (tier.completedOn != null)
-                                Text(formatShortDate(tier.completedOn!),
-                                    style: theme.textTheme.labelSmall),
+                                Text(
+                                  formatShortDate(tier.completedOn!),
+                                  style: theme.textTheme.labelSmall,
+                                ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(tier.detail,
-                              style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),
+                          Text(
+                            tier.detail,
+                            style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                          ),
                         ],
                       ),
                     ),
@@ -269,8 +275,7 @@ class ArtistMessagesScreen extends ConsumerWidget {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight:
-                                      message.unread ? FontWeight.w600 : FontWeight.w400,
+                                  fontWeight: message.unread ? FontWeight.w600 : FontWeight.w400,
                                 ),
                               ),
                             ),
@@ -286,8 +291,10 @@ class ArtistMessagesScreen extends ConsumerWidget {
                         children: [
                           Align(
                             alignment: Alignment.centerLeft,
-                            child: Text(message.body,
-                                style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),
+                            child: Text(
+                              message.body,
+                              style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                            ),
                           ),
                         ],
                       ),
@@ -302,6 +309,10 @@ class ArtistMessagesScreen extends ConsumerWidget {
 
 /// Port of `features/dashboard/profile-kyc-form.tsx`. Identity and bank
 /// detail; the full account number is never stored, only its last four.
+/// 2-digit state code, PAN, entity digit, Z, checksum char. Shape only: the
+/// business deliberately does not want a GST portal integration.
+final _gstinPattern = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$');
+
 /// Named `Kyc`, not `Profile`, to stay distinct from the *public* artist
 /// profile a collector browses.
 class ArtistKycScreen extends ConsumerStatefulWidget {
@@ -321,12 +332,13 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
   final _bio = TextEditingController();
   final _instagram = TextEditingController();
   final _website = TextEditingController();
+  final _gstin = TextEditingController();
   bool _isSeeded = false;
   bool _isSaving = false;
 
   @override
   void dispose() {
-    for (final controller in [_fullName, _email, _phone, _bio, _instagram, _website]) {
+    for (final controller in [_fullName, _email, _phone, _bio, _instagram, _website, _gstin]) {
       controller.dispose();
     }
     super.dispose();
@@ -336,7 +348,9 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
     try {
-      await ref.read(artistRepositoryProvider).updateProfile(
+      await ref
+          .read(artistRepositoryProvider)
+          .updateProfile(
             current.copyWith(
               fullName: _fullName.text.trim(),
               email: _email.text.trim(),
@@ -344,18 +358,15 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
               bio: _bio.text.trim(),
               instagram: _instagram.text.trim(),
               website: _website.text.trim(),
+              gstin: _gstin.text.trim().isEmpty ? null : _gstin.text.trim().toUpperCase(),
             ),
           );
       ref.invalidate(artistProfileDetailsProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profile updated')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile updated')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -420,16 +431,14 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
 
     if (saved ?? false) {
       try {
-        await ref.read(artistRepositoryProvider).updateBankDetails(
-              accountNumber: accountController.text,
-              ifsc: ifscController.text,
-            );
+        await ref
+            .read(artistRepositoryProvider)
+            .updateBankDetails(accountNumber: accountController.text, ifsc: ifscController.text);
         ref.invalidate(artistProfileDetailsProvider);
       } catch (error) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(authErrorMessage(error))),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
         }
       }
     }
@@ -451,6 +460,7 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
       _bio.text = loaded.bio;
       _instagram.text = loaded.instagram;
       _website.text = loaded.website;
+      _gstin.text = loaded.gstin ?? '';
     }
 
     return Scaffold(
@@ -503,6 +513,25 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                           controller: _website,
                           decoration: const InputDecoration(labelText: 'Website'),
                         ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _gstin,
+                          textCapitalization: TextCapitalization.characters,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          validator: (value) {
+                            final entered = (value ?? '').trim().toUpperCase();
+                            if (entered.isEmpty) return null;
+                            return _gstinPattern.hasMatch(entered)
+                                ? null
+                                : "That doesn't look like a valid GSTIN";
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'GSTIN (optional)',
+                            helperText:
+                                'Checked for format only — we never call the '
+                                'GST portal. Leave it blank if you are not registered.',
+                          ),
+                        ),
                         const SizedBox(height: 20),
                         SizedBox(
                           height: 46,
@@ -524,8 +553,7 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                               PortalDetailRow(label: 'IFSC', value: loaded.ifsc),
                               PortalDetailRow(
                                 label: 'Aadhaar',
-                                value:
-                                    '${loaded.aadhaarMasked} · ${loaded.aadhaarStatus.name}',
+                                value: '${loaded.aadhaarMasked} · ${loaded.aadhaarStatus.name}',
                                 gold: loaded.aadhaarStatus == AadhaarStatus.verified,
                               ),
                               Align(
@@ -579,6 +607,8 @@ class ArtistSettingsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      const _SubscriptionCard(),
+                      const SizedBox(height: 24),
                       Text('Notify me about', style: theme.textTheme.titleLarge),
                       const SizedBox(height: 8),
                       SwitchListTile(
@@ -604,8 +634,7 @@ class ArtistSettingsScreen extends ConsumerWidget {
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         value: settings.notifyNewMessage,
-                        onChanged: (value) =>
-                            update(settings.copyWith(notifyNewMessage: value)),
+                        onChanged: (value) => update(settings.copyWith(notifyNewMessage: value)),
                         title: const Text('New messages'),
                       ),
                       const SizedBox(height: 12),
@@ -621,6 +650,79 @@ class ArtistSettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// Static plan card — every artist is on the founding-member plan (free for
+/// the first year) and there is no billing system to read a real plan from
+/// yet. It exists so the artist can see the benefit they are on.
+class _SubscriptionCard extends StatelessWidget {
+  const _SubscriptionCard();
+
+  static const _planName = 'Founding Artist';
+  static const _priceLabel = 'Free for your first year';
+  static const _renewsOn = '2027-07-05';
+  static const _benefits = [
+    'Unlimited artwork listings',
+    '0% listing and confirmation fees',
+    'Aggregator display access',
+    'COA and NFC passport for every accepted piece',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      gold: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.badgeCheck, size: 18, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$_planName plan',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      _priceLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.tertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text('Active', style: theme.textTheme.labelSmall),
+            ],
+          ),
+          const SizedBox(height: 12),
+          for (final benefit in _benefits)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.check, size: 13, color: theme.colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(benefit, style: theme.textTheme.bodySmall)),
+                ],
+              ),
+            ),
+          const Divider(height: 20),
+          Text(
+            'Renews ${formatLongDate(_renewsOn)}. Nothing to pay until then, and we '
+            'will tell you well before anything changes.',
+            style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -653,22 +755,17 @@ class _ArtistSupportScreenState extends ConsumerState<ArtistSupportScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSending = true);
     try {
-      await ref.read(artistRepositoryProvider).submitSupportTicket(
-            subject: _subject.text,
-            message: _message.text,
-          );
+      await ref
+          .read(artistRepositoryProvider)
+          .submitSupportTicket(subject: _subject.text, message: _message.text);
       ref.invalidate(artistSupportTicketsProvider);
       _subject.clear();
       _message.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ticket submitted')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ticket submitted')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -703,6 +800,8 @@ class _ArtistSupportScreenState extends ConsumerState<ArtistSupportScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+                const SupportFaqPanel(),
                 const SizedBox(height: 24),
                 Text('Raise a ticket', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
@@ -757,8 +856,9 @@ class _ArtistSupportScreenState extends ConsumerState<ArtistSupportScreen> {
                                 Expanded(
                                   child: Text(
                                     ticket.subject,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(fontWeight: FontWeight.w500),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ),
                                 Text(ticket.status.name, style: theme.textTheme.labelSmall),
@@ -767,8 +867,10 @@ class _ArtistSupportScreenState extends ConsumerState<ArtistSupportScreen> {
                             const SizedBox(height: 6),
                             Text(ticket.message, style: theme.textTheme.bodySmall),
                             const SizedBox(height: 6),
-                            Text(formatShortDate(ticket.createdAt),
-                                style: theme.textTheme.labelSmall),
+                            Text(
+                              formatShortDate(ticket.createdAt),
+                              style: theme.textTheme.labelSmall,
+                            ),
                           ],
                         ),
                       ),

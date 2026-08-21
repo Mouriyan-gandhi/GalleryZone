@@ -7,6 +7,8 @@ import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/customer.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../ownership/widgets/transfer_widgets.dart';
 import '../providers/account_providers.dart';
 
 /// Port of `features/account/collection-board.tsx`. Owned = a delivered
@@ -124,13 +126,13 @@ class _CollectionTile extends StatelessWidget {
   }
 }
 
-class _CollectionDetailSheet extends StatelessWidget {
+class _CollectionDetailSheet extends ConsumerWidget {
   const _CollectionDetailSheet({required this.item});
 
   final CollectionItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artwork = item.artwork;
     final deliveredAt = item.order.statusHistory
@@ -192,6 +194,60 @@ class _CollectionDetailSheet extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            // MOU §12: the digital certificate is issued automatically, the
+            // paper one is signed by the artist on request.
+            OutlinedButton.icon(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+                final address = ref.read(addressesProvider).value?.firstOrNull;
+                if (address == null) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Add a delivery address first')),
+                  );
+                  return;
+                }
+                navigator.pop();
+                try {
+                  await ref
+                      .read(customerRepositoryProvider)
+                      .requestPhysicalCoa(
+                        artworkId: artwork.id,
+                        deliveryAddress:
+                            '${address.line1}, ${address.city} ${address.pincode}',
+                      );
+                  ref.invalidate(physicalCoaRequestsProvider);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Requested — the artist signs and posts it'),
+                    ),
+                  );
+                } catch (error) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(authErrorMessage(error))),
+                  );
+                }
+              },
+              icon: const Icon(LucideIcons.mailbox, size: 14),
+              label: const Text('Request the paper certificate'),
+            ),
+            const SizedBox(height: 10),
+            // Handing the piece on privately, without a sale through the
+            // platform. The passport follows the piece either way.
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                showTransferOwnershipSheet(
+                  context,
+                  ref,
+                  artwork: artwork,
+                  fromName: ref.read(customerProfileProvider).value?.name ?? 'The owner',
+                );
+              },
+              icon: const Icon(LucideIcons.send, size: 14),
+              label: const Text('Transfer ownership'),
             ),
           ],
         ),

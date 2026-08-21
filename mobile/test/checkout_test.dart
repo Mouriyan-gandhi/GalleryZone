@@ -50,14 +50,21 @@ void main() {
       () async {
     _seedArtworks([_artwork()]);
 
-    final order = await repository.createOrder(artworkId: 'aw-1', addressId: 'addr-home-pune');
+    final order = await repository.createOrder(
+      artworkId: 'aw-1',
+      addressId: 'addr-home-pune',
+      paymentMethod: PaymentMethod.upi,
+    );
 
     expect(order.amount, 48000);
     expect(order.gstAmount, 2400); // 5%
     expect(order.deliveryCharge, checkoutDeliveryCharge);
     expect(order.total, 48000 + 2400 + 250);
-    expect(order.status, OrderStatus.pending);
-    expect(order.statusHistory.single.status, OrderStatus.pending);
+    // Payment succeeds inside createOrder, so an order is never observable
+    // in `pending` — but the event is still on the timeline.
+    expect(order.status, OrderStatus.paid);
+    expect(order.paymentMethod, PaymentMethod.upi);
+    expect(order.statusHistory.map((e) => e.status), [OrderStatus.pending, OrderStatus.paid]);
 
     // A one-of-a-kind original can't be bought twice.
     expect(_readArtworks().single.status, ArtworkStatus.sold);
@@ -71,7 +78,11 @@ void main() {
     _seedArtworks([_artwork(status: ArtworkStatus.sold)]);
 
     expect(
-      () => repository.createOrder(artworkId: 'aw-1', addressId: 'addr-home-pune'),
+      () => repository.createOrder(
+        artworkId: 'aw-1',
+        addressId: 'addr-home-pune',
+        paymentMethod: PaymentMethod.upi,
+      ),
       throwsA(isA<Exception>()),
     );
   });
@@ -80,7 +91,11 @@ void main() {
     _seedArtworks([_artwork()]);
 
     expect(
-      () => repository.createOrder(artworkId: 'nope', addressId: 'addr-home-pune'),
+      () => repository.createOrder(
+        artworkId: 'nope',
+        addressId: 'addr-home-pune',
+        paymentMethod: PaymentMethod.upi,
+      ),
       throwsA(isA<Exception>()),
     );
   });

@@ -85,13 +85,7 @@ class PortalDetailRow extends StatelessWidget {
 /// previously rendered the same address as plain selectable text because the
 /// app had no `url_launcher`.
 class ContactLinkRow extends StatelessWidget {
-  const ContactLinkRow({
-    super.key,
-    this.icon,
-    this.glyph,
-    required this.label,
-    required this.url,
-  });
+  const ContactLinkRow({super.key, this.icon, this.glyph, required this.label, required this.url});
 
   final IconData? icon;
   final Widget? glyph;
@@ -113,14 +107,102 @@ class ContactLinkRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.colorScheme.tertiary),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.tertiary),
                 ),
               ),
               Icon(LucideIcons.externalLink, size: 14, color: theme.colorScheme.outline),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// FAQs and walkthrough videos, shown inside every portal's Support screen —
+/// one place a signed-in user goes when they need an answer.
+///
+/// The answers themselves stay on galleryzone.in/faq rather than being
+/// copied into this app. That is the Phase 7 decision applied to Batch A's
+/// "fold the FAQs into Support": the web keeps one canonical copy of the
+/// wording, so the two surfaces cannot drift the first time legal changes a
+/// sentence.
+class SupportFaqPanel extends StatelessWidget {
+  const SupportFaqPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('FAQs', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 8),
+        const ContactLinkRow(
+          icon: LucideIcons.circleHelp,
+          label: 'Read the FAQs on galleryzone.in',
+          url: '$galleryZoneSite/faq',
+        ),
+        // Placeholder for the walkthrough videos: everything beyond the
+        // aggregator-terms explainer is hosted on YouTube and linked from
+        // here — drop the links in when the channel is ready.
+        PortalCard(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(LucideIcons.circlePlay, size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Video walkthroughs',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Short videos explaining listing, aggregator display and '
+                      'settlement will be linked here. Coming soon.',
+                      style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shown wherever an artist sees what a sale pays them.
+///
+/// The split is one of the project's open decisions — the mocked code, the
+/// business requirement and the SAD's schema disagree — so every screen that
+/// prints the number says so rather than letting an artist plan around it.
+class ProvisionalPayoutNotice extends StatelessWidget {
+  const ProvisionalPayoutNotice({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(LucideIcons.info, size: 15, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Payout figures are provisional. The final split is still being '
+              'agreed, so these show your own price less a 2% platform '
+              'pass-through.',
+              style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+            ),
+          ),
+        ],
       ),
     );
   }

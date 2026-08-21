@@ -30,8 +30,7 @@ abstract class ActivityEntry with _$ActivityEntry {
     required String time,
   }) = _ActivityEntry;
 
-  factory ActivityEntry.fromJson(Map<String, dynamic> json) =>
-      _$ActivityEntryFromJson(json);
+  factory ActivityEntry.fromJson(Map<String, dynamic> json) => _$ActivityEntryFromJson(json);
 }
 
 enum AadhaarStatus { verified, pending, unverified }
@@ -53,6 +52,10 @@ abstract class ArtistProfileDetails with _$ArtistProfileDetails {
     required String ifsc,
     required AadhaarStatus aadhaarStatus,
     required String aadhaarMasked,
+
+    /// Optional. Validated for shape only when one is entered — there is no
+    /// GST portal integration, which the business deliberately does not want.
+    String? gstin,
   }) = _ArtistProfileDetails;
 
   factory ArtistProfileDetails.fromJson(Map<String, dynamic> json) =>
@@ -68,8 +71,21 @@ abstract class ArtistSettings with _$ArtistSettings {
     required bool notifyNewMessage,
   }) = _ArtistSettings;
 
-  factory ArtistSettings.fromJson(Map<String, dynamic> json) =>
-      _$ArtistSettingsFromJson(json);
+  factory ArtistSettings.fromJson(Map<String, dynamic> json) => _$ArtistSettingsFromJson(json);
+}
+
+/// An artist's acceptance of one version of the MOU. Versioned so a later
+/// revision asks again rather than inheriting an acceptance of wording the
+/// artist never saw.
+@freezed
+abstract class MouAcceptance with _$MouAcceptance {
+  const factory MouAcceptance({
+    required String version,
+    required String acceptedAt,
+  }) = _MouAcceptance;
+
+  factory MouAcceptance.fromJson(Map<String, dynamic> json) =>
+      _$MouAcceptanceFromJson(json);
 }
 
 enum SettlementStatus { pending, processed, failed }
@@ -104,8 +120,7 @@ abstract class MessageThread with _$MessageThread {
     required String receivedAt,
   }) = _MessageThread;
 
-  factory MessageThread.fromJson(Map<String, dynamic> json) =>
-      _$MessageThreadFromJson(json);
+  factory MessageThread.fromJson(Map<String, dynamic> json) => _$MessageThreadFromJson(json);
 }
 
 enum HoldingStatus {

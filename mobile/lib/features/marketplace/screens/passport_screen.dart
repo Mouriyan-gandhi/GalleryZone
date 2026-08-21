@@ -7,6 +7,7 @@ import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
+import '../../ownership/widgets/transfer_widgets.dart';
 import '../providers/marketplace_providers.dart';
 import '../widgets/artwork_card.dart';
 
@@ -87,6 +88,10 @@ class _PassportBody extends ConsumerWidget {
               ],
             ),
           ],
+          const SizedBox(height: 28),
+          _CustodyTrio(custody: resolveCustody(artwork)),
+          const SizedBox(height: 32),
+          OwnershipHistory(artworkId: artwork.id, artistName: artwork.artistName),
           const SizedBox(height: 36),
           _ProvenanceTimeline(history: artwork.statusHistory),
           if (artist != null) ...[
@@ -112,6 +117,70 @@ class _PassportBody extends ConsumerWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Ownership, custody and location are three independent facts about a
+/// physical artwork — the passport shows all three rather than one collapsed
+/// "owner". Port of the trio in `features/verify/artwork-passport-view.tsx`.
+class _CustodyTrio extends StatelessWidget {
+  const _CustodyTrio({required this.custody});
+
+  final ArtworkCustody custody;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = [
+      ('Owner', custody.legalOwnerName ?? custodyPartyLabel[custody.legalOwner]!),
+      ('Held by', custodyPartyLabel[custody.custodian]!),
+      ('Location', custody.locationLabel),
+    ];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (index, (label, value)) in cells.indexed) ...[
+          if (index > 0) const SizedBox(width: 10),
+          Expanded(
+            child: _CustodyCell(label: label, value: value),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CustodyCell extends StatelessWidget {
+  const _CustodyCell({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: theme.colorScheme.outline),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.6),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

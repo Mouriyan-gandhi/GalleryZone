@@ -37,6 +37,17 @@ const _mediums = <String, String>{
   'Other': 'Other',
 };
 
+const _formats = <String, String>{
+  'canvas': 'Canvas',
+  'paper': 'Paper',
+  'board': 'Board / panel',
+  'wood': 'Wood',
+  'metal': 'Metal',
+  'stone': 'Stone',
+  'textile': 'Textile',
+  'other': 'Other',
+};
+
 const _maxImages = 8;
 const _insuranceRecommendedThreshold = 20000;
 
@@ -44,10 +55,18 @@ const _insuranceRecommendedThreshold = 20000;
 /// wired up — the reason this screen was built second in the phase. Images
 /// come from the device (camera or gallery) via `image_picker`; there is no
 /// upload backend yet, so the picked file path is what's stored and rendered.
+///
+/// Doubles as the edit form (`features/dashboard/artwork-edit-view.tsx`) when
+/// [artworkId] is set: same fields, same rules, one screen. The repository
+/// still enforces the edit window, so arriving here on a locked piece fails
+/// on save rather than silently writing.
 class ArtworkUploadScreen extends ConsumerStatefulWidget {
-  const ArtworkUploadScreen({super.key});
+  const ArtworkUploadScreen({super.key, this.artworkId});
 
   static const path = '/dashboard/artworks/upload';
+
+  /// Null on the submit route; the piece being edited otherwise.
+  final String? artworkId;
 
   @override
   ConsumerState<ArtworkUploadScreen> createState() => _ArtworkUploadScreenState();
@@ -67,13 +86,86 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   ListingType _listingType = ListingType.marketplaceAndAggregator;
   bool _insuranceOpted = false;
   bool _isSubmitting = false;
+  final _weight = TextEditingController();
+  FramingState? _framing;
+  String? _format;
+  bool _hangersIncluded = false;
+  bool _packagingConfirmed = false;
   final _images = <String>[];
+
+  bool get _isEdit => widget.artworkId != null;
+
+  /// Non-null once an edit target has loaded. The form is hidden until then,
+  /// so the controllers are seeded exactly once with no effect-on-data dance.
+  Artwork? _editing;
+  String? _loadError;
+
+  /// Aggregator display puts the piece in someone else's custody, so
+  /// insurance stops being a choice the moment that channel is picked. The
+  /// repository enforces the same rule.
+  bool get _insuranceRequired => isAggregatorListed(_listingType);
 
   double get _artistPrice => double.tryParse(_price.text.trim()) ?? 0;
 
+  ArtworkPhysical get _physical => ArtworkPhysical(
+    weightKg: double.tryParse(_weight.text.trim()),
+    framing: _framing,
+    format: _format,
+    hangingHardwareIncluded: _hangersIncluded,
+    packagingConfirmed: _packagingConfirmed,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEdit) _loadForEdit();
+  }
+
+  Future<void> _loadForEdit() async {
+    try {
+      final entries = await ref.read(artistRepositoryProvider).listArtworks();
+      final entry = entries.where((e) => e.artwork.id == widget.artworkId).firstOrNull;
+      if (!mounted) return;
+      if (entry == null) {
+        setState(() => _loadError = 'Artwork not found');
+        return;
+      }
+      final artwork = entry.artwork;
+      _title.text = artwork.title;
+      _description.text = artwork.description;
+      _dimensions.text = artwork.dimensions ?? '';
+      _year.text = artwork.yearCreated?.toString() ?? '';
+      _price.text = entry.artistPrice == 0 ? '' : entry.artistPrice.round().toString();
+      _nfcTag.text = artwork.nfcTagId ?? '';
+      _weight.text = artwork.physical?.weightKg?.toString() ?? '';
+      setState(() {
+        _editing = artwork;
+        _category = artwork.category;
+        _medium = artwork.medium;
+        _listingType = artwork.listingType;
+        _insuranceOpted = artwork.insured;
+        _framing = artwork.physical?.framing;
+        _format = artwork.physical?.format;
+        _hangersIncluded = artwork.physical?.hangingHardwareIncluded ?? false;
+        _packagingConfirmed = artwork.physical?.packagingConfirmed ?? false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _loadError = authErrorMessage(error));
+    }
+  }
+
   @override
   void dispose() {
-    for (final controller in [_title, _description, _dimensions, _year, _price, _nfcTag]) {
+    for (final controller in [
+      _title,
+      _description,
+      _dimensions,
+      _year,
+      _price,
+      _nfcTag,
+      _weight,
+    ]) {
       controller.dispose();
     }
     super.dispose();
@@ -97,53 +189,66 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
 
   Future<void> _submit({required bool asDraft}) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_images.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add at least one photo of the piece')),
-      );
+    // On an edit, no new photos means "keep the ones already on the piece" —
+    // the repository does exactly that with an empty image list.
+    if (_images.isEmpty && !_isEdit) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Add at least one photo of the piece')));
       return;
     }
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(artistRepositoryProvider).submitArtwork(
-            SubmitArtworkInput(
-              title: _title.text,
-              description: _description.text.trim(),
-              category: _category,
-              medium: _medium,
-              artistPrice: _artistPrice,
-              listingType: _listingType,
-              insuranceOpted: _insuranceOpted,
-              images: [
-                for (var i = 0; i < _images.length; i++)
-                  ArtworkImage(
-                    url: _images[i],
-                    thumbnailUrl: _images[i],
-                    sortOrder: i,
-                    altText: _title.text.trim(),
-                  ),
-              ],
-              asDraft: asDraft,
-              dimensions: _dimensions.text.trim().isEmpty ? null : _dimensions.text.trim(),
-              yearCreated: int.tryParse(_year.text.trim()),
-              nfcTagId: _nfcTag.text.trim().isEmpty ? null : _nfcTag.text.trim(),
+      final input = SubmitArtworkInput(
+        title: _title.text,
+        description: _description.text.trim(),
+        category: _category,
+        medium: _medium,
+        artistPrice: _artistPrice,
+        listingType: _listingType,
+        insuranceOpted: _insuranceRequired || _insuranceOpted,
+        images: [
+          for (var i = 0; i < _images.length; i++)
+            ArtworkImage(
+              url: _images[i],
+              thumbnailUrl: _images[i],
+              sortOrder: i,
+              altText: _title.text.trim(),
             ),
-          );
+        ],
+        asDraft: asDraft,
+        dimensions: _dimensions.text.trim().isEmpty ? null : _dimensions.text.trim(),
+        yearCreated: int.tryParse(_year.text.trim()),
+        nfcTagId: _nfcTag.text.trim().isEmpty ? null : _nfcTag.text.trim(),
+        physical: _physical,
+      );
+      final repository = ref.read(artistRepositoryProvider);
+      if (_isEdit) {
+        await repository.updateArtwork(artworkId: widget.artworkId!, patch: input);
+      } else {
+        await repository.submitArtwork(input);
+      }
       ref.invalidate(artistArtworksProvider);
       ref.invalidate(artistKpisProvider);
       ref.invalidate(artistActivityProvider);
+      ref.invalidate(artistWalletProvider);
+      ref.invalidate(artistWalletTransactionsProvider);
+      ref.invalidate(artistPenaltiesProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(asDraft ? 'Saved as draft' : 'Submitted for review'),
+          content: Text(
+            _isEdit
+                ? 'Changes saved'
+                : asDraft
+                ? 'Saved as draft'
+                : 'Submitted for review',
+          ),
         ),
       );
       context.pop();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(authErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -154,8 +259,30 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
     final theme = Theme.of(context);
     final customerPrice = _artistPrice * 1.3;
 
+    if (_isEdit && _editing == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit artwork')),
+        body: _loadError == null
+            ? const Center(child: CircularProgressIndicator())
+            : EmptyState(
+                icon: LucideIcons.triangleAlert,
+                title: "Couldn't open this artwork",
+                description: _loadError!,
+              ),
+      );
+    }
+
+    final editState = _editing == null ? null : artworkEditState(_editing!);
+    // Only on a new listing: an edit isn't the "next listing" the fee waits
+    // for, so showing it there would be a lie about what Save does.
+    final outstandingFee = _isEdit
+        ? 0.0
+        : (ref.watch(artistPenaltiesProvider).value ?? [])
+              .where((penalty) => penalty.settledAt == null)
+              .fold<double>(0, (sum, penalty) => sum + penalty.amount);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Submit artwork')),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit artwork' : 'Submit artwork')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         children: [
@@ -166,10 +293,85 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (outstandingFee > 0) ...[
+                    PortalCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            LucideIcons.triangleAlert,
+                            size: 16,
+                            color: AppColors.destructive,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${formatInr(outstandingFee)} off-platform sale fee '
+                                  'is due on this listing',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'You marked artwork as sold on another platform. The '
+                                  '1% fee is charged to your wallet when you submit this '
+                                  "piece for review. Saving a draft doesn't trigger it.",
+                                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (editState != null) ...[
+                    PortalCard(
+                      gold: editState.editable,
+                      child: Row(
+                        children: [
+                          Icon(
+                            editState.editable ? LucideIcons.clock3 : LucideIcons.lock,
+                            size: 16,
+                            color: editState.editable
+                                ? theme.colorScheme.tertiary
+                                : AppColors.destructive,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(switch (editState.reason) {
+                              ArtworkEditReason.draft =>
+                                'This piece is still a draft — edit it freely until '
+                                    'you send it for review.',
+                              ArtworkEditReason.withinWindow =>
+                                '${editState.daysLeft} '
+                                    '${editState.daysLeft == 1 ? "day" : "days"} left '
+                                    'of the $artworkEditWindowDays-day edit window.',
+                              ArtworkEditReason.purchased =>
+                                'This artwork has been claimed or sold — changes can '
+                                    'no longer be saved.',
+                              ArtworkEditReason.windowClosed =>
+                                'The $artworkEditWindowDays-day edit window for this '
+                                    'artwork has closed.',
+                            }, style: theme.textTheme.bodySmall),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   Text('Photos', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 4),
                   Text(
-                    'Up to $_maxImages. The first one becomes the listing thumbnail.',
+                    _isEdit
+                        ? 'Add photos to replace the current set — leave this empty and '
+                              'the existing ones stay.'
+                        : 'Up to $_maxImages. The first one becomes the listing thumbnail.',
                     style: theme.textTheme.labelSmall,
                   ),
                   const SizedBox(height: 12),
@@ -276,7 +478,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     child: Column(
                       children: [
                         PortalDetailRow(
-                          label: 'Buyer pays (incl. 30% platform markup)',
+                          label: 'Listed price buyers see (incl. 30% markup)',
                           value: formatInr(customerPrice),
                           gold: true,
                         ),
@@ -284,7 +486,13 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Listing', style: theme.textTheme.titleLarge),
+                  Text('Sales channel', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Marketplace and Aggregator are separate channels. Pick one, '
+                    'or both.',
+                    style: theme.textTheme.labelSmall,
+                  ),
                   const SizedBox(height: 8),
                   RadioGroup<ListingType>(
                     groupValue: _listingType,
@@ -294,16 +502,25 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                         RadioListTile<ListingType>(
                           contentPadding: EdgeInsets.zero,
                           value: ListingType.marketplaceOnly,
-                          title: Text('Marketplace only'),
-                          subtitle: Text("Sell directly through GalleryZone's online marketplace."),
+                          title: Text('Marketplace'),
+                          subtitle: Text("Sell online through GalleryZone's own marketplace."),
+                        ),
+                        RadioListTile<ListingType>(
+                          contentPadding: EdgeInsets.zero,
+                          value: ListingType.aggregatorOnly,
+                          title: Text('Aggregator'),
+                          subtitle: Text(
+                            'Send the physical piece to a verified aggregator to display '
+                            'and sell in person. It stays off the online marketplace.',
+                          ),
                         ),
                         RadioListTile<ListingType>(
                           contentPadding: EdgeInsets.zero,
                           value: ListingType.marketplaceAndAggregator,
-                          title: Text('Marketplace + Galleries'),
+                          title: Text('Both'),
                           subtitle: Text(
-                            'Also let verified galleries reserve and display this piece '
-                            'physically.',
+                            'List online and make the piece available for aggregator '
+                            'display at the same time.',
                           ),
                         ),
                       ],
@@ -311,15 +528,143 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    value: _insuranceOpted,
-                    onChanged: (value) => setState(() => _insuranceOpted = value),
-                    title: const Text('Transit insurance'),
+                    value: _insuranceRequired || _insuranceOpted,
+                    // Locked on, not merely defaulted on, for an aggregator
+                    // listing — the piece leaves the studio into a partner's
+                    // custody, so cover isn't the artist's call there.
+                    onChanged: _insuranceRequired
+                        ? null
+                        : (value) => setState(() => _insuranceOpted = value),
+                    title: Text(
+                      _insuranceRequired ? 'Transit insurance — required' : 'Transit insurance',
+                    ),
                     subtitle: Text(
-                      _artistPrice > _insuranceRecommendedThreshold
+                      _insuranceRequired
+                          ? 'Mandatory for aggregator listings: the piece leaves your '
+                                'studio and is held by a partner while on display. The '
+                                'premium is deducted from your settlement.'
+                          : _artistPrice > _insuranceRecommendedThreshold
                           ? 'Recommended above ₹20,000 — uninsured pieces carry no '
-                              'platform liability in transit.'
+                                'platform liability in transit.'
                           : 'Optional at this price.',
                       style: theme.textTheme.labelSmall,
+                    ),
+                  ),
+                  if (_insuranceRequired) ...[
+                    const SizedBox(height: 20),
+                    Text('The physical piece', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      'An aggregator has to move, hang and insure this — MOU §12. '
+                      'Only asked for when you pick that channel.',
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _weight,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(
+                        labelText: 'Weight (kg)',
+                        helperText: 'Framed and packed, as it ships.',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _Dropdown(
+                      label: 'Framing',
+                      value: _framing?.name ?? '',
+                      items: {
+                        '': 'Select…',
+                        for (final state in FramingState.values)
+                          state.name: framingLabel[state]!,
+                      },
+                      onChanged: (value) => setState(() {
+                        _framing = value == null || value.isEmpty
+                            ? null
+                            : FramingState.values.byName(value);
+                      }),
+                    ),
+                    if (_framing != null && !aggregatorReadyFraming.contains(_framing))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          'Aggregator display needs a framed or stretched-canvas '
+                          'piece. You can still list this on the marketplace.',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: AppColors.destructive,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    _Dropdown(
+                      label: 'Format',
+                      value: _format ?? '',
+                      items: {'': 'Select…', ..._formats},
+                      onChanged: (value) => setState(
+                        () => _format = value == null || value.isEmpty ? null : value,
+                      ),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _hangersIncluded,
+                      onChanged: (value) => setState(() => _hangersIncluded = value),
+                      title: const Text('Hangers ship with the piece'),
+                      subtitle: Text(
+                        'MOU §12 — the aggregator cannot hang it otherwise.',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _packagingConfirmed,
+                      onChanged: (value) => setState(() => _packagingConfirmed = value),
+                      title: const Text("Packed to GalleryZone's standard"),
+                      subtitle: Text(
+                        'Corner protection, rigid outer, moisture barrier.',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ),
+                    if (missingForAggregator(_physical).isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Still needed for an aggregator listing: '
+                          '${missingForAggregator(_physical).join(", ")}. You can save '
+                          'this as a draft in the meantime.',
+                          style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                        ),
+                      ),
+                  ],
+                  const SizedBox(height: 8),
+                  PortalCard(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(LucideIcons.scrollText, size: 16, color: theme.colorScheme.tertiary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Certificate of Authenticity — required',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'GalleryZone issues a numbered Certificate of '
+                                'Authenticity for every accepted artwork. Nothing to '
+                                'fill in here: the number is generated on approval and '
+                                'stays linked to this piece for its whole life, '
+                                'alongside its NFC/QR passport.',
+                                style: theme.textTheme.labelSmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -331,23 +676,31 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _isSubmitting ? null : () => _submit(asDraft: true),
-                          child: const Text('Save draft'),
+                  if (_isEdit)
+                    FilledButton(
+                      onPressed: _isSubmitting || !(editState?.editable ?? false)
+                          ? null
+                          : () => _submit(asDraft: false),
+                      child: Text(_isSubmitting ? 'Saving…' : 'Save changes'),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _isSubmitting ? null : () => _submit(asDraft: true),
+                            child: const Text('Save draft'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: _isSubmitting ? null : () => _submit(asDraft: false),
-                          child: Text(_isSubmitting ? 'Sending…' : 'Submit for review'),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _isSubmitting ? null : () => _submit(asDraft: false),
+                            child: Text(_isSubmitting ? 'Sending…' : 'Submit for review'),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -451,12 +804,17 @@ class _Dropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // An artwork being edited can carry a category/medium the current list
+    // doesn't offer (the fixtures predate these options — "landscape",
+    // "Mixed Media"). Dropdown asserts on a value it has no item for, so the
+    // existing one is kept as an option rather than silently rewritten.
+    final options = items.containsKey(value) ? items : {value: titleCase(value), ...items};
     return DropdownButtonFormField<String>(
       initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(labelText: label),
       items: [
-        for (final entry in items.entries)
+        for (final entry in options.entries)
           DropdownMenuItem(value: entry.key, child: Text(entry.value)),
       ],
       onChanged: onChanged,

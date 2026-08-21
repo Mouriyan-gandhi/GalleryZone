@@ -34,7 +34,7 @@ class ArtistDashboardScreen extends ConsumerWidget {
     ),
     (
       icon: LucideIcons.frame,
-      label: 'Gallery spaces',
+      label: 'Aggregator Display',
       subtitle: 'Pieces placed with aggregators',
       route: '/dashboard/gallery-spaces'
     ),
@@ -49,6 +49,12 @@ class ArtistDashboardScreen extends ConsumerWidget {
       label: 'Settlements',
       subtitle: 'Payout records per sale',
       route: '/dashboard/settlements'
+    ),
+    (
+      icon: LucideIcons.fileText,
+      label: 'Artist MOU',
+      subtitle: 'Your agreement with GalleryZone',
+      route: '/dashboard/mou'
     ),
     (
       icon: LucideIcons.badgeCheck,

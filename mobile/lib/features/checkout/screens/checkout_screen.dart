@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
+import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/mock/mock_checkout_repository.dart';
 import '../../../data/models/artwork.dart';
@@ -30,7 +31,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
-enum _Step { address, review, confirm }
+enum _Step { address, review, payment, confirm }
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   _Step _step = _Step.address;
@@ -101,15 +102,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               artwork: artwork,
               address: _address!,
               onBack: () => setState(() => _step = _Step.address),
-              onContinue: () => setState(() => _step = _Step.confirm),
+              onContinue: () => setState(() => _step = _Step.payment),
+            ),
+            _Step.payment => _PaymentStep(
+              artwork: artwork,
+              isPlacing: _isPlacing,
+              onBack: () => setState(() => _step = _Step.review),
+              onPay: (method, simulateFailure) =>
+                  _placeOrder(artwork, method, simulateFailure),
             ),
             _Step.confirm => _ConfirmStep(
               artwork: artwork,
               address: _address!,
               placedOrder: _placedOrder,
               isPlacing: _isPlacing,
-              onBack: () => setState(() => _step = _Step.review),
-              onPlaceOrder: () => _placeOrder(artwork),
+              onBack: () => setState(() => _step = _Step.payment),
             ),
           },
         ],
@@ -117,14 +124,31 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  Future<void> _placeOrder(Artwork artwork) async {
+  Future<void> _placeOrder(
+    Artwork artwork,
+    PaymentMethod method,
+    bool simulateFailure,
+  ) async {
     setState(() => _isPlacing = true);
     try {
       final order = await ref
           .read(checkoutRepositoryProvider)
-          .createOrder(artworkId: artwork.id, addressId: _address!.id);
+          .createOrder(
+            artworkId: artwork.id,
+            addressId: _address!.id,
+            paymentMethod: method,
+            simulateFailure: simulateFailure,
+          );
       if (!mounted) return;
-      setState(() => _placedOrder = order);
+      setState(() {
+        _placedOrder = order;
+        _step = _Step.confirm;
+      });
+      // The buyer's own screens read these, and the artist's wallet just
+      // gained a pending credit.
+      ref.invalidate(ordersProvider);
+      ref.invalidate(walletProvider);
+      ref.invalidate(collectionProvider);
       // The artwork just went to `sold`; drop the cached reads so the
       // marketplace grid and its detail page don't show it as available.
       ref.invalidate(artworkProvider);
@@ -149,7 +173,8 @@ class _StepIndicator extends StatelessWidget {
   static const _labels = {
     _Step.address: 'Address',
     _Step.review: 'Review',
-    _Step.confirm: 'Confirm',
+    _Step.payment: 'Payment',
+    _Step.confirm: 'Done',
   };
 
   @override
@@ -567,7 +592,6 @@ class _ConfirmStep extends StatelessWidget {
     required this.placedOrder,
     required this.isPlacing,
     required this.onBack,
-    required this.onPlaceOrder,
   });
 
   final Artwork artwork;
@@ -575,7 +599,6 @@ class _ConfirmStep extends StatelessWidget {
   final Order? placedOrder;
   final bool isPlacing;
   final VoidCallback onBack;
-  final VoidCallback onPlaceOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -604,10 +627,12 @@ class _ConfirmStep extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          // The order detail screen arrives with Phase 4's account section;
-          // until then this lands back on the marketplace rather than a
-          // route that doesn't exist.
           FilledButton(
+            onPressed: () => context.go('/account/orders/${order.id}'),
+            child: const Text('Track this order'),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
             onPressed: () => context.go('/marketplace'),
             child: const Text('Continue browsing'),
           ),
@@ -615,31 +640,208 @@ class _ConfirmStep extends StatelessWidget {
       );
     }
 
+    // Only reachable by tapping back into a finished step, which the
+    // indicator locks once an order exists — so this is the "you haven't
+    // paid yet" fallback rather than a step of its own.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('Ready to place your order', style: theme.textTheme.titleLarge),
+        Text('Nothing placed yet', style: theme.textTheme.titleLarge),
         const SizedBox(height: 8),
         Text(
-          'You\'re buying "${artwork.title}", delivered to ${address.line1}, '
-          '${address.city}. There\'s no payment form in this preview build; '
-          'confirming places the order at the price shown in review.',
+          'Go back to the payment step to complete this purchase.',
           style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
         ),
         const SizedBox(height: 24),
+        OutlinedButton(onPressed: isPlacing ? null : onBack, child: const Text('Back')),
+      ],
+    );
+  }
+}
+
+/// The mock payment step.
+///
+/// **No gateway is contacted.** Which one to integrate is still an open
+/// product decision (Razorpay is the standing recommendation), so this
+/// collects a method and shows the flow a buyer expects, and the repository
+/// treats "payment succeeded" as a given. The declined-payment toggle exists
+/// because a demo that can only ever succeed hides the error path — and that
+/// path is the one that matters when a real gateway lands here.
+class _PaymentStep extends StatefulWidget {
+  const _PaymentStep({
+    required this.artwork,
+    required this.isPlacing,
+    required this.onBack,
+    required this.onPay,
+  });
+
+  final Artwork artwork;
+  final bool isPlacing;
+  final VoidCallback onBack;
+  final void Function(PaymentMethod method, bool simulateFailure) onPay;
+
+  @override
+  State<_PaymentStep> createState() => _PaymentStepState();
+}
+
+class _PaymentStepState extends State<_PaymentStep> {
+  PaymentMethod _method = PaymentMethod.upi;
+  bool _simulateFailure = false;
+
+  // Prefilled with obvious test values: this is a demo, and making someone
+  // type a card number to see the next screen serves nobody.
+  final _upi = TextEditingController(text: 'collector@okhdfc');
+  final _card = TextEditingController(text: '4242 4242 4242 4242');
+  final _expiry = TextEditingController(text: '12/28');
+  final _cvv = TextEditingController(text: '123');
+  String _bank = 'HDFC Bank';
+
+  static const _banks = ['HDFC Bank', 'ICICI Bank', 'State Bank of India', 'Axis Bank'];
+
+  @override
+  void dispose() {
+    for (final controller in [_upi, _card, _expiry, _cvv]) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  bool get _canPay => switch (_method) {
+    PaymentMethod.upi => _upi.text.trim().isNotEmpty,
+    PaymentMethod.card =>
+      _card.text.trim().isNotEmpty && _expiry.text.trim().isNotEmpty && _cvv.text.trim().isNotEmpty,
+    PaymentMethod.netbanking => true,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final total =
+        widget.artwork.customerPrice +
+        (widget.artwork.customerPrice * checkoutGstRate * 100).round() / 100 +
+        checkoutDeliveryCharge;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Payment', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Text('Amount due ', style: theme.textTheme.bodySmall),
+            PriceTag(amount: total, style: theme.textTheme.titleMedium),
+          ],
+        ),
+        const SizedBox(height: 16),
+        RadioGroup<PaymentMethod>(
+          groupValue: _method,
+          onChanged: (value) => setState(() => _method = value!),
+          child: Column(
+            children: [
+              for (final method in PaymentMethod.values)
+                RadioListTile<PaymentMethod>(
+                  contentPadding: EdgeInsets.zero,
+                  value: method,
+                  title: Text(paymentMethodLabel[method]!),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        switch (_method) {
+          PaymentMethod.upi => TextField(
+            controller: _upi,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'UPI ID',
+              hintText: 'name@bank',
+            ),
+          ),
+          PaymentMethod.card => Column(
+            children: [
+              TextField(
+                controller: _card,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(labelText: 'Card number'),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _expiry,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(labelText: 'Expiry'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _cvv,
+                      obscureText: true,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: const InputDecoration(labelText: 'CVV'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          PaymentMethod.netbanking => DropdownButtonFormField<String>(
+            initialValue: _bank,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: 'Bank'),
+            items: [
+              for (final bank in _banks) DropdownMenuItem(value: bank, child: Text(bank)),
+            ],
+            onChanged: (value) => setState(() => _bank = value!),
+          ),
+        },
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _simulateFailure,
+          onChanged: (value) => setState(() => _simulateFailure = value),
+          title: const Text('Simulate a declined payment'),
+          subtitle: Text(
+            'Shows the failure path instead of placing the order.',
+            style: theme.textTheme.labelSmall,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(LucideIcons.info, size: 14, color: theme.colorScheme.outline),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Mock payment — no gateway is contacted and no money moves.',
+                style: theme.textTheme.labelSmall,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: isPlacing ? null : onBack,
+                onPressed: widget.isPlacing ? null : widget.onBack,
                 child: const Text('Back'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
+              flex: 2,
               child: FilledButton(
-                onPressed: isPlacing ? null : onPlaceOrder,
-                child: Text(isPlacing ? 'Placing…' : 'Place order'),
+                onPressed: widget.isPlacing || !_canPay
+                    ? null
+                    : () => widget.onPay(_method, _simulateFailure),
+                child: Text(
+                  widget.isPlacing ? 'Processing…' : 'Pay ${formatInr(total)}',
+                ),
               ),
             ),
           ],

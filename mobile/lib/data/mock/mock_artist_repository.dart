@@ -7,7 +7,8 @@ import '../models/customer.dart';
 import '../models/order.dart';
 import '../repositories/artist_repository.dart';
 import '../storage/mock_db.dart';
-import 'mock_artwork_repository.dart' show seedArtworksCollection;
+import 'mock_artwork_repository.dart'
+    show enqueueForReview, promoteApprovedSubmissions, seedArtworksCollection;
 import 'mock_utils.dart';
 import 'seed/aggregator_seed.dart' show seedHoldingsCollection;
 import 'seed/artist_seed.dart';
@@ -25,9 +26,203 @@ const _settlementsKey = 'artistSettlements';
 const _holdingsKey = 'holdings';
 const _supportKey = 'artistSupportTickets';
 const _ordersKey = 'orders';
+const _penaltiesKey = 'artistPenalties';
+const _mouKey = 'artistMou';
+const _physicalCoaKey = 'physicalCoaRequests';
 
 /// Minimum a withdrawal request is allowed to be.
 const minimumWithdrawal = 1000.0;
+
+/// The price map is a `Map<String, double>`, not a list of records, so it
+/// rides through `MockDb`'s collection API as a single JSON blob.
+Map<String, double> readArtistPrices() {
+  final stored = MockDb.getCollection<Map<String, double>>(
+    _pricesKey,
+    () => [seedArtistPrices()],
+    (json) => (jsonDecode(json['value'] as String) as Map<String, dynamic>)
+        .map((key, value) => MapEntry(key, (value as num).toDouble())),
+    (prices) => {'value': jsonEncode(prices)},
+  );
+  return stored.first;
+}
+
+void writeArtistPrices(Map<String, double> prices) =>
+    MockDb.setCollection<Map<String, double>>(
+      _pricesKey,
+      [prices],
+      (value) => {'value': jsonEncode(value)},
+    );
+
+/// What the artist actually receives on a sale.
+///
+/// **Provisional.** The real split is one of the project's open decisions —
+/// the mocked code, the business requirement and the SAD's schema disagree.
+/// This is the figure the artist portal has always shown (their own price
+/// less a ~2% platform pass-through), kept in one function so settling the
+/// argument is a one-line change rather than a hunt.
+double artistPayoutFor(double artistPrice) => (artistPrice * 0.98).roundToDouble();
+
+/// Credits the artist's *pending* balance when their piece sells.
+///
+/// Pending, not withdrawable: the money becomes available only once the
+/// piece is delivered ([settleArtistForOrder]). Same shape as the aggregator
+/// portal's commission accrual, deliberately — one mechanic, two portals.
+/// A no-op for any artwork that isn't the demo artist's, since no other
+/// artist has a wallet in this build.
+void creditArtistForSale({required Artwork artwork, required String orderId}) {
+  if (artwork.artistId != currentArtistId) return;
+  final payout = artistPayoutFor(readArtistPrices()[artwork.id] ?? 0);
+  if (payout <= 0) return;
+
+  final now = DateTime.now();
+  final wallet = _readArtistWallet();
+  MockDb.setCollection(
+    _walletKey,
+    [wallet.copyWith(pendingBalance: wallet.pendingBalance + payout)],
+    (w) => w.toJson(),
+  );
+  MockDb.setCollection(
+    _walletTransactionsKey,
+    [
+      WalletTransaction(
+        id: 'wt-${now.microsecondsSinceEpoch}',
+        type: WalletTransactionType.settlement,
+        label: 'Sale: "${artwork.title}"',
+        amount: payout,
+        date: now.toIso8601String().substring(0, 10),
+        status: WalletTransactionStatus.pending,
+      ),
+      ..._readArtistTransactions(),
+    ],
+    (t) => t.toJson(),
+  );
+  _appendArtistActivity(
+    ActivityKind.settlement,
+    '"${artwork.title}" sold',
+    '${formatInr(payout)} pending until delivery',
+  );
+}
+
+/// Moves that pending credit into the withdrawable balance and writes the
+/// settlement row. Called when the order reaches `delivered`.
+void settleArtistForOrder({
+  required Artwork artwork,
+  required String orderId,
+  required double orderAmount,
+}) {
+  if (artwork.artistId != currentArtistId) return;
+  final payout = artistPayoutFor(readArtistPrices()[artwork.id] ?? 0);
+  if (payout <= 0) return;
+
+  final settlements = MockDb.getCollection(
+    _settlementsKey,
+    seedArtistSettlements,
+    Settlement.fromJson,
+    (s) => s.toJson(),
+  );
+  if (settlements.any((s) => s.orderId == orderId)) return;
+
+  final wallet = _readArtistWallet();
+  if (wallet.pendingBalance < payout) return;
+
+  final now = DateTime.now();
+  MockDb.setCollection(
+    _walletKey,
+    [
+      wallet.copyWith(
+        pendingBalance: wallet.pendingBalance - payout,
+        balance: wallet.balance + payout,
+      ),
+    ],
+    (w) => w.toJson(),
+  );
+
+  // The pending sale row becomes the settlement row rather than a second
+  // entry appearing beside it — one sale, one line in the ledger.
+  final transactions = _readArtistTransactions();
+  final pendingIndex = transactions.indexWhere(
+    (t) =>
+        t.status == WalletTransactionStatus.pending &&
+        t.amount == payout &&
+        t.label.contains(artwork.title),
+  );
+  MockDb.setCollection(
+    _walletTransactionsKey,
+    [
+      for (var i = 0; i < transactions.length; i++)
+        if (i == pendingIndex)
+          transactions[i].copyWith(
+            status: WalletTransactionStatus.completed,
+            label: 'Settlement: "${artwork.title}"',
+          )
+        else
+          transactions[i],
+    ],
+    (t) => t.toJson(),
+  );
+
+  MockDb.setCollection(
+    _settlementsKey,
+    [
+      Settlement(
+        id: 'stl-${now.microsecondsSinceEpoch}',
+        orderId: orderId,
+        artworkTitle: artwork.title,
+        artistName: artwork.artistName,
+        artistAmount: payout,
+        aggregatorCommission: 0,
+        platformRevenue: orderAmount - payout,
+        status: SettlementStatus.processed,
+        createdAt: now.toIso8601String(),
+        processedAt: now.toIso8601String(),
+      ),
+      ...settlements,
+    ],
+    (s) => s.toJson(),
+  );
+  _appendArtistActivity(
+    ActivityKind.settlement,
+    'Settlement processed',
+    '${formatInr(payout)} is now withdrawable',
+  );
+}
+
+WalletSummary _readArtistWallet() => MockDb.getCollection(
+      _walletKey,
+      () => [seedArtistWallet()],
+      WalletSummary.fromJson,
+      (w) => w.toJson(),
+    ).first;
+
+List<WalletTransaction> _readArtistTransactions() => MockDb.getCollection(
+      _walletTransactionsKey,
+      seedArtistWalletTransactions,
+      WalletTransaction.fromJson,
+      (t) => t.toJson(),
+    );
+
+void _appendArtistActivity(ActivityKind kind, String title, String detail) {
+  final activity = MockDb.getCollection(
+    _activityKey,
+    seedArtistActivity,
+    ActivityEntry.fromJson,
+    (e) => e.toJson(),
+  );
+  MockDb.setCollection(
+    _activityKey,
+    [
+      ActivityEntry(
+        id: 'act-${DateTime.now().microsecondsSinceEpoch}',
+        kind: kind,
+        title: title,
+        detail: detail,
+        time: 'Just now',
+      ),
+      ...activity,
+    ],
+    (e) => e.toJson(),
+  );
+}
 
 class MockArtistRepository implements ArtistRepository {
   T _readSingle<T>(String key, T Function() seed, T Function(Map<String, dynamic>) fromJson,
@@ -37,19 +232,25 @@ class MockArtistRepository implements ArtistRepository {
   void _writeSingle<T>(String key, T value, Map<String, dynamic> Function(T) toJson) =>
       MockDb.setCollection(key, [value], toJson);
 
-  List<Artwork> _readListed() => MockDb.getCollection(
-        _artworksKey,
-        seedArtworksCollection,
-        Artwork.fromJson,
-        (a) => a.toJson(),
-      );
+  List<Artwork> _readListed() {
+    promoteApprovedSubmissions();
+    return MockDb.getCollection(
+      _artworksKey,
+      seedArtworksCollection,
+      Artwork.fromJson,
+      (a) => a.toJson(),
+    );
+  }
 
-  List<Artwork> _readPending() => MockDb.getCollection(
-        _pendingArtworksKey,
-        seedPendingArtworks,
-        Artwork.fromJson,
-        (a) => a.toJson(),
-      );
+  List<Artwork> _readPending() {
+    promoteApprovedSubmissions();
+    return MockDb.getCollection(
+      _pendingArtworksKey,
+      seedPendingArtworks,
+      Artwork.fromJson,
+      (a) => a.toJson(),
+    );
+  }
 
   /// Everything this artist has, listed or not — the portal is the one place
   /// drafts and in-review submissions are visible.
@@ -58,24 +259,9 @@ class MockArtistRepository implements ArtistRepository {
         ..._readPending().where((a) => a.artistId == currentArtistId),
       ];
 
-  /// The price map is a `Map<String, double>`, not a list of records, so it
-  /// rides through `MockDb`'s collection API as a single JSON blob.
-  Map<String, double> _readPrices() {
-    final stored = MockDb.getCollection<Map<String, double>>(
-      _pricesKey,
-      () => [seedArtistPrices()],
-      (json) => (jsonDecode(json['value'] as String) as Map<String, dynamic>)
-          .map((key, value) => MapEntry(key, (value as num).toDouble())),
-      (prices) => {'value': jsonEncode(prices)},
-    );
-    return stored.first;
-  }
+  Map<String, double> _readPrices() => readArtistPrices();
 
-  void _writePrices(Map<String, double> prices) => MockDb.setCollection<Map<String, double>>(
-        _pricesKey,
-        [prices],
-        (value) => {'value': jsonEncode(value)},
-      );
+  void _writePrices(Map<String, double> prices) => writeArtistPrices(prices);
 
   List<ActivityEntry> _readActivity() => MockDb.getCollection(
         _activityKey,
@@ -122,6 +308,74 @@ class MockArtistRepository implements ArtistRepository {
         WalletSummary.fromJson,
         (w) => w.toJson(),
       );
+
+  List<ExternalSalePenalty> _readPenalties() => MockDb.getCollection(
+        _penaltiesKey,
+        () => const <ExternalSalePenalty>[],
+        ExternalSalePenalty.fromJson,
+        (p) => p.toJson(),
+      );
+
+  /// Any fee the artist owes for selling a piece elsewhere is collected the
+  /// next time they actually list something — drafts don't trigger it.
+  /// Charged as a wallet adjustment; the balance floors at 0 because there is
+  /// no negative-balance/recovery flow in the mock.
+  void _settlePendingPenalties(String listingTitle) {
+    final penalties = _readPenalties();
+    final outstanding = penalties.where((p) => p.settledAt == null).toList();
+    if (outstanding.isEmpty) return;
+
+    final now = DateTime.now().toIso8601String();
+    final total = outstanding.fold<double>(0, (sum, p) => sum + p.amount);
+    final settledIds = outstanding.map((p) => p.id).toSet();
+
+    MockDb.setCollection(
+      _penaltiesKey,
+      [
+        for (final penalty in penalties)
+          settledIds.contains(penalty.id) ? penalty.copyWith(settledAt: now) : penalty,
+      ],
+      (p) => p.toJson(),
+    );
+
+    final wallet = _readWallet();
+    _writeSingle(
+      _walletKey,
+      wallet.copyWith(balance: (wallet.balance - total).clamp(0, double.infinity)),
+      (w) => w.toJson(),
+    );
+
+    final plural = outstanding.length > 1 ? 'artworks' : 'artwork';
+    MockDb.setCollection(
+      _walletTransactionsKey,
+      [
+        WalletTransaction(
+          id: 'wt-${DateTime.now().microsecondsSinceEpoch}',
+          type: WalletTransactionType.adjustment,
+          label: 'Off-platform sale fee (${outstanding.length} $plural), '
+              'charged on "$listingTitle"',
+          amount: -total,
+          date: now.substring(0, 10),
+          status: WalletTransactionStatus.completed,
+        ),
+        ..._readTransactions(),
+      ],
+      (t) => t.toJson(),
+    );
+  }
+
+  /// Writes an updated artwork back into whichever collection holds it. A
+  /// piece is in exactly one of `artworks` (live) and `pendingArtworks`
+  /// (drafts and in-review), and the caller has already resolved which.
+  void _replaceArtwork(Artwork updated, {required bool inLive}) {
+    final key = inLive ? _artworksKey : _pendingArtworksKey;
+    final list = inLive ? _readListed() : _readPending();
+    MockDb.setCollection(
+      key,
+      [for (final a in list) a.id == updated.id ? updated : a],
+      (a) => a.toJson(),
+    );
+  }
 
   @override
   Future<List<ArtistKpi>> getKpis() => mockDelay(() {
@@ -187,7 +441,11 @@ class MockArtistRepository implements ArtistRepository {
         medium: input.medium,
         customerPrice: (input.artistPrice * customerMarkupMultiplier).round().toDouble(),
         thumbnailUrl: input.images.isEmpty ? '' : input.images.first.url,
-        insured: input.insuranceOpted,
+        // Aggregator display puts the physical piece in someone else's
+        // custody, so insurance stops being a choice the moment that channel
+        // is picked. Enforced here rather than only in the form, so the rule
+        // holds whatever calls this.
+        insured: input.insuranceOpted || isAggregatorListed(input.listingType),
         status: status,
         listingType: input.listingType,
         description: input.description,
@@ -199,12 +457,17 @@ class MockArtistRepository implements ArtistRepository {
         socialProofLinks: const [],
         statusHistory: [ArtworkStatusEvent(status: status, changedAt: now)],
         nfcTagId: input.nfcTagId,
+        physical: input.physical,
       );
 
       _writePrices({..._readPrices(), id: input.artistPrice});
       // Straight into the pending queue either way — a submission is never
       // published without review, which is the whole point of the split.
       MockDb.setCollection(_pendingArtworksKey, [artwork, ..._readPending()], (a) => a.toJson());
+      if (!input.asDraft) {
+        _settlePendingPenalties(artwork.title);
+        enqueueForReview(id);
+      }
       _appendActivity(
         ActivityKind.artworkSubmitted,
         input.asDraft ? '"${artwork.title}" saved as draft' : '"${artwork.title}" submitted',
@@ -213,6 +476,144 @@ class MockArtistRepository implements ArtistRepository {
       return artwork;
     });
   }
+
+  @override
+  Future<Artwork> updateArtwork({
+    required String artworkId,
+    required SubmitArtworkInput patch,
+  }) {
+    final inLive = _readListed().where((a) => a.id == artworkId).firstOrNull;
+    final existing = inLive ?? _readPending().where((a) => a.id == artworkId).firstOrNull;
+    if (existing == null || existing.artistId != currentArtistId) {
+      return mockError('Artwork not found');
+    }
+
+    final editState = artworkEditState(existing);
+    if (!editState.editable) {
+      return mockError(
+        editState.reason == ArtworkEditReason.purchased
+            ? 'This artwork has been claimed or sold — it can no longer be edited'
+            : 'The $artworkEditWindowDays-day edit window for this artwork has closed',
+      );
+    }
+    if (patch.title.trim().isEmpty) return mockError('A title is required');
+    if (patch.artistPrice <= 0) return mockError('Enter your price for this artwork');
+
+    return mockDelay(() {
+      final updated = existing.copyWith(
+        title: patch.title.trim(),
+        description: patch.description,
+        category: patch.category,
+        medium: patch.medium,
+        dimensions: patch.dimensions,
+        yearCreated: patch.yearCreated,
+        customerPrice: (patch.artistPrice * customerMarkupMultiplier).round().toDouble(),
+        listingType: patch.listingType,
+        insured: patch.insuranceOpted || isAggregatorListed(patch.listingType),
+        nfcTagId: patch.nfcTagId,
+        physical: patch.physical ?? existing.physical,
+        images: patch.images.isEmpty ? existing.images : patch.images,
+        thumbnailUrl: patch.images.isEmpty ? existing.thumbnailUrl : patch.images.first.url,
+      );
+
+      _replaceArtwork(updated, inLive: inLive != null);
+      _writePrices({..._readPrices(), updated.id: patch.artistPrice});
+      _appendActivity(
+        ActivityKind.artworkSubmitted,
+        '"${updated.title}" updated',
+        editState.reason == ArtworkEditReason.draft
+            ? 'Draft changes saved'
+            : '${editState.daysLeft} ${editState.daysLeft == 1 ? "day" : "days"} '
+                'left in the edit window',
+      );
+      return updated;
+    });
+  }
+
+  @override
+  Future<Artwork> markSoldElsewhere(String artworkId) {
+    final inLive = _readListed().where((a) => a.id == artworkId).firstOrNull;
+    final existing = inLive ?? _readPending().where((a) => a.id == artworkId).firstOrNull;
+    if (existing == null || existing.artistId != currentArtistId) {
+      return mockError('Artwork not found');
+    }
+    if (existing.status == ArtworkStatus.soldExternally) {
+      return mockError('This artwork is already marked as sold elsewhere');
+    }
+    if (!withdrawableStatuses.contains(existing.status)) {
+      return mockError(
+        'This artwork is already claimed on GalleryZone and can no longer be withdrawn',
+      );
+    }
+
+    return mockDelay(() {
+      final now = DateTime.now().toIso8601String();
+      final updated = existing.copyWith(
+        status: ArtworkStatus.soldExternally,
+        statusHistory: [
+          ...existing.statusHistory,
+          ArtworkStatusEvent(status: ArtworkStatus.soldExternally, changedAt: now),
+        ],
+        custody: const ArtworkCustody(
+          legalOwner: CustodyParty.customer,
+          custodian: CustodyParty.customer,
+          locationLabel: 'Sold outside GalleryZone',
+        ),
+      );
+      _replaceArtwork(updated, inLive: inLive != null);
+
+      final penalty = ExternalSalePenalty(
+        id: 'pen-${DateTime.now().microsecondsSinceEpoch}',
+        artworkId: artworkId,
+        artworkTitle: existing.title,
+        amount: (existing.customerPrice * externalSalePenaltyRate).roundToDouble(),
+        createdAt: now,
+      );
+      MockDb.setCollection(_penaltiesKey, [penalty, ..._readPenalties()], (p) => p.toJson());
+
+      _appendActivity(
+        ActivityKind.artworkSubmitted,
+        '"${existing.title}" marked sold elsewhere',
+        'Removed from GalleryZone. ${formatInr(penalty.amount)} will be charged '
+            'on your next listing.',
+      );
+      return updated;
+    });
+  }
+
+  @override
+  Future<Artwork> submitForReview(String artworkId) {
+    final existing = _readPending().where((a) => a.id == artworkId).firstOrNull;
+    if (existing == null || existing.artistId != currentArtistId) {
+      return mockError('Artwork not found');
+    }
+    if (existing.status != ArtworkStatus.draft) {
+      return mockError('This artwork has already been sent for review');
+    }
+
+    return mockDelay(() {
+      final now = DateTime.now().toIso8601String();
+      final updated = existing.copyWith(
+        status: ArtworkStatus.pendingApproval,
+        statusHistory: [
+          ...existing.statusHistory,
+          ArtworkStatusEvent(status: ArtworkStatus.pendingApproval, changedAt: now),
+        ],
+      );
+      _replaceArtwork(updated, inLive: false);
+      _settlePendingPenalties(updated.title);
+      enqueueForReview(artworkId);
+      _appendActivity(
+        ActivityKind.artworkSubmitted,
+        '"${updated.title}" submitted',
+        'Awaiting review',
+      );
+      return updated;
+    });
+  }
+
+  @override
+  Future<List<ExternalSalePenalty>> listPenalties() => mockDelay(_readPenalties);
 
   @override
   Future<WalletSummary> getWallet() => mockDelay(_readWallet);
@@ -317,10 +718,7 @@ class MockArtistRepository implements ArtistRepository {
             if (ids.contains(order.artworkId))
               ArtistOrder(
                 order: order,
-                // ~2% platform pass-through in this mock. The real formula is
-                // an open product decision (see the plan's open decisions),
-                // so this stays a clearly-marked placeholder.
-                artistPayout: ((prices[order.artworkId] ?? 0) * 0.98).round().toDouble(),
+                artistPayout: artistPayoutFor(prices[order.artworkId] ?? 0),
               ),
         ];
       });
@@ -353,6 +751,79 @@ class MockArtistRepository implements ArtistRepository {
             if (byId[holding.artworkId] != null)
               GallerySpacePlacement(holding: holding, artwork: byId[holding.artworkId]!),
         ];
+      });
+
+  @override
+  Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests() => mockDelay(
+        () => MockDb.getCollection(
+          _physicalCoaKey,
+          () => const <PhysicalCoaRequest>[],
+          PhysicalCoaRequest.fromJson,
+          (r) => r.toJson(),
+        ),
+      );
+
+  @override
+  Future<PhysicalCoaRequest> dispatchPhysicalCoa(String requestId, String courierRef) {
+    if (courierRef.trim().isEmpty) return mockError('Enter a courier reference');
+    final requests = MockDb.getCollection(
+      _physicalCoaKey,
+      () => const <PhysicalCoaRequest>[],
+      PhysicalCoaRequest.fromJson,
+      (r) => r.toJson(),
+    );
+    final existing = requests.where((r) => r.id == requestId).firstOrNull;
+    if (existing == null) return mockError('Request not found');
+    if (existing.status == PhysicalCoaStatus.dispatched) {
+      return mockError('This certificate has already been dispatched');
+    }
+
+    return mockDelay(() {
+      final updated = existing.copyWith(
+        status: PhysicalCoaStatus.dispatched,
+        dispatchedAt: DateTime.now().toIso8601String(),
+        courierRef: courierRef.trim(),
+      );
+      MockDb.setCollection(
+        _physicalCoaKey,
+        [for (final r in requests) r.id == requestId ? updated : r],
+        (r) => r.toJson(),
+      );
+      _appendActivity(
+        ActivityKind.artworkSubmitted,
+        'Certificate dispatched',
+        '"${updated.artworkTitle}" · ${updated.courierRef}',
+      );
+      return updated;
+    });
+  }
+
+  @override
+  Future<MouAcceptance?> getMouAcceptance() => mockDelay(
+        () => MockDb.getCollection(
+          _mouKey,
+          () => const <MouAcceptance>[],
+          MouAcceptance.fromJson,
+          (a) => a.toJson(),
+        ).firstOrNull,
+      );
+
+  @override
+  Future<MouAcceptance> acceptMou(String version) => mockDelay(() {
+        final acceptance = MouAcceptance(
+          version: version,
+          acceptedAt: DateTime.now().toIso8601String(),
+        );
+        // One row, replaced: only the current acceptance matters, and keeping
+        // a history of them would imply a legal record this build does not
+        // actually keep.
+        MockDb.setCollection(_mouKey, [acceptance], (a) => a.toJson());
+        _appendActivity(
+          ActivityKind.verification,
+          'MOU accepted',
+          'Version $version',
+        );
+        return acceptance;
       });
 
   @override

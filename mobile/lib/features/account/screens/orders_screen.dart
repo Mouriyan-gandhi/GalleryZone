@@ -6,6 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/mock/mock_checkout_repository.dart';
+import '../../../data/models/order.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../checkout/providers/checkout_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../providers/account_providers.dart';
 import '../widgets/order_widgets.dart';
@@ -65,6 +69,67 @@ class OrdersScreen extends ConsumerWidget {
 
 /// Port of `app/account/orders/[orderId]/page.tsx` — the item, its status
 /// timeline, the price breakdown, and where it's going.
+/// Steps an order along its lifecycle by hand.
+///
+/// Nothing else moves an order in this build: there is no warehouse, courier
+/// or backend behind it, so without this every purchase would sit at "Paid"
+/// forever and the collection, the passport's custody record and the artist's
+/// wallet would never see a delivery. Marked as a demo control on screen
+/// rather than disguised as a real fulfilment update — and it disappears once
+/// the order is delivered.
+class _AdvanceOrderControl extends ConsumerStatefulWidget {
+  const _AdvanceOrderControl({required this.order});
+
+  final Order order;
+
+  @override
+  ConsumerState<_AdvanceOrderControl> createState() => _AdvanceOrderControlState();
+}
+
+class _AdvanceOrderControlState extends ConsumerState<_AdvanceOrderControl> {
+  bool _busy = false;
+
+  Future<void> _advance() async {
+    setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final updated = await ref.read(checkoutRepositoryProvider).advanceOrder(widget.order.id);
+      ref.invalidate(orderProvider(widget.order.id));
+      ref.invalidate(ordersProvider);
+      // Delivery is what fills the collection and releases the artist's money.
+      ref.invalidate(collectionProvider);
+      ref.invalidate(artworksByIdProvider);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Order is now ${OrderStatusStyle.of(updated.status).label}')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final index = orderProgression.indexOf(widget.order.status);
+    if (index == -1 || index == orderProgression.length - 1) return const SizedBox.shrink();
+    final next = orderProgression[index + 1];
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        onPressed: _busy ? null : _advance,
+        icon: const Icon(LucideIcons.fastForward, size: 14),
+        label: Text(
+          _busy ? 'Updating…' : 'Demo: advance to ${OrderStatusStyle.of(next).label}',
+          style: theme.textTheme.bodySmall,
+        ),
+      ),
+    );
+  }
+}
+
 class OrderDetailScreen extends ConsumerWidget {
   const OrderDetailScreen({super.key, required this.orderId});
 
@@ -163,6 +228,8 @@ class OrderDetailScreen extends ConsumerWidget {
                     ],
                     const SizedBox(height: 24),
                     OrderStatusTimeline(history: data.statusHistory),
+                    const SizedBox(height: 12),
+                    _AdvanceOrderControl(order: data),
                     const SizedBox(height: 28),
                     OrderPriceBreakdown(order: data),
                     if (address != null) ...[

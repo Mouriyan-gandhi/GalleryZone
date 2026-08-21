@@ -291,7 +291,9 @@ as String,
 /// @nodoc
 mixin _$ArtistProfileDetails {
 
- String get fullName; String get email; String get phone; String get bio; String get instagram; String get website; String get bankAccountMasked; String get ifsc; AadhaarStatus get aadhaarStatus; String get aadhaarMasked;
+ String get fullName; String get email; String get phone; String get bio; String get instagram; String get website; String get bankAccountMasked; String get ifsc; AadhaarStatus get aadhaarStatus; String get aadhaarMasked;/// Optional. Validated for shape only when one is entered — there is no
+/// GST portal integration, which the business deliberately does not want.
+ String? get gstin;
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -304,16 +306,16 @@ $ArtistProfileDetailsCopyWith<ArtistProfileDetails> get copyWith => _$ArtistProf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked);
+int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin)';
 }
 
 
@@ -324,7 +326,7 @@ abstract mixin class $ArtistProfileDetailsCopyWith<$Res>  {
   factory $ArtistProfileDetailsCopyWith(ArtistProfileDetails value, $Res Function(ArtistProfileDetails) _then) = _$ArtistProfileDetailsCopyWithImpl;
 @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin
 });
 
 
@@ -341,7 +343,7 @@ class _$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,}) {
   return _then(ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -353,7 +355,8 @@ as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
 as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
-as String,
+as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -438,10 +441,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
   return orElse();
 
 }
@@ -459,10 +462,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails():
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -479,10 +482,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)?  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
   return null;
 
 }
@@ -494,7 +497,7 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 @JsonSerializable()
 
 class _ArtistProfileDetails implements ArtistProfileDetails {
-  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked});
+  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked, this.gstin});
   factory _ArtistProfileDetails.fromJson(Map<String, dynamic> json) => _$ArtistProfileDetailsFromJson(json);
 
 @override final  String fullName;
@@ -507,6 +510,9 @@ class _ArtistProfileDetails implements ArtistProfileDetails {
 @override final  String ifsc;
 @override final  AadhaarStatus aadhaarStatus;
 @override final  String aadhaarMasked;
+/// Optional. Validated for shape only when one is entered — there is no
+/// GST portal integration, which the business deliberately does not want.
+@override final  String? gstin;
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
@@ -521,16 +527,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked);
+int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin)';
 }
 
 
@@ -541,7 +547,7 @@ abstract mixin class _$ArtistProfileDetailsCopyWith<$Res> implements $ArtistProf
   factory _$ArtistProfileDetailsCopyWith(_ArtistProfileDetails value, $Res Function(_ArtistProfileDetails) _then) = __$ArtistProfileDetailsCopyWithImpl;
 @override @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin
 });
 
 
@@ -558,7 +564,7 @@ class __$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,}) {
   return _then(_ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -570,7 +576,8 @@ as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
 as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
-as String,
+as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -843,6 +850,272 @@ as bool,notifyNewSale: null == notifyNewSale ? _self.notifyNewSale : notifyNewSa
 as bool,notifyWithdrawalProcessed: null == notifyWithdrawalProcessed ? _self.notifyWithdrawalProcessed : notifyWithdrawalProcessed // ignore: cast_nullable_to_non_nullable
 as bool,notifyNewMessage: null == notifyNewMessage ? _self.notifyNewMessage : notifyNewMessage // ignore: cast_nullable_to_non_nullable
 as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$MouAcceptance {
+
+ String get version; String get acceptedAt;
+/// Create a copy of MouAcceptance
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MouAcceptanceCopyWith<MouAcceptance> get copyWith => _$MouAcceptanceCopyWithImpl<MouAcceptance>(this as MouAcceptance, _$identity);
+
+  /// Serializes this MouAcceptance to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,version,acceptedAt);
+
+@override
+String toString() {
+  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MouAcceptanceCopyWith<$Res>  {
+  factory $MouAcceptanceCopyWith(MouAcceptance value, $Res Function(MouAcceptance) _then) = _$MouAcceptanceCopyWithImpl;
+@useResult
+$Res call({
+ String version, String acceptedAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$MouAcceptanceCopyWithImpl<$Res>
+    implements $MouAcceptanceCopyWith<$Res> {
+  _$MouAcceptanceCopyWithImpl(this._self, this._then);
+
+  final MouAcceptance _self;
+  final $Res Function(MouAcceptance) _then;
+
+/// Create a copy of MouAcceptance
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? acceptedAt = null,}) {
+  return _then(MouAcceptance(
+version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
+as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [MouAcceptance].
+extension MouAcceptancePatterns on MouAcceptance {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _MouAcceptance value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _MouAcceptance() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _MouAcceptance value)  $default,){
+final _that = this;
+switch (_that) {
+case _MouAcceptance():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _MouAcceptance value)?  $default,){
+final _that = this;
+switch (_that) {
+case _MouAcceptance() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String version,  String acceptedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _MouAcceptance() when $default != null:
+return $default(_that.version,_that.acceptedAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String version,  String acceptedAt)  $default,) {final _that = this;
+switch (_that) {
+case _MouAcceptance():
+return $default(_that.version,_that.acceptedAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String version,  String acceptedAt)?  $default,) {final _that = this;
+switch (_that) {
+case _MouAcceptance() when $default != null:
+return $default(_that.version,_that.acceptedAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _MouAcceptance implements MouAcceptance {
+  const _MouAcceptance({required this.version, required this.acceptedAt});
+  factory _MouAcceptance.fromJson(Map<String, dynamic> json) => _$MouAcceptanceFromJson(json);
+
+@override final  String version;
+@override final  String acceptedAt;
+
+/// Create a copy of MouAcceptance
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MouAcceptanceCopyWith<_MouAcceptance> get copyWith => __$MouAcceptanceCopyWithImpl<_MouAcceptance>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MouAcceptanceToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,version,acceptedAt);
+
+@override
+String toString() {
+  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MouAcceptanceCopyWith<$Res> implements $MouAcceptanceCopyWith<$Res> {
+  factory _$MouAcceptanceCopyWith(_MouAcceptance value, $Res Function(_MouAcceptance) _then) = __$MouAcceptanceCopyWithImpl;
+@override @useResult
+$Res call({
+ String version, String acceptedAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$MouAcceptanceCopyWithImpl<$Res>
+    implements _$MouAcceptanceCopyWith<$Res> {
+  __$MouAcceptanceCopyWithImpl(this._self, this._then);
+
+  final _MouAcceptance _self;
+  final $Res Function(_MouAcceptance) _then;
+
+/// Create a copy of MouAcceptance
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? acceptedAt = null,}) {
+  return _then(_MouAcceptance(
+version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
+as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

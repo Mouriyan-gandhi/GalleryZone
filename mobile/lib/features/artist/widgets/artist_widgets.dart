@@ -28,12 +28,14 @@ class ArtworkStatusPill extends StatelessWidget {
         ArtworkStatus.reserved => ('Reserved', LucideIcons.bookmarkCheck, _sky),
         ArtworkStatus.preparingDispatch => ('Preparing dispatch', LucideIcons.packageCheck, _amber),
         ArtworkStatus.inTransit => ('In transit', LucideIcons.truck, _amber),
-        ArtworkStatus.withAggregator => ('With gallery', LucideIcons.frame, _sky),
+        ArtworkStatus.withAggregator => ('With aggregator', LucideIcons.frame, _sky),
         ArtworkStatus.sold => ('Sold', LucideIcons.circleCheckBig, _emerald),
         ArtworkStatus.settlementComplete => ('Settled', LucideIcons.wallet, _emerald),
         ArtworkStatus.delivered => ('Delivered', LucideIcons.checkCheck, _emerald),
         ArtworkStatus.completed => ('Completed', LucideIcons.checkCheck, _emerald),
         ArtworkStatus.returned => ('Returned', LucideIcons.circleX, AppColors.destructive),
+        ArtworkStatus.soldExternally =>
+          ('Sold elsewhere', LucideIcons.externalLink, Color(0xFF9C9686)),
       };
 
   @override

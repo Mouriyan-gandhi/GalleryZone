@@ -45,6 +45,7 @@ _ArtistProfileDetails _$ArtistProfileDetailsFromJson(
   ifsc: json['ifsc'] as String,
   aadhaarStatus: $enumDecode(_$AadhaarStatusEnumMap, json['aadhaarStatus']),
   aadhaarMasked: json['aadhaarMasked'] as String,
+  gstin: json['gstin'] as String?,
 );
 
 Map<String, dynamic> _$ArtistProfileDetailsToJson(
@@ -60,6 +61,7 @@ Map<String, dynamic> _$ArtistProfileDetailsToJson(
   'ifsc': instance.ifsc,
   'aadhaarStatus': _$AadhaarStatusEnumMap[instance.aadhaarStatus]!,
   'aadhaarMasked': instance.aadhaarMasked,
+  'gstin': instance.gstin,
 };
 
 const _$AadhaarStatusEnumMap = {
@@ -82,6 +84,18 @@ Map<String, dynamic> _$ArtistSettingsToJson(_ArtistSettings instance) =>
       'notifyNewSale': instance.notifyNewSale,
       'notifyWithdrawalProcessed': instance.notifyWithdrawalProcessed,
       'notifyNewMessage': instance.notifyNewMessage,
+    };
+
+_MouAcceptance _$MouAcceptanceFromJson(Map<String, dynamic> json) =>
+    _MouAcceptance(
+      version: json['version'] as String,
+      acceptedAt: json['acceptedAt'] as String,
+    );
+
+Map<String, dynamic> _$MouAcceptanceToJson(_MouAcceptance instance) =>
+    <String, dynamic>{
+      'version': instance.version,
+      'acceptedAt': instance.acceptedAt,
     };
 
 _Settlement _$SettlementFromJson(Map<String, dynamic> json) => _Settlement(

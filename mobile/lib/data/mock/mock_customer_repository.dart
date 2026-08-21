@@ -13,9 +13,116 @@ const _addressesKey = 'addresses';
 const _walletKey = 'customerWallet';
 const _walletTransactionsKey = 'customerWalletTransactions';
 const _resaleKey = 'customerResaleListings';
+const _physicalCoaKey = 'physicalCoaRequests';
 const _supportKey = 'customerSupportTickets';
 const _ordersKey = 'orders';
 const _artworksKey = 'artworks';
+
+/// The active resale listing for an artwork, if it is being resold rather
+/// than sold by its artist. The distinction decides who gets paid.
+ResaleListing? activeResaleListing(String artworkId) => MockDb.getCollection(
+  _resaleKey,
+  () => const <ResaleListing>[],
+  ResaleListing.fromJson,
+  (l) => l.toJson(),
+).where((l) => l.artworkId == artworkId && l.status == ResaleListingStatus.active).firstOrNull;
+
+/// Credits the reseller's *pending* balance and closes their listing.
+///
+/// On a resale the money belongs to the collector who owned the piece, not to
+/// the artist who made it — crediting the artist twice for one artwork would
+/// be the easy bug here. Released on delivery, like every other credit in
+/// this app.
+void creditSellerForResale({required ResaleListing listing, required double amount}) {
+  final listings = MockDb.getCollection(
+    _resaleKey,
+    () => const <ResaleListing>[],
+    ResaleListing.fromJson,
+    (l) => l.toJson(),
+  );
+  MockDb.setCollection(
+    _resaleKey,
+    [
+      for (final l in listings)
+        l.id == listing.id ? l.copyWith(status: ResaleListingStatus.sold) : l,
+    ],
+    (l) => l.toJson(),
+  );
+
+  final now = DateTime.now();
+  final wallet = _readCustomerWallet();
+  MockDb.setCollection(
+    _walletKey,
+    [wallet.copyWith(pendingBalance: wallet.pendingBalance + amount)],
+    (w) => w.toJson(),
+  );
+  MockDb.setCollection(
+    _walletTransactionsKey,
+    [
+      WalletTransaction(
+        id: 'wt-${now.microsecondsSinceEpoch}',
+        type: WalletTransactionType.settlement,
+        label: 'Resale pending: listing ${listing.id}',
+        amount: amount,
+        date: now.toIso8601String().substring(0, 10),
+        status: WalletTransactionStatus.pending,
+      ),
+      ..._readCustomerTransactions(),
+    ],
+    (t) => t.toJson(),
+  );
+}
+
+/// Moves that pending resale credit into the withdrawable balance.
+void settleSellerForResale({required String listingId, required double amount}) {
+  final wallet = _readCustomerWallet();
+  if (wallet.pendingBalance < amount) return;
+
+  MockDb.setCollection(
+    _walletKey,
+    [
+      wallet.copyWith(
+        pendingBalance: wallet.pendingBalance - amount,
+        balance: wallet.balance + amount,
+      ),
+    ],
+    (w) => w.toJson(),
+  );
+
+  final transactions = _readCustomerTransactions();
+  final index = transactions.indexWhere(
+    (t) => t.status == WalletTransactionStatus.pending && t.label.contains(listingId),
+  );
+  if (index == -1) return;
+  MockDb.setCollection(
+    _walletTransactionsKey,
+    [
+      for (var i = 0; i < transactions.length; i++)
+        if (i == index)
+          transactions[i].copyWith(
+            status: WalletTransactionStatus.completed,
+            label: 'Resale settled: listing $listingId',
+          )
+        else
+          transactions[i],
+    ],
+    (t) => t.toJson(),
+  );
+}
+
+WalletSummary _readCustomerWallet() => MockDb.getCollection(
+  _walletKey,
+  () => [seedCustomerWallet()],
+  WalletSummary.fromJson,
+  (w) => w.toJson(),
+).first;
+
+List<WalletTransaction> _readCustomerTransactions() => MockDb.getCollection(
+  _walletTransactionsKey,
+  seedCustomerWalletTransactions,
+  WalletTransaction.fromJson,
+  (t) => t.toJson(),
+);
 
 class MockCustomerRepository implements CustomerRepository {
   /// `MockDb` stores collections, and the profile/wallet are single objects —
@@ -144,6 +251,58 @@ class MockCustomerRepository implements CustomerRepository {
         ];
       });
 
+  List<PhysicalCoaRequest> _readCoaRequests() => MockDb.getCollection(
+        _physicalCoaKey,
+        () => const <PhysicalCoaRequest>[],
+        PhysicalCoaRequest.fromJson,
+        (r) => r.toJson(),
+      );
+
+  @override
+  Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests() =>
+      mockDelay(_readCoaRequests);
+
+  @override
+  Future<PhysicalCoaRequest> requestPhysicalCoa({
+    required String artworkId,
+    required String deliveryAddress,
+  }) {
+    final artwork = _readArtworks().where((a) => a.id == artworkId).firstOrNull;
+    if (artwork == null) return mockError('Artwork not found');
+    if (_readCoaRequests().any(
+      (r) => r.artworkId == artworkId && r.status == PhysicalCoaStatus.requested,
+    )) {
+      return mockError('A certificate for this piece has already been requested');
+    }
+
+    return mockDelay(() {
+      final profile = _readSingle(
+        _profileKey,
+        seedCustomerProfile,
+        CustomerProfile.fromJson,
+        (p) => p.toJson(),
+      );
+      final request = PhysicalCoaRequest(
+        id: 'coa-${DateTime.now().microsecondsSinceEpoch}',
+        artworkId: artworkId,
+        artworkTitle: artwork.title,
+        coaCertificateNumber: artwork.coaCertificateNumber,
+        requestedByName: profile.name,
+        requestedAt: DateTime.now().toIso8601String(),
+        deliveryAddress: deliveryAddress,
+        status: PhysicalCoaStatus.requested,
+      );
+      // One shared collection, written by the collector and read by the
+      // artist — the same arrangement as `artworks` and `holdings`.
+      MockDb.setCollection(
+        _physicalCoaKey,
+        [request, ..._readCoaRequests()],
+        (r) => r.toJson(),
+      );
+      return request;
+    });
+  }
+
   @override
   Future<List<ResaleListing>> listResaleListings() => mockDelay(_readResale);
 
@@ -153,6 +312,12 @@ class MockCustomerRepository implements CustomerRepository {
     required double listedPrice,
   }) {
     if (listedPrice <= 0) return mockError('Enter a listing price');
+    if (_readResale().any(
+      (l) => l.artworkId == artworkId && l.status == ResaleListingStatus.active,
+    )) {
+      return mockError('This piece is already listed for resale');
+    }
+
     return mockDelay(() {
       final listing = ResaleListing(
         id: 'resale-${DateTime.now().microsecondsSinceEpoch}',
@@ -162,8 +327,41 @@ class MockCustomerRepository implements CustomerRepository {
         listedAt: DateTime.now().toIso8601String(),
       );
       MockDb.setCollection(_resaleKey, [listing, ..._readResale()], (l) => l.toJson());
+      // A listed piece goes back on the marketplace at the seller's asking
+      // price. Without this the listing would be a private note to nobody —
+      // there is no separate resale storefront, and building one to hold a
+      // handful of rows would duplicate the marketplace it belongs in.
+      _relistArtwork(artworkId, price: listedPrice);
       return listing;
     });
+  }
+
+  /// Puts a delivered piece back on the marketplace at [price], or takes it
+  /// off again when the listing ends.
+  void _relistArtwork(String artworkId, {double? price}) {
+    final artworks = _readArtworks();
+    final artwork = artworks.where((a) => a.id == artworkId).firstOrNull;
+    if (artwork == null) return;
+    final now = DateTime.now().toIso8601String();
+    final status = price == null ? ArtworkStatus.delivered : ArtworkStatus.marketplace;
+    MockDb.setCollection(
+      _artworksKey,
+      [
+        for (final a in artworks)
+          if (a.id != artworkId)
+            a
+          else
+            a.copyWith(
+              status: status,
+              customerPrice: price ?? a.customerPrice,
+              statusHistory: [
+                ...a.statusHistory,
+                ArtworkStatusEvent(status: status, changedAt: now),
+              ],
+            ),
+      ],
+      (a) => a.toJson(),
+    );
   }
 
   @override
@@ -171,7 +369,11 @@ class MockCustomerRepository implements CustomerRepository {
     final listings = _readResale();
     final existing = listings.where((l) => l.id == id).firstOrNull;
     if (existing == null) return mockError('Listing "$id" not found');
+    if (existing.status != ResaleListingStatus.active) {
+      return mockError('This listing is no longer active');
+    }
     return mockDelay(() {
+      _relistArtwork(existing.artworkId);
       final updated = existing.copyWith(status: ResaleListingStatus.withdrawn);
       MockDb.setCollection(
         _resaleKey,

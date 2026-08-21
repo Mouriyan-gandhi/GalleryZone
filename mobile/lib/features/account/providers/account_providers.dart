@@ -58,6 +58,11 @@ final collectionProvider = FutureProvider.autoDispose<List<CollectionItem>>((ref
   return ref.watch(customerRepositoryProvider).listCollection();
 });
 
+final physicalCoaRequestsProvider =
+    FutureProvider.autoDispose<List<PhysicalCoaRequest>>((ref) {
+  return ref.watch(customerRepositoryProvider).listPhysicalCoaRequests();
+});
+
 final resaleListingsProvider = FutureProvider.autoDispose<List<ResaleListing>>((ref) {
   return ref.watch(customerRepositoryProvider).listResaleListings();
 });

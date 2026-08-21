@@ -135,6 +135,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
                     ],
                   ),
                 const SizedBox(height: 24),
+                const SupportFaqPanel(),
+                const SizedBox(height: 24),
                 Text('Raise a ticket', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),
                 Form(

@@ -11,6 +11,7 @@ import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/repositories/artist_repository.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 
@@ -55,6 +56,7 @@ class CoaNfcScreen extends ConsumerWidget {
                           style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                         ),
                         const SizedBox(height: 16),
+                        const _PhysicalCoaQueue(),
                         for (final entry in list)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
@@ -101,6 +103,23 @@ class CoaNfcScreen extends ConsumerWidget {
                                     value: entry.artwork.nfcTagId ?? 'Not tagged',
                                     gold: entry.artwork.nfcTagId != null,
                                   ),
+                                  // Three separate facts, never collapsed into
+                                  // one "owner" — the certificate is where an
+                                  // artist checks who holds the piece today.
+                                  PortalDetailRow(
+                                    label: 'Legal owner',
+                                    value: custodyPartyLabel[
+                                        resolveCustody(entry.artwork).legalOwner]!,
+                                  ),
+                                  PortalDetailRow(
+                                    label: 'Physical custodian',
+                                    value: custodyPartyLabel[
+                                        resolveCustody(entry.artwork).custodian]!,
+                                  ),
+                                  PortalDetailRow(
+                                    label: 'Location',
+                                    value: resolveCustody(entry.artwork).locationLabel,
+                                  ),
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: TextButton.icon(
@@ -125,6 +144,117 @@ class CoaNfcScreen extends ConsumerWidget {
   }
 }
 
+/// Paper-certificate requests from collectors (MOU §12).
+///
+/// The certificate itself is not generated here — there is no PDF pipeline in
+/// this build. The artist prints and signs their own, and this records that it
+/// went out, which is the part the collector needs to see.
+class _PhysicalCoaQueue extends ConsumerWidget {
+  const _PhysicalCoaQueue();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final requests = ref.watch(artistPhysicalCoaProvider).value ?? const [];
+    if (requests.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Paper certificate requests', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 8),
+        for (final request in requests)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: PortalCard(
+              gold: request.status == PhysicalCoaStatus.requested,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    request.artworkTitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  PortalDetailRow(label: 'Certificate', value: request.coaCertificateNumber),
+                  PortalDetailRow(label: 'Requested by', value: request.requestedByName),
+                  PortalDetailRow(label: 'Post to', value: request.deliveryAddress),
+                  if (request.status == PhysicalCoaStatus.dispatched)
+                    PortalDetailRow(
+                      label: 'Dispatched',
+                      value: '${formatLongDate(request.dispatchedAt!)} · '
+                          '${request.courierRef}',
+                      gold: true,
+                    )
+                  else
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => _showDispatchSheet(context, ref, request.id),
+                        icon: const Icon(LucideIcons.package, size: 14),
+                        label: const Text('Mark dispatched'),
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        const SizedBox(height: 8),
+      ],
+    );
+  }
+}
+
+Future<void> _showDispatchSheet(BuildContext context, WidgetRef ref, String requestId) {
+  final courier = TextEditingController();
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Dispatch certificate', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          TextField(
+            controller: courier,
+            decoration: const InputDecoration(
+              labelText: 'Courier reference',
+              helperText: 'Whatever the collector can track it with.',
+            ),
+          ),
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              try {
+                await ref
+                    .read(artistRepositoryProvider)
+                    .dispatchPhysicalCoa(requestId, courier.text);
+                ref.invalidate(artistPhysicalCoaProvider);
+                ref.invalidate(artistActivityProvider);
+                navigator.pop();
+              } catch (error) {
+                messenger.showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+              }
+            },
+            child: const Text('Mark dispatched'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 /// Port of `features/dashboard/gallery-spaces-table.tsx` — pieces currently
 /// placed with an aggregator for physical display, for up to 30 days.
 class GallerySpacesScreen extends ConsumerWidget {
@@ -138,12 +268,12 @@ class GallerySpacesScreen extends ConsumerWidget {
     final placements = ref.watch(artistGallerySpacesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Gallery spaces')),
+      appBar: AppBar(title: const Text('Aggregator Display')),
       body: placements.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
           icon: LucideIcons.triangleAlert,
-          title: "Couldn't load your gallery spaces",
+          title: "Couldn't load your aggregator placements",
           description: 'Something went wrong. Try again in a moment.',
         ),
         data: (list) => list.isEmpty
@@ -260,7 +390,7 @@ class _HoldingPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final (label, color) = switch (status) {
-      HoldingStatus.reserved => ('With gallery', const Color(0xFF38BDF8)),
+      HoldingStatus.reserved => ('With aggregator', const Color(0xFF38BDF8)),
       HoldingStatus.soldPendingSettlement =>
         ('Sold, pending settlement', const Color(0xFF34D399)),
     };

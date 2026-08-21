@@ -820,7 +820,15 @@ as String,
 /// @nodoc
 mixin _$Artwork {
 
- String get id; String get title; String get artistId; String get artistName; bool get verifiedArtist; String get category; String get medium; double get customerPrice; String get thumbnailUrl; bool get insured; ArtworkStatus get status; ListingType get listingType; String get description; String? get dimensions; int? get yearCreated; List<ArtworkImage> get images; String get coaCertificateNumber; String get coaIssueDate; List<SocialProofLink> get socialProofLinks; List<ArtworkStatusEvent> get statusHistory; String? get nfcTagId;
+ String get id; String get title; String get artistId; String get artistName; bool get verifiedArtist; String get category; String get medium; double get customerPrice; String get thumbnailUrl; bool get insured; ArtworkStatus get status; ListingType get listingType; String get description; String? get dimensions; int? get yearCreated; List<ArtworkImage> get images; String get coaCertificateNumber; String get coaIssueDate; List<SocialProofLink> get socialProofLinks; List<ArtworkStatusEvent> get statusHistory; String? get nfcTagId;/// Weight, framing and packing. Nullable because the fixture records
+/// predate the fields; the submit form collects them and requires them
+/// once the aggregator channel is picked.
+ ArtworkPhysical? get physical;/// Ownership, physical custody and location are three independent
+/// states, never one "owner" field — a piece can be legally owned by
+/// GalleryZone, physically held by an aggregator, and located in a third
+/// city all at once. Nullable so the seeded fixtures don't need a value:
+/// [resolveCustody] derives one from `status` when it's absent.
+ ArtworkCustody? get custody;
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -833,16 +841,16 @@ $ArtworkCopyWith<Artwork> get copyWith => _$ArtworkCopyWithImpl<Artwork>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other.socialProofLinks, socialProofLinks)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other.socialProofLinks, socialProofLinks)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(socialProofLinks),const DeepCollectionEquality().hash(statusHistory),nfcTagId]);
+int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(socialProofLinks),const DeepCollectionEquality().hash(statusHistory),nfcTagId,physical,custody]);
 
 @override
 String toString() {
-  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId)';
+  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, physical: $physical, custody: $custody)';
 }
 
 
@@ -853,11 +861,11 @@ abstract mixin class $ArtworkCopyWith<$Res>  {
   factory $ArtworkCopyWith(Artwork value, $Res Function(Artwork) _then) = _$ArtworkCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId
+ String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkPhysical? physical, ArtworkCustody? custody
 });
 
 
-
+$ArtworkPhysicalCopyWith<$Res>? get physical;$ArtworkCustodyCopyWith<$Res>? get custody;
 
 }
 /// @nodoc
@@ -870,7 +878,7 @@ class _$ArtworkCopyWithImpl<$Res>
 
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? physical = freezed,Object? custody = freezed,}) {
   return _then(Artwork(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -893,10 +901,36 @@ as String,coaIssueDate: null == coaIssueDate ? _self.coaIssueDate : coaIssueDate
 as String,socialProofLinks: null == socialProofLinks ? _self.socialProofLinks : socialProofLinks // ignore: cast_nullable_to_non_nullable
 as List<SocialProofLink>,statusHistory: null == statusHistory ? _self.statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
 as List<ArtworkStatusEvent>,nfcTagId: freezed == nfcTagId ? _self.nfcTagId : nfcTagId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
+as ArtworkPhysical?,custody: freezed == custody ? _self.custody : custody // ignore: cast_nullable_to_non_nullable
+as ArtworkCustody?,
   ));
 }
+/// Create a copy of Artwork
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ArtworkPhysicalCopyWith<$Res>? get physical {
+    if (_self.physical == null) {
+    return null;
+  }
 
+  return $ArtworkPhysicalCopyWith<$Res>(_self.physical!, (value) {
+    return _then(_self.copyWith(physical: value));
+  });
+}/// Create a copy of Artwork
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ArtworkCustodyCopyWith<$Res>? get custody {
+    if (_self.custody == null) {
+    return null;
+  }
+
+  return $ArtworkCustodyCopyWith<$Res>(_self.custody!, (value) {
+    return _then(_self.copyWith(custody: value));
+  });
+}
 }
 
 
@@ -978,10 +1012,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Artwork() when $default != null:
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
   return orElse();
 
 }
@@ -999,10 +1033,10 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)  $default,) {final _that = this;
 switch (_that) {
 case _Artwork():
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1019,10 +1053,10 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,) {final _that = this;
 switch (_that) {
 case _Artwork() when $default != null:
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
   return null;
 
 }
@@ -1034,7 +1068,7 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 @JsonSerializable()
 
 class _Artwork implements Artwork {
-  const _Artwork({required this.id, required this.title, required this.artistId, required this.artistName, required this.verifiedArtist, required this.category, required this.medium, required this.customerPrice, required this.thumbnailUrl, required this.insured, required this.status, required this.listingType, required this.description, this.dimensions, this.yearCreated, required  List<ArtworkImage> images, required this.coaCertificateNumber, required this.coaIssueDate, required  List<SocialProofLink> socialProofLinks, required  List<ArtworkStatusEvent> statusHistory, this.nfcTagId}): _images = images,_socialProofLinks = socialProofLinks,_statusHistory = statusHistory;
+  const _Artwork({required this.id, required this.title, required this.artistId, required this.artistName, required this.verifiedArtist, required this.category, required this.medium, required this.customerPrice, required this.thumbnailUrl, required this.insured, required this.status, required this.listingType, required this.description, this.dimensions, this.yearCreated, required  List<ArtworkImage> images, required this.coaCertificateNumber, required this.coaIssueDate, required  List<SocialProofLink> socialProofLinks, required  List<ArtworkStatusEvent> statusHistory, this.nfcTagId, this.physical, this.custody}): _images = images,_socialProofLinks = socialProofLinks,_statusHistory = statusHistory;
   factory _Artwork.fromJson(Map<String, dynamic> json) => _$ArtworkFromJson(json);
 
 @override final  String id;
@@ -1076,6 +1110,16 @@ class _Artwork implements Artwork {
 }
 
 @override final  String? nfcTagId;
+/// Weight, framing and packing. Nullable because the fixture records
+/// predate the fields; the submit form collects them and requires them
+/// once the aggregator channel is picked.
+@override final  ArtworkPhysical? physical;
+/// Ownership, physical custody and location are three independent
+/// states, never one "owner" field — a piece can be legally owned by
+/// GalleryZone, physically held by an aggregator, and located in a third
+/// city all at once. Nullable so the seeded fixtures don't need a value:
+/// [resolveCustody] derives one from `status` when it's absent.
+@override final  ArtworkCustody? custody;
 
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
@@ -1090,16 +1134,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other._socialProofLinks, _socialProofLinks)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other._socialProofLinks, _socialProofLinks)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(_images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(_socialProofLinks),const DeepCollectionEquality().hash(_statusHistory),nfcTagId]);
+int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(_images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(_socialProofLinks),const DeepCollectionEquality().hash(_statusHistory),nfcTagId,physical,custody]);
 
 @override
 String toString() {
-  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId)';
+  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, physical: $physical, custody: $custody)';
 }
 
 
@@ -1110,11 +1154,11 @@ abstract mixin class _$ArtworkCopyWith<$Res> implements $ArtworkCopyWith<$Res> {
   factory _$ArtworkCopyWith(_Artwork value, $Res Function(_Artwork) _then) = __$ArtworkCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId
+ String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkPhysical? physical, ArtworkCustody? custody
 });
 
 
-
+@override $ArtworkPhysicalCopyWith<$Res>? get physical;@override $ArtworkCustodyCopyWith<$Res>? get custody;
 
 }
 /// @nodoc
@@ -1127,7 +1171,7 @@ class __$ArtworkCopyWithImpl<$Res>
 
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? physical = freezed,Object? custody = freezed,}) {
   return _then(_Artwork(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1150,6 +1194,1445 @@ as String,coaIssueDate: null == coaIssueDate ? _self.coaIssueDate : coaIssueDate
 as String,socialProofLinks: null == socialProofLinks ? _self._socialProofLinks : socialProofLinks // ignore: cast_nullable_to_non_nullable
 as List<SocialProofLink>,statusHistory: null == statusHistory ? _self._statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
 as List<ArtworkStatusEvent>,nfcTagId: freezed == nfcTagId ? _self.nfcTagId : nfcTagId // ignore: cast_nullable_to_non_nullable
+as String?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
+as ArtworkPhysical?,custody: freezed == custody ? _self.custody : custody // ignore: cast_nullable_to_non_nullable
+as ArtworkCustody?,
+  ));
+}
+
+/// Create a copy of Artwork
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ArtworkPhysicalCopyWith<$Res>? get physical {
+    if (_self.physical == null) {
+    return null;
+  }
+
+  return $ArtworkPhysicalCopyWith<$Res>(_self.physical!, (value) {
+    return _then(_self.copyWith(physical: value));
+  });
+}/// Create a copy of Artwork
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ArtworkCustodyCopyWith<$Res>? get custody {
+    if (_self.custody == null) {
+    return null;
+  }
+
+  return $ArtworkCustodyCopyWith<$Res>(_self.custody!, (value) {
+    return _then(_self.copyWith(custody: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$ArtworkPhysical {
+
+ double? get weightKg; FramingState? get framing;/// Surface or format — canvas, paper, board, panel, bronze.
+ String? get format;/// MOU §12: hangers must ship with the artwork.
+ bool get hangingHardwareIncluded;/// Artist has confirmed packing to GalleryZone's shipping standard.
+ bool get packagingConfirmed;
+/// Create a copy of ArtworkPhysical
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ArtworkPhysicalCopyWith<ArtworkPhysical> get copyWith => _$ArtworkPhysicalCopyWithImpl<ArtworkPhysical>(this as ArtworkPhysical, _$identity);
+
+  /// Serializes this ArtworkPhysical to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtworkPhysical&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.framing, framing) || other.framing == framing)&&(identical(other.format, format) || other.format == format)&&(identical(other.hangingHardwareIncluded, hangingHardwareIncluded) || other.hangingHardwareIncluded == hangingHardwareIncluded)&&(identical(other.packagingConfirmed, packagingConfirmed) || other.packagingConfirmed == packagingConfirmed));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,weightKg,framing,format,hangingHardwareIncluded,packagingConfirmed);
+
+@override
+String toString() {
+  return 'ArtworkPhysical(weightKg: $weightKg, framing: $framing, format: $format, hangingHardwareIncluded: $hangingHardwareIncluded, packagingConfirmed: $packagingConfirmed)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ArtworkPhysicalCopyWith<$Res>  {
+  factory $ArtworkPhysicalCopyWith(ArtworkPhysical value, $Res Function(ArtworkPhysical) _then) = _$ArtworkPhysicalCopyWithImpl;
+@useResult
+$Res call({
+ double? weightKg, FramingState? framing, String? format, bool hangingHardwareIncluded, bool packagingConfirmed
+});
+
+
+
+
+}
+/// @nodoc
+class _$ArtworkPhysicalCopyWithImpl<$Res>
+    implements $ArtworkPhysicalCopyWith<$Res> {
+  _$ArtworkPhysicalCopyWithImpl(this._self, this._then);
+
+  final ArtworkPhysical _self;
+  final $Res Function(ArtworkPhysical) _then;
+
+/// Create a copy of ArtworkPhysical
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? weightKg = freezed,Object? framing = freezed,Object? format = freezed,Object? hangingHardwareIncluded = null,Object? packagingConfirmed = null,}) {
+  return _then(ArtworkPhysical(
+weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
+as double?,framing: freezed == framing ? _self.framing : framing // ignore: cast_nullable_to_non_nullable
+as FramingState?,format: freezed == format ? _self.format : format // ignore: cast_nullable_to_non_nullable
+as String?,hangingHardwareIncluded: null == hangingHardwareIncluded ? _self.hangingHardwareIncluded : hangingHardwareIncluded // ignore: cast_nullable_to_non_nullable
+as bool,packagingConfirmed: null == packagingConfirmed ? _self.packagingConfirmed : packagingConfirmed // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ArtworkPhysical].
+extension ArtworkPhysicalPatterns on ArtworkPhysical {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ArtworkPhysical value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ArtworkPhysical() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ArtworkPhysical value)  $default,){
+final _that = this;
+switch (_that) {
+case _ArtworkPhysical():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ArtworkPhysical value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ArtworkPhysical() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( double? weightKg,  FramingState? framing,  String? format,  bool hangingHardwareIncluded,  bool packagingConfirmed)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ArtworkPhysical() when $default != null:
+return $default(_that.weightKg,_that.framing,_that.format,_that.hangingHardwareIncluded,_that.packagingConfirmed);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( double? weightKg,  FramingState? framing,  String? format,  bool hangingHardwareIncluded,  bool packagingConfirmed)  $default,) {final _that = this;
+switch (_that) {
+case _ArtworkPhysical():
+return $default(_that.weightKg,_that.framing,_that.format,_that.hangingHardwareIncluded,_that.packagingConfirmed);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( double? weightKg,  FramingState? framing,  String? format,  bool hangingHardwareIncluded,  bool packagingConfirmed)?  $default,) {final _that = this;
+switch (_that) {
+case _ArtworkPhysical() when $default != null:
+return $default(_that.weightKg,_that.framing,_that.format,_that.hangingHardwareIncluded,_that.packagingConfirmed);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ArtworkPhysical implements ArtworkPhysical {
+  const _ArtworkPhysical({this.weightKg, this.framing, this.format, this.hangingHardwareIncluded = false, this.packagingConfirmed = false});
+  factory _ArtworkPhysical.fromJson(Map<String, dynamic> json) => _$ArtworkPhysicalFromJson(json);
+
+@override final  double? weightKg;
+@override final  FramingState? framing;
+/// Surface or format — canvas, paper, board, panel, bronze.
+@override final  String? format;
+/// MOU §12: hangers must ship with the artwork.
+@override@JsonKey() final  bool hangingHardwareIncluded;
+/// Artist has confirmed packing to GalleryZone's shipping standard.
+@override@JsonKey() final  bool packagingConfirmed;
+
+/// Create a copy of ArtworkPhysical
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ArtworkPhysicalCopyWith<_ArtworkPhysical> get copyWith => __$ArtworkPhysicalCopyWithImpl<_ArtworkPhysical>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ArtworkPhysicalToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtworkPhysical&&(identical(other.weightKg, weightKg) || other.weightKg == weightKg)&&(identical(other.framing, framing) || other.framing == framing)&&(identical(other.format, format) || other.format == format)&&(identical(other.hangingHardwareIncluded, hangingHardwareIncluded) || other.hangingHardwareIncluded == hangingHardwareIncluded)&&(identical(other.packagingConfirmed, packagingConfirmed) || other.packagingConfirmed == packagingConfirmed));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,weightKg,framing,format,hangingHardwareIncluded,packagingConfirmed);
+
+@override
+String toString() {
+  return 'ArtworkPhysical(weightKg: $weightKg, framing: $framing, format: $format, hangingHardwareIncluded: $hangingHardwareIncluded, packagingConfirmed: $packagingConfirmed)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ArtworkPhysicalCopyWith<$Res> implements $ArtworkPhysicalCopyWith<$Res> {
+  factory _$ArtworkPhysicalCopyWith(_ArtworkPhysical value, $Res Function(_ArtworkPhysical) _then) = __$ArtworkPhysicalCopyWithImpl;
+@override @useResult
+$Res call({
+ double? weightKg, FramingState? framing, String? format, bool hangingHardwareIncluded, bool packagingConfirmed
+});
+
+
+
+
+}
+/// @nodoc
+class __$ArtworkPhysicalCopyWithImpl<$Res>
+    implements _$ArtworkPhysicalCopyWith<$Res> {
+  __$ArtworkPhysicalCopyWithImpl(this._self, this._then);
+
+  final _ArtworkPhysical _self;
+  final $Res Function(_ArtworkPhysical) _then;
+
+/// Create a copy of ArtworkPhysical
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? weightKg = freezed,Object? framing = freezed,Object? format = freezed,Object? hangingHardwareIncluded = null,Object? packagingConfirmed = null,}) {
+  return _then(_ArtworkPhysical(
+weightKg: freezed == weightKg ? _self.weightKg : weightKg // ignore: cast_nullable_to_non_nullable
+as double?,framing: freezed == framing ? _self.framing : framing // ignore: cast_nullable_to_non_nullable
+as FramingState?,format: freezed == format ? _self.format : format // ignore: cast_nullable_to_non_nullable
+as String?,hangingHardwareIncluded: null == hangingHardwareIncluded ? _self.hangingHardwareIncluded : hangingHardwareIncluded // ignore: cast_nullable_to_non_nullable
+as bool,packagingConfirmed: null == packagingConfirmed ? _self.packagingConfirmed : packagingConfirmed // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ArtworkCustody {
+
+ CustodyParty get legalOwner;/// Named owner once a transfer has been accepted (the buyer's own name).
+ String? get legalOwnerName; CustodyParty get custodian; String get locationLabel;
+/// Create a copy of ArtworkCustody
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ArtworkCustodyCopyWith<ArtworkCustody> get copyWith => _$ArtworkCustodyCopyWithImpl<ArtworkCustody>(this as ArtworkCustody, _$identity);
+
+  /// Serializes this ArtworkCustody to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtworkCustody&&(identical(other.legalOwner, legalOwner) || other.legalOwner == legalOwner)&&(identical(other.legalOwnerName, legalOwnerName) || other.legalOwnerName == legalOwnerName)&&(identical(other.custodian, custodian) || other.custodian == custodian)&&(identical(other.locationLabel, locationLabel) || other.locationLabel == locationLabel));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,legalOwner,legalOwnerName,custodian,locationLabel);
+
+@override
+String toString() {
+  return 'ArtworkCustody(legalOwner: $legalOwner, legalOwnerName: $legalOwnerName, custodian: $custodian, locationLabel: $locationLabel)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ArtworkCustodyCopyWith<$Res>  {
+  factory $ArtworkCustodyCopyWith(ArtworkCustody value, $Res Function(ArtworkCustody) _then) = _$ArtworkCustodyCopyWithImpl;
+@useResult
+$Res call({
+ CustodyParty legalOwner, String? legalOwnerName, CustodyParty custodian, String locationLabel
+});
+
+
+
+
+}
+/// @nodoc
+class _$ArtworkCustodyCopyWithImpl<$Res>
+    implements $ArtworkCustodyCopyWith<$Res> {
+  _$ArtworkCustodyCopyWithImpl(this._self, this._then);
+
+  final ArtworkCustody _self;
+  final $Res Function(ArtworkCustody) _then;
+
+/// Create a copy of ArtworkCustody
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? legalOwner = null,Object? legalOwnerName = freezed,Object? custodian = null,Object? locationLabel = null,}) {
+  return _then(ArtworkCustody(
+legalOwner: null == legalOwner ? _self.legalOwner : legalOwner // ignore: cast_nullable_to_non_nullable
+as CustodyParty,legalOwnerName: freezed == legalOwnerName ? _self.legalOwnerName : legalOwnerName // ignore: cast_nullable_to_non_nullable
+as String?,custodian: null == custodian ? _self.custodian : custodian // ignore: cast_nullable_to_non_nullable
+as CustodyParty,locationLabel: null == locationLabel ? _self.locationLabel : locationLabel // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ArtworkCustody].
+extension ArtworkCustodyPatterns on ArtworkCustody {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ArtworkCustody value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ArtworkCustody() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ArtworkCustody value)  $default,){
+final _that = this;
+switch (_that) {
+case _ArtworkCustody():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ArtworkCustody value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ArtworkCustody() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( CustodyParty legalOwner,  String? legalOwnerName,  CustodyParty custodian,  String locationLabel)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ArtworkCustody() when $default != null:
+return $default(_that.legalOwner,_that.legalOwnerName,_that.custodian,_that.locationLabel);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( CustodyParty legalOwner,  String? legalOwnerName,  CustodyParty custodian,  String locationLabel)  $default,) {final _that = this;
+switch (_that) {
+case _ArtworkCustody():
+return $default(_that.legalOwner,_that.legalOwnerName,_that.custodian,_that.locationLabel);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( CustodyParty legalOwner,  String? legalOwnerName,  CustodyParty custodian,  String locationLabel)?  $default,) {final _that = this;
+switch (_that) {
+case _ArtworkCustody() when $default != null:
+return $default(_that.legalOwner,_that.legalOwnerName,_that.custodian,_that.locationLabel);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ArtworkCustody implements ArtworkCustody {
+  const _ArtworkCustody({required this.legalOwner, this.legalOwnerName, required this.custodian, required this.locationLabel});
+  factory _ArtworkCustody.fromJson(Map<String, dynamic> json) => _$ArtworkCustodyFromJson(json);
+
+@override final  CustodyParty legalOwner;
+/// Named owner once a transfer has been accepted (the buyer's own name).
+@override final  String? legalOwnerName;
+@override final  CustodyParty custodian;
+@override final  String locationLabel;
+
+/// Create a copy of ArtworkCustody
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ArtworkCustodyCopyWith<_ArtworkCustody> get copyWith => __$ArtworkCustodyCopyWithImpl<_ArtworkCustody>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ArtworkCustodyToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtworkCustody&&(identical(other.legalOwner, legalOwner) || other.legalOwner == legalOwner)&&(identical(other.legalOwnerName, legalOwnerName) || other.legalOwnerName == legalOwnerName)&&(identical(other.custodian, custodian) || other.custodian == custodian)&&(identical(other.locationLabel, locationLabel) || other.locationLabel == locationLabel));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,legalOwner,legalOwnerName,custodian,locationLabel);
+
+@override
+String toString() {
+  return 'ArtworkCustody(legalOwner: $legalOwner, legalOwnerName: $legalOwnerName, custodian: $custodian, locationLabel: $locationLabel)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ArtworkCustodyCopyWith<$Res> implements $ArtworkCustodyCopyWith<$Res> {
+  factory _$ArtworkCustodyCopyWith(_ArtworkCustody value, $Res Function(_ArtworkCustody) _then) = __$ArtworkCustodyCopyWithImpl;
+@override @useResult
+$Res call({
+ CustodyParty legalOwner, String? legalOwnerName, CustodyParty custodian, String locationLabel
+});
+
+
+
+
+}
+/// @nodoc
+class __$ArtworkCustodyCopyWithImpl<$Res>
+    implements _$ArtworkCustodyCopyWith<$Res> {
+  __$ArtworkCustodyCopyWithImpl(this._self, this._then);
+
+  final _ArtworkCustody _self;
+  final $Res Function(_ArtworkCustody) _then;
+
+/// Create a copy of ArtworkCustody
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? legalOwner = null,Object? legalOwnerName = freezed,Object? custodian = null,Object? locationLabel = null,}) {
+  return _then(_ArtworkCustody(
+legalOwner: null == legalOwner ? _self.legalOwner : legalOwner // ignore: cast_nullable_to_non_nullable
+as CustodyParty,legalOwnerName: freezed == legalOwnerName ? _self.legalOwnerName : legalOwnerName // ignore: cast_nullable_to_non_nullable
+as String?,custodian: null == custodian ? _self.custodian : custodian // ignore: cast_nullable_to_non_nullable
+as CustodyParty,locationLabel: null == locationLabel ? _self.locationLabel : locationLabel // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$PhysicalCoaRequest {
+
+ String get id; String get artworkId; String get artworkTitle; String get coaCertificateNumber; String get requestedByName; String get requestedAt; String get deliveryAddress; PhysicalCoaStatus get status; String? get dispatchedAt; String? get courierRef;
+/// Create a copy of PhysicalCoaRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PhysicalCoaRequestCopyWith<PhysicalCoaRequest> get copyWith => _$PhysicalCoaRequestCopyWithImpl<PhysicalCoaRequest>(this as PhysicalCoaRequest, _$identity);
+
+  /// Serializes this PhysicalCoaRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PhysicalCoaRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.requestedByName, requestedByName) || other.requestedByName == requestedByName)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,coaCertificateNumber,requestedByName,requestedAt,deliveryAddress,status,dispatchedAt,courierRef);
+
+@override
+String toString() {
+  return 'PhysicalCoaRequest(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, coaCertificateNumber: $coaCertificateNumber, requestedByName: $requestedByName, requestedAt: $requestedAt, deliveryAddress: $deliveryAddress, status: $status, dispatchedAt: $dispatchedAt, courierRef: $courierRef)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PhysicalCoaRequestCopyWith<$Res>  {
+  factory $PhysicalCoaRequestCopyWith(PhysicalCoaRequest value, $Res Function(PhysicalCoaRequest) _then) = _$PhysicalCoaRequestCopyWithImpl;
+@useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, String coaCertificateNumber, String requestedByName, String requestedAt, String deliveryAddress, PhysicalCoaStatus status, String? dispatchedAt, String? courierRef
+});
+
+
+
+
+}
+/// @nodoc
+class _$PhysicalCoaRequestCopyWithImpl<$Res>
+    implements $PhysicalCoaRequestCopyWith<$Res> {
+  _$PhysicalCoaRequestCopyWithImpl(this._self, this._then);
+
+  final PhysicalCoaRequest _self;
+  final $Res Function(PhysicalCoaRequest) _then;
+
+/// Create a copy of PhysicalCoaRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? coaCertificateNumber = null,Object? requestedByName = null,Object? requestedAt = null,Object? deliveryAddress = null,Object? status = null,Object? dispatchedAt = freezed,Object? courierRef = freezed,}) {
+  return _then(PhysicalCoaRequest(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,coaCertificateNumber: null == coaCertificateNumber ? _self.coaCertificateNumber : coaCertificateNumber // ignore: cast_nullable_to_non_nullable
+as String,requestedByName: null == requestedByName ? _self.requestedByName : requestedByName // ignore: cast_nullable_to_non_nullable
+as String,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
+as String,deliveryAddress: null == deliveryAddress ? _self.deliveryAddress : deliveryAddress // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as PhysicalCoaStatus,dispatchedAt: freezed == dispatchedAt ? _self.dispatchedAt : dispatchedAt // ignore: cast_nullable_to_non_nullable
+as String?,courierRef: freezed == courierRef ? _self.courierRef : courierRef // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [PhysicalCoaRequest].
+extension PhysicalCoaRequestPatterns on PhysicalCoaRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _PhysicalCoaRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _PhysicalCoaRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _PhysicalCoaRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String coaCertificateNumber,  String requestedByName,  String requestedAt,  String deliveryAddress,  PhysicalCoaStatus status,  String? dispatchedAt,  String? courierRef)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.coaCertificateNumber,_that.requestedByName,_that.requestedAt,_that.deliveryAddress,_that.status,_that.dispatchedAt,_that.courierRef);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String coaCertificateNumber,  String requestedByName,  String requestedAt,  String deliveryAddress,  PhysicalCoaStatus status,  String? dispatchedAt,  String? courierRef)  $default,) {final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest():
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.coaCertificateNumber,_that.requestedByName,_that.requestedAt,_that.deliveryAddress,_that.status,_that.dispatchedAt,_that.courierRef);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  String coaCertificateNumber,  String requestedByName,  String requestedAt,  String deliveryAddress,  PhysicalCoaStatus status,  String? dispatchedAt,  String? courierRef)?  $default,) {final _that = this;
+switch (_that) {
+case _PhysicalCoaRequest() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.coaCertificateNumber,_that.requestedByName,_that.requestedAt,_that.deliveryAddress,_that.status,_that.dispatchedAt,_that.courierRef);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _PhysicalCoaRequest implements PhysicalCoaRequest {
+  const _PhysicalCoaRequest({required this.id, required this.artworkId, required this.artworkTitle, required this.coaCertificateNumber, required this.requestedByName, required this.requestedAt, required this.deliveryAddress, required this.status, this.dispatchedAt, this.courierRef});
+  factory _PhysicalCoaRequest.fromJson(Map<String, dynamic> json) => _$PhysicalCoaRequestFromJson(json);
+
+@override final  String id;
+@override final  String artworkId;
+@override final  String artworkTitle;
+@override final  String coaCertificateNumber;
+@override final  String requestedByName;
+@override final  String requestedAt;
+@override final  String deliveryAddress;
+@override final  PhysicalCoaStatus status;
+@override final  String? dispatchedAt;
+@override final  String? courierRef;
+
+/// Create a copy of PhysicalCoaRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$PhysicalCoaRequestCopyWith<_PhysicalCoaRequest> get copyWith => __$PhysicalCoaRequestCopyWithImpl<_PhysicalCoaRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PhysicalCoaRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PhysicalCoaRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.requestedByName, requestedByName) || other.requestedByName == requestedByName)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.status, status) || other.status == status)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,coaCertificateNumber,requestedByName,requestedAt,deliveryAddress,status,dispatchedAt,courierRef);
+
+@override
+String toString() {
+  return 'PhysicalCoaRequest(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, coaCertificateNumber: $coaCertificateNumber, requestedByName: $requestedByName, requestedAt: $requestedAt, deliveryAddress: $deliveryAddress, status: $status, dispatchedAt: $dispatchedAt, courierRef: $courierRef)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$PhysicalCoaRequestCopyWith<$Res> implements $PhysicalCoaRequestCopyWith<$Res> {
+  factory _$PhysicalCoaRequestCopyWith(_PhysicalCoaRequest value, $Res Function(_PhysicalCoaRequest) _then) = __$PhysicalCoaRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, String coaCertificateNumber, String requestedByName, String requestedAt, String deliveryAddress, PhysicalCoaStatus status, String? dispatchedAt, String? courierRef
+});
+
+
+
+
+}
+/// @nodoc
+class __$PhysicalCoaRequestCopyWithImpl<$Res>
+    implements _$PhysicalCoaRequestCopyWith<$Res> {
+  __$PhysicalCoaRequestCopyWithImpl(this._self, this._then);
+
+  final _PhysicalCoaRequest _self;
+  final $Res Function(_PhysicalCoaRequest) _then;
+
+/// Create a copy of PhysicalCoaRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? coaCertificateNumber = null,Object? requestedByName = null,Object? requestedAt = null,Object? deliveryAddress = null,Object? status = null,Object? dispatchedAt = freezed,Object? courierRef = freezed,}) {
+  return _then(_PhysicalCoaRequest(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,coaCertificateNumber: null == coaCertificateNumber ? _self.coaCertificateNumber : coaCertificateNumber // ignore: cast_nullable_to_non_nullable
+as String,requestedByName: null == requestedByName ? _self.requestedByName : requestedByName // ignore: cast_nullable_to_non_nullable
+as String,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
+as String,deliveryAddress: null == deliveryAddress ? _self.deliveryAddress : deliveryAddress // ignore: cast_nullable_to_non_nullable
+as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as PhysicalCoaStatus,dispatchedAt: freezed == dispatchedAt ? _self.dispatchedAt : dispatchedAt // ignore: cast_nullable_to_non_nullable
+as String?,courierRef: freezed == courierRef ? _self.courierRef : courierRef // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$OwnershipTransfer {
+
+ String get id; String get artworkId; String get artworkTitle; String get fromName; String get toName; String get toEmail; String get initiatedAt; String? get acceptedAt; String? get cancelledAt; TransferStatus get status;
+/// Create a copy of OwnershipTransfer
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$OwnershipTransferCopyWith<OwnershipTransfer> get copyWith => _$OwnershipTransferCopyWithImpl<OwnershipTransfer>(this as OwnershipTransfer, _$identity);
+
+  /// Serializes this OwnershipTransfer to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status);
+
+@override
+String toString() {
+  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $OwnershipTransferCopyWith<$Res>  {
+  factory $OwnershipTransferCopyWith(OwnershipTransfer value, $Res Function(OwnershipTransfer) _then) = _$OwnershipTransferCopyWithImpl;
+@useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status
+});
+
+
+
+
+}
+/// @nodoc
+class _$OwnershipTransferCopyWithImpl<$Res>
+    implements $OwnershipTransferCopyWith<$Res> {
+  _$OwnershipTransferCopyWithImpl(this._self, this._then);
+
+  final OwnershipTransfer _self;
+  final $Res Function(OwnershipTransfer) _then;
+
+/// Create a copy of OwnershipTransfer
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,}) {
+  return _then(OwnershipTransfer(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,fromName: null == fromName ? _self.fromName : fromName // ignore: cast_nullable_to_non_nullable
+as String,toName: null == toName ? _self.toName : toName // ignore: cast_nullable_to_non_nullable
+as String,toEmail: null == toEmail ? _self.toEmail : toEmail // ignore: cast_nullable_to_non_nullable
+as String,initiatedAt: null == initiatedAt ? _self.initiatedAt : initiatedAt // ignore: cast_nullable_to_non_nullable
+as String,acceptedAt: freezed == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as TransferStatus,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [OwnershipTransfer].
+extension OwnershipTransferPatterns on OwnershipTransfer {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _OwnershipTransfer value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _OwnershipTransfer() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _OwnershipTransfer value)  $default,){
+final _that = this;
+switch (_that) {
+case _OwnershipTransfer():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _OwnershipTransfer value)?  $default,){
+final _that = this;
+switch (_that) {
+case _OwnershipTransfer() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _OwnershipTransfer() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)  $default,) {final _that = this;
+switch (_that) {
+case _OwnershipTransfer():
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)?  $default,) {final _that = this;
+switch (_that) {
+case _OwnershipTransfer() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _OwnershipTransfer implements OwnershipTransfer {
+  const _OwnershipTransfer({required this.id, required this.artworkId, required this.artworkTitle, required this.fromName, required this.toName, required this.toEmail, required this.initiatedAt, this.acceptedAt, this.cancelledAt, required this.status});
+  factory _OwnershipTransfer.fromJson(Map<String, dynamic> json) => _$OwnershipTransferFromJson(json);
+
+@override final  String id;
+@override final  String artworkId;
+@override final  String artworkTitle;
+@override final  String fromName;
+@override final  String toName;
+@override final  String toEmail;
+@override final  String initiatedAt;
+@override final  String? acceptedAt;
+@override final  String? cancelledAt;
+@override final  TransferStatus status;
+
+/// Create a copy of OwnershipTransfer
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$OwnershipTransferCopyWith<_OwnershipTransfer> get copyWith => __$OwnershipTransferCopyWithImpl<_OwnershipTransfer>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$OwnershipTransferToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status);
+
+@override
+String toString() {
+  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$OwnershipTransferCopyWith<$Res> implements $OwnershipTransferCopyWith<$Res> {
+  factory _$OwnershipTransferCopyWith(_OwnershipTransfer value, $Res Function(_OwnershipTransfer) _then) = __$OwnershipTransferCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status
+});
+
+
+
+
+}
+/// @nodoc
+class __$OwnershipTransferCopyWithImpl<$Res>
+    implements _$OwnershipTransferCopyWith<$Res> {
+  __$OwnershipTransferCopyWithImpl(this._self, this._then);
+
+  final _OwnershipTransfer _self;
+  final $Res Function(_OwnershipTransfer) _then;
+
+/// Create a copy of OwnershipTransfer
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,}) {
+  return _then(_OwnershipTransfer(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,fromName: null == fromName ? _self.fromName : fromName // ignore: cast_nullable_to_non_nullable
+as String,toName: null == toName ? _self.toName : toName // ignore: cast_nullable_to_non_nullable
+as String,toEmail: null == toEmail ? _self.toEmail : toEmail // ignore: cast_nullable_to_non_nullable
+as String,initiatedAt: null == initiatedAt ? _self.initiatedAt : initiatedAt // ignore: cast_nullable_to_non_nullable
+as String,acceptedAt: freezed == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
+as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as TransferStatus,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$ExternalSalePenalty {
+
+ String get id; String get artworkId; String get artworkTitle; double get amount; String get createdAt; String? get settledAt;
+/// Create a copy of ExternalSalePenalty
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ExternalSalePenaltyCopyWith<ExternalSalePenalty> get copyWith => _$ExternalSalePenaltyCopyWithImpl<ExternalSalePenalty>(this as ExternalSalePenalty, _$identity);
+
+  /// Serializes this ExternalSalePenalty to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt);
+
+@override
+String toString() {
+  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ExternalSalePenaltyCopyWith<$Res>  {
+  factory $ExternalSalePenaltyCopyWith(ExternalSalePenalty value, $Res Function(ExternalSalePenalty) _then) = _$ExternalSalePenaltyCopyWithImpl;
+@useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$ExternalSalePenaltyCopyWithImpl<$Res>
+    implements $ExternalSalePenaltyCopyWith<$Res> {
+  _$ExternalSalePenaltyCopyWithImpl(this._self, this._then);
+
+  final ExternalSalePenalty _self;
+  final $Res Function(ExternalSalePenalty) _then;
+
+/// Create a copy of ExternalSalePenalty
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,}) {
+  return _then(ExternalSalePenalty(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String,settledAt: freezed == settledAt ? _self.settledAt : settledAt // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [ExternalSalePenalty].
+extension ExternalSalePenaltyPatterns on ExternalSalePenalty {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _ExternalSalePenalty value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _ExternalSalePenalty() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _ExternalSalePenalty value)  $default,){
+final _that = this;
+switch (_that) {
+case _ExternalSalePenalty():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _ExternalSalePenalty value)?  $default,){
+final _that = this;
+switch (_that) {
+case _ExternalSalePenalty() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _ExternalSalePenalty() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)  $default,) {final _that = this;
+switch (_that) {
+case _ExternalSalePenalty():
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)?  $default,) {final _that = this;
+switch (_that) {
+case _ExternalSalePenalty() when $default != null:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _ExternalSalePenalty implements ExternalSalePenalty {
+  const _ExternalSalePenalty({required this.id, required this.artworkId, required this.artworkTitle, required this.amount, required this.createdAt, this.settledAt});
+  factory _ExternalSalePenalty.fromJson(Map<String, dynamic> json) => _$ExternalSalePenaltyFromJson(json);
+
+@override final  String id;
+@override final  String artworkId;
+@override final  String artworkTitle;
+@override final  double amount;
+@override final  String createdAt;
+@override final  String? settledAt;
+
+/// Create a copy of ExternalSalePenalty
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ExternalSalePenaltyCopyWith<_ExternalSalePenalty> get copyWith => __$ExternalSalePenaltyCopyWithImpl<_ExternalSalePenalty>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$ExternalSalePenaltyToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt);
+
+@override
+String toString() {
+  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ExternalSalePenaltyCopyWith<$Res> implements $ExternalSalePenaltyCopyWith<$Res> {
+  factory _$ExternalSalePenaltyCopyWith(_ExternalSalePenalty value, $Res Function(_ExternalSalePenalty) _then) = __$ExternalSalePenaltyCopyWithImpl;
+@override @useResult
+$Res call({
+ String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$ExternalSalePenaltyCopyWithImpl<$Res>
+    implements _$ExternalSalePenaltyCopyWith<$Res> {
+  __$ExternalSalePenaltyCopyWithImpl(this._self, this._then);
+
+  final _ExternalSalePenalty _self;
+  final $Res Function(_ExternalSalePenalty) _then;
+
+/// Create a copy of ExternalSalePenalty
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,}) {
+  return _then(_ExternalSalePenalty(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
+as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle // ignore: cast_nullable_to_non_nullable
+as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
+as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as String,settledAt: freezed == settledAt ? _self.settledAt : settledAt // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

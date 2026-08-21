@@ -1,3 +1,4 @@
+import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../models/order.dart';
 
@@ -26,6 +27,15 @@ abstract class CustomerRepository {
 
   /// Delivered orders joined to their artwork — see [CollectionItem].
   Future<List<CollectionItem>> listCollection();
+
+  /// Asks the artist for the paper certificate of a piece the collector
+  /// owns. MOU §12 — the artist signs and dispatches it by hand.
+  Future<PhysicalCoaRequest> requestPhysicalCoa({
+    required String artworkId,
+    required String deliveryAddress,
+  });
+
+  Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests();
 
   Future<List<ResaleListing>> listResaleListings();
   Future<ResaleListing> createResaleListing({

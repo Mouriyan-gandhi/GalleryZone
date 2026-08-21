@@ -563,7 +563,8 @@ as String,
 /// @nodoc
 mixin _$Order {
 
- String get id; String get artworkId; String get addressId; double get amount; double get gstAmount; double get deliveryCharge; OrderStatus get status; String get createdAt; List<OrderStatusEvent> get statusHistory;
+ String get id; String get artworkId; String get addressId; double get amount; double get gstAmount; double get deliveryCharge; OrderStatus get status; String get createdAt; List<OrderStatusEvent> get statusHistory;/// Null on the seeded fixture orders, which predate the payment step.
+ PaymentMethod? get paymentMethod;
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -576,16 +577,16 @@ $OrderCopyWith<Order> get copyWith => _$OrderCopyWithImpl<Order>(this as Order, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.gstAmount, gstAmount) || other.gstAmount == gstAmount)&&(identical(other.deliveryCharge, deliveryCharge) || other.deliveryCharge == deliveryCharge)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Order&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.gstAmount, gstAmount) || other.gstAmount == gstAmount)&&(identical(other.deliveryCharge, deliveryCharge) || other.deliveryCharge == deliveryCharge)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,addressId,amount,gstAmount,deliveryCharge,status,createdAt,const DeepCollectionEquality().hash(statusHistory));
+int get hashCode => Object.hash(runtimeType,id,artworkId,addressId,amount,gstAmount,deliveryCharge,status,createdAt,const DeepCollectionEquality().hash(statusHistory),paymentMethod);
 
 @override
 String toString() {
-  return 'Order(id: $id, artworkId: $artworkId, addressId: $addressId, amount: $amount, gstAmount: $gstAmount, deliveryCharge: $deliveryCharge, status: $status, createdAt: $createdAt, statusHistory: $statusHistory)';
+  return 'Order(id: $id, artworkId: $artworkId, addressId: $addressId, amount: $amount, gstAmount: $gstAmount, deliveryCharge: $deliveryCharge, status: $status, createdAt: $createdAt, statusHistory: $statusHistory, paymentMethod: $paymentMethod)';
 }
 
 
@@ -596,7 +597,7 @@ abstract mixin class $OrderCopyWith<$Res>  {
   factory $OrderCopyWith(Order value, $Res Function(Order) _then) = _$OrderCopyWithImpl;
 @useResult
 $Res call({
- String id, String artworkId, String addressId, double amount, double gstAmount, double deliveryCharge, OrderStatus status, String createdAt, List<OrderStatusEvent> statusHistory
+ String id, String artworkId, String addressId, double amount, double gstAmount, double deliveryCharge, OrderStatus status, String createdAt, List<OrderStatusEvent> statusHistory, PaymentMethod? paymentMethod
 });
 
 
@@ -613,7 +614,7 @@ class _$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? addressId = null,Object? amount = null,Object? gstAmount = null,Object? deliveryCharge = null,Object? status = null,Object? createdAt = null,Object? statusHistory = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? addressId = null,Object? amount = null,Object? gstAmount = null,Object? deliveryCharge = null,Object? status = null,Object? createdAt = null,Object? statusHistory = null,Object? paymentMethod = freezed,}) {
   return _then(Order(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -624,7 +625,8 @@ as double,deliveryCharge: null == deliveryCharge ? _self.deliveryCharge : delive
 as double,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as OrderStatus,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,statusHistory: null == statusHistory ? _self.statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
-as List<OrderStatusEvent>,
+as List<OrderStatusEvent>,paymentMethod: freezed == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable
+as PaymentMethod?,
   ));
 }
 
@@ -709,10 +711,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory,  PaymentMethod? paymentMethod)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory);case _:
+return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory,_that.paymentMethod);case _:
   return orElse();
 
 }
@@ -730,10 +732,10 @@ return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstA
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory,  PaymentMethod? paymentMethod)  $default,) {final _that = this;
 switch (_that) {
 case _Order():
-return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory);case _:
+return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory,_that.paymentMethod);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -750,10 +752,10 @@ return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstA
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String addressId,  double amount,  double gstAmount,  double deliveryCharge,  OrderStatus status,  String createdAt,  List<OrderStatusEvent> statusHistory,  PaymentMethod? paymentMethod)?  $default,) {final _that = this;
 switch (_that) {
 case _Order() when $default != null:
-return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory);case _:
+return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstAmount,_that.deliveryCharge,_that.status,_that.createdAt,_that.statusHistory,_that.paymentMethod);case _:
   return null;
 
 }
@@ -765,7 +767,7 @@ return $default(_that.id,_that.artworkId,_that.addressId,_that.amount,_that.gstA
 @JsonSerializable()
 
 class _Order extends Order {
-  const _Order({required this.id, required this.artworkId, required this.addressId, required this.amount, required this.gstAmount, required this.deliveryCharge, required this.status, required this.createdAt, required  List<OrderStatusEvent> statusHistory}): _statusHistory = statusHistory,super._();
+  const _Order({required this.id, required this.artworkId, required this.addressId, required this.amount, required this.gstAmount, required this.deliveryCharge, required this.status, required this.createdAt, required  List<OrderStatusEvent> statusHistory, this.paymentMethod}): _statusHistory = statusHistory,super._();
   factory _Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
 @override final  String id;
@@ -783,6 +785,8 @@ class _Order extends Order {
   return EqualUnmodifiableListView(_statusHistory);
 }
 
+/// Null on the seeded fixture orders, which predate the payment step.
+@override final  PaymentMethod? paymentMethod;
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
@@ -797,16 +801,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.gstAmount, gstAmount) || other.gstAmount == gstAmount)&&(identical(other.deliveryCharge, deliveryCharge) || other.deliveryCharge == deliveryCharge)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Order&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.addressId, addressId) || other.addressId == addressId)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.gstAmount, gstAmount) || other.gstAmount == gstAmount)&&(identical(other.deliveryCharge, deliveryCharge) || other.deliveryCharge == deliveryCharge)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory)&&(identical(other.paymentMethod, paymentMethod) || other.paymentMethod == paymentMethod));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,addressId,amount,gstAmount,deliveryCharge,status,createdAt,const DeepCollectionEquality().hash(_statusHistory));
+int get hashCode => Object.hash(runtimeType,id,artworkId,addressId,amount,gstAmount,deliveryCharge,status,createdAt,const DeepCollectionEquality().hash(_statusHistory),paymentMethod);
 
 @override
 String toString() {
-  return 'Order(id: $id, artworkId: $artworkId, addressId: $addressId, amount: $amount, gstAmount: $gstAmount, deliveryCharge: $deliveryCharge, status: $status, createdAt: $createdAt, statusHistory: $statusHistory)';
+  return 'Order(id: $id, artworkId: $artworkId, addressId: $addressId, amount: $amount, gstAmount: $gstAmount, deliveryCharge: $deliveryCharge, status: $status, createdAt: $createdAt, statusHistory: $statusHistory, paymentMethod: $paymentMethod)';
 }
 
 
@@ -817,7 +821,7 @@ abstract mixin class _$OrderCopyWith<$Res> implements $OrderCopyWith<$Res> {
   factory _$OrderCopyWith(_Order value, $Res Function(_Order) _then) = __$OrderCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String artworkId, String addressId, double amount, double gstAmount, double deliveryCharge, OrderStatus status, String createdAt, List<OrderStatusEvent> statusHistory
+ String id, String artworkId, String addressId, double amount, double gstAmount, double deliveryCharge, OrderStatus status, String createdAt, List<OrderStatusEvent> statusHistory, PaymentMethod? paymentMethod
 });
 
 
@@ -834,7 +838,7 @@ class __$OrderCopyWithImpl<$Res>
 
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? addressId = null,Object? amount = null,Object? gstAmount = null,Object? deliveryCharge = null,Object? status = null,Object? createdAt = null,Object? statusHistory = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? addressId = null,Object? amount = null,Object? gstAmount = null,Object? deliveryCharge = null,Object? status = null,Object? createdAt = null,Object? statusHistory = null,Object? paymentMethod = freezed,}) {
   return _then(_Order(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -845,7 +849,8 @@ as double,deliveryCharge: null == deliveryCharge ? _self.deliveryCharge : delive
 as double,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as OrderStatus,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,statusHistory: null == statusHistory ? _self._statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
-as List<OrderStatusEvent>,
+as List<OrderStatusEvent>,paymentMethod: freezed == paymentMethod ? _self.paymentMethod : paymentMethod // ignore: cast_nullable_to_non_nullable
+as PaymentMethod?,
   ));
 }
 

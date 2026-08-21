@@ -20,6 +20,7 @@ class SubmitArtworkInput {
     this.dimensions,
     this.yearCreated,
     this.nfcTagId,
+    this.physical,
   });
 
   final String title;
@@ -37,6 +38,10 @@ class SubmitArtworkInput {
   final String? dimensions;
   final int? yearCreated;
   final String? nfcTagId;
+
+  /// Weight, framing and packing. Required in practice once the aggregator
+  /// channel is picked — see [missingForAggregator].
+  final ArtworkPhysical? physical;
 }
 
 /// An order for one of this artist's pieces, with what she actually receives.
@@ -67,6 +72,23 @@ abstract class ArtistRepository {
   Future<List<ArtistArtwork>> listArtworks();
   Future<Artwork> submitArtwork(SubmitArtworkInput input);
 
+  /// Edits are refused here, not just hidden in the UI: 7 days from listing,
+  /// or until the piece is bought or claimed, whichever comes first
+  /// ([artworkEditState]). `patch.asDraft` is ignored — an edit never moves a
+  /// piece between the draft and review queues.
+  Future<Artwork> updateArtwork({required String artworkId, required SubmitArtworkInput patch});
+
+  /// "Sold on another platform": the piece leaves every GalleryZone channel
+  /// at once and can't be relisted, and a fee of [externalSalePenaltyRate] of
+  /// its listed price is queued against the artist's next listing.
+  Future<Artwork> markSoldElsewhere(String artworkId);
+
+  /// Sends a saved draft into the review queue. Nothing else moves a piece
+  /// out of `draft`, so without this a draft is a dead end.
+  Future<Artwork> submitForReview(String artworkId);
+
+  Future<List<ExternalSalePenalty>> listPenalties();
+
   Future<WalletSummary> getWallet();
   Future<List<WalletTransaction>> listWalletTransactions();
   Future<WalletTransaction> requestWithdrawal(double amount);
@@ -82,6 +104,16 @@ abstract class ArtistRepository {
   Future<List<Settlement>> listSettlements();
   Future<List<GallerySpacePlacement>> listGallerySpaces();
 
+  /// The artist's acceptance of the MOU, or null if they have not accepted
+  /// any version yet.
+  /// Paper-certificate requests from collectors, newest first, and the
+  /// artist marking one dispatched.
+  Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests();
+  Future<PhysicalCoaRequest> dispatchPhysicalCoa(String requestId, String courierRef);
+
+  Future<MouAcceptance?> getMouAcceptance();
+  Future<MouAcceptance> acceptMou(String version);
+
   Future<ArtistSettings> getSettings();
   Future<ArtistSettings> updateSettings(ArtistSettings settings);
 
@@ -89,8 +121,5 @@ abstract class ArtistRepository {
   Future<MessageThread> markMessageRead(String id);
 
   Future<List<SupportTicket>> listSupportTickets();
-  Future<SupportTicket> submitSupportTicket({
-    required String subject,
-    required String message,
-  });
+  Future<SupportTicket> submitSupportTicket({required String subject, required String message});
 }

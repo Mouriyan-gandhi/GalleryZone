@@ -169,11 +169,14 @@ void main() {
 
     expect(find.text('Monsoon Reverie'), findsOneWidget);
     expect(find.text('₹28,000'), findsOneWidget); // artist price
-    expect(find.text('₹36,400'), findsOneWidget); // buyer pays
+    expect(find.text('₹36,400'), findsOneWidget); // listed price
+
+    // Each row now carries its channel and edit-window footer, so only the
+    // first row or two fit a phone-sized viewport — scroll to a row rather
+    // than asserting on one the list never built.
+    await tester.scrollUntilVisible(find.text('Terracotta Study No. 4'), 240);
     expect(find.text('In review'), findsWidgets);
 
-    // Drafts sit below the fold in a phone-sized viewport, so scroll to one
-    // rather than asserting on a row the list never built.
     await tester.scrollUntilVisible(find.text('Portrait in Amber'), 240);
     expect(find.text('Draft'), findsWidgets);
   });

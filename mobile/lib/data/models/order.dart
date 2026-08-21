@@ -8,6 +8,15 @@ part 'order.g.dart';
 /// three-field ones.
 enum OrderStatus { pending, paid, confirmed, packed, transit, delivered, cancelled }
 
+/// How the buyer paid. No gateway is contacted — see the payment sheet.
+enum PaymentMethod { upi, card, netbanking }
+
+const paymentMethodLabel = {
+  PaymentMethod.upi: 'UPI',
+  PaymentMethod.card: 'Card',
+  PaymentMethod.netbanking: 'Net banking',
+};
+
 @freezed
 abstract class Address with _$Address {
   const factory Address({
@@ -46,6 +55,9 @@ abstract class Order with _$Order {
     required OrderStatus status,
     required String createdAt,
     required List<OrderStatusEvent> statusHistory,
+
+    /// Null on the seeded fixture orders, which predate the payment step.
+    PaymentMethod? paymentMethod,
   }) = _Order;
 
   const Order._();
