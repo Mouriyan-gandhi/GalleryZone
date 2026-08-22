@@ -97,6 +97,7 @@ _Artwork _$ArtworkFromJson(Map<String, dynamic> json) => _Artwork(
       .map((e) => ArtworkStatusEvent.fromJson(e as Map<String, dynamic>))
       .toList(),
   nfcTagId: json['nfcTagId'] as String?,
+  rarityType: $enumDecodeNullable(_$ArtworkRarityEnumMap, json['rarityType']),
   physical: json['physical'] == null
       ? null
       : ArtworkPhysical.fromJson(json['physical'] as Map<String, dynamic>),
@@ -127,6 +128,7 @@ Map<String, dynamic> _$ArtworkToJson(_Artwork instance) => <String, dynamic>{
   'socialProofLinks': instance.socialProofLinks,
   'statusHistory': instance.statusHistory,
   'nfcTagId': instance.nfcTagId,
+  'rarityType': _$ArtworkRarityEnumMap[instance.rarityType],
   'physical': instance.physical,
   'custody': instance.custody,
 };
@@ -135,6 +137,13 @@ const _$ListingTypeEnumMap = {
   ListingType.marketplaceOnly: 'marketplace_only',
   ListingType.aggregatorOnly: 'aggregator_only',
   ListingType.marketplaceAndAggregator: 'marketplace_and_aggregator',
+};
+
+const _$ArtworkRarityEnumMap = {
+  ArtworkRarity.rare: 'R',
+  ArtworkRarity.unique: 'U',
+  ArtworkRarity.original: 'O',
+  ArtworkRarity.normal: 'N',
 };
 
 _ArtworkPhysical _$ArtworkPhysicalFromJson(Map<String, dynamic> json) =>
@@ -232,6 +241,9 @@ _OwnershipTransfer _$OwnershipTransferFromJson(Map<String, dynamic> json) =>
       acceptedAt: json['acceptedAt'] as String?,
       cancelledAt: json['cancelledAt'] as String?,
       status: $enumDecode(_$TransferStatusEnumMap, json['status']),
+      kind: $enumDecodeNullable(_$TransferKindEnumMap, json['kind']),
+      displayEndsAt: json['displayEndsAt'] as String?,
+      displayEndedAt: json['displayEndedAt'] as String?,
     );
 
 Map<String, dynamic> _$OwnershipTransferToJson(_OwnershipTransfer instance) =>
@@ -246,12 +258,20 @@ Map<String, dynamic> _$OwnershipTransferToJson(_OwnershipTransfer instance) =>
       'acceptedAt': instance.acceptedAt,
       'cancelledAt': instance.cancelledAt,
       'status': _$TransferStatusEnumMap[instance.status]!,
+      'kind': _$TransferKindEnumMap[instance.kind],
+      'displayEndsAt': instance.displayEndsAt,
+      'displayEndedAt': instance.displayEndedAt,
     };
 
 const _$TransferStatusEnumMap = {
   TransferStatus.pending: 'pending',
   TransferStatus.accepted: 'accepted',
   TransferStatus.cancelled: 'cancelled',
+};
+
+const _$TransferKindEnumMap = {
+  TransferKind.ownership: 'ownership',
+  TransferKind.display: 'display',
 };
 
 _ExternalSalePenalty _$ExternalSalePenaltyFromJson(Map<String, dynamic> json) =>

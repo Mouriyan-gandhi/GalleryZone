@@ -59,6 +59,42 @@ bool isMarketplaceListed(ListingType type) => type != ListingType.aggregatorOnly
 
 bool isAggregatorListed(ListingType type) => type != ListingType.marketplaceOnly;
 
+/// Rarity/edition type of a piece, shown as a badge on the artist's artwork
+/// card. The web keeps this outside its Artwork type and reads it back with
+/// `"rarityType" in artwork` casts; here it is a real field, which is the
+/// shape both clients should end up with.
+enum ArtworkRarity {
+  @JsonValue('R')
+  rare,
+  @JsonValue('U')
+  unique,
+  @JsonValue('O')
+  original,
+  @JsonValue('N')
+  normal,
+}
+
+const artworkRarityCode = {
+  ArtworkRarity.rare: 'R',
+  ArtworkRarity.unique: 'U',
+  ArtworkRarity.original: 'O',
+  ArtworkRarity.normal: 'N',
+};
+
+const artworkRarityLabel = {
+  ArtworkRarity.rare: 'Rare (R)',
+  ArtworkRarity.unique: 'Unique (U)',
+  ArtworkRarity.original: 'Original (O)',
+  ArtworkRarity.normal: 'Normal (N)',
+};
+
+const artworkRarityDescription = {
+  ArtworkRarity.rare: 'Limited or one-of-a-kind with exceptional provenance.',
+  ArtworkRarity.unique: 'Singular piece — the only one in existence.',
+  ArtworkRarity.original: 'Hand-made original by the artist.',
+  ArtworkRarity.normal: 'Open edition or standard listing.',
+};
+
 enum SocialProofPlatform { instagram, youtube, x, tiktok }
 
 @freezed
@@ -121,6 +157,9 @@ abstract class Artwork with _$Artwork {
     required List<SocialProofLink> socialProofLinks,
     required List<ArtworkStatusEvent> statusHistory,
     String? nfcTagId,
+
+    /// R / U / O / N. Null on fixtures that predate the field.
+    ArtworkRarity? rarityType,
 
     /// Weight, framing and packing. Nullable because the fixture records
     /// predate the fields; the submit form collects them and requires them
@@ -417,6 +456,17 @@ abstract class PhysicalCoaRequest with _$PhysicalCoaRequest {
 /// again on every resale, which is what keeps provenance continuous.
 enum TransferStatus { pending, accepted, cancelled }
 
+/// Art travels to be shown, and the piece that goes on a gallery wall for a
+/// month has not changed hands. So a transfer is one of two things: a
+/// permanent hand-over of ownership, or a time-boxed hand-over of display
+/// rights that leaves the owner exactly where they were.
+enum TransferKind { ownership, display }
+
+const transferKindLabel = {
+  TransferKind.ownership: 'Ownership',
+  TransferKind.display: 'Display rights',
+};
+
 @freezed
 abstract class OwnershipTransfer with _$OwnershipTransfer {
   const factory OwnershipTransfer({
@@ -430,10 +480,47 @@ abstract class OwnershipTransfer with _$OwnershipTransfer {
     String? acceptedAt,
     String? cancelledAt,
     required TransferStatus status,
+
+    /// Null on records written before display rights existed — those are all
+    /// ownership hand-overs. Read it through [transferKindOf].
+    TransferKind? kind,
+
+    /// Display transfers only: the date the display period runs to.
+    String? displayEndsAt,
+
+    /// Display transfers only: set when the owner pulls the piece back early.
+    String? displayEndedAt,
   }) = _OwnershipTransfer;
 
   factory OwnershipTransfer.fromJson(Map<String, dynamic> json) =>
       _$OwnershipTransferFromJson(json);
+}
+
+TransferKind transferKindOf(OwnershipTransfer transfer) =>
+    transfer.kind ?? TransferKind.ownership;
+
+/// A display transfer ends by its own date. Nothing runs to make that happen —
+/// every screen compares the date to now, so the display simply stops being
+/// active when the day passes, exactly as it stops when the owner ends it
+/// early.
+bool isDisplayActive(OwnershipTransfer transfer, {DateTime? now}) {
+  if (transferKindOf(transfer) != TransferKind.display) return false;
+  if (transfer.status != TransferStatus.accepted) return false;
+  if (transfer.displayEndedAt != null) return false;
+  final endsAt = transfer.displayEndsAt;
+  if (endsAt == null) return false;
+  return DateTime.parse(endsAt).isAfter(now ?? DateTime.now());
+}
+
+/// The one display transfer currently in force for a piece, if any.
+OwnershipTransfer? activeDisplayTransfer(
+  List<OwnershipTransfer> transfers, {
+  DateTime? now,
+}) {
+  for (final transfer in transfers) {
+    if (isDisplayActive(transfer, now: now)) return transfer;
+  }
+  return null;
 }
 
 @freezed

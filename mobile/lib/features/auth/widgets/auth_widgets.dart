@@ -59,16 +59,29 @@ class AuthCrest extends StatelessWidget {
             letterSpacing: 3.5,
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'ART CONNECTS',
-          style: theme.textTheme.labelSmall?.copyWith(
-            fontSize: 10,
-            letterSpacing: 3,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+        const SizedBox(height: 8),
+        // The brand line, directly under the wordmark rather than tucked at
+        // the bottom of a panel a phone never scrolls to.
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontStyle: FontStyle.italic,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.9),
+            ),
+            children: [
+              const TextSpan(text: 'Art, that Connects. '),
+              TextSpan(
+                text: 'Culture that inspires.',
+                style: TextStyle(
+                  color: theme.colorScheme.tertiary,
+                  fontStyle: FontStyle.normal,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Container(height: 1, width: 40, color: theme.colorScheme.primary.withValues(alpha: 0.6)),
       ],
     );

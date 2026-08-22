@@ -12,6 +12,7 @@ import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
+import '../widgets/deactivation_tile.dart';
 
 /// Port of `app/dashboard/settlements/page.tsx` — one record per sale,
 /// showing exactly how the money split.
@@ -372,80 +373,6 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
     }
   }
 
-  Future<void> _openBankSheet() async {
-    final accountController = TextEditingController();
-    final ifscController = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Bank details', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 6),
-              Text(
-                'Only the last four digits are stored on this device.',
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: accountController,
-                keyboardType: TextInputType.number,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter an account number' : null,
-                decoration: const InputDecoration(labelText: 'Account number'),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: ifscController,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: (value) => (value ?? '').trim().isEmpty ? 'Enter the IFSC' : null,
-                decoration: const InputDecoration(labelText: 'IFSC'),
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: () {
-                  if (!formKey.currentState!.validate()) return;
-                  Navigator.of(context).pop(true);
-                },
-                child: const Text('Save bank details'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (saved ?? false) {
-      try {
-        await ref
-            .read(artistRepositoryProvider)
-            .updateBankDetails(accountNumber: accountController.text, ifsc: ifscController.text);
-        ref.invalidate(artistProfileDetailsProvider);
-      } catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
-        }
-      }
-    }
-    accountController.dispose();
-    ifscController.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -506,12 +433,16 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _instagram,
-                          decoration: const InputDecoration(labelText: 'Instagram handle'),
+                          decoration: const InputDecoration(
+                            labelText: 'Instagram handle (optional)',
+                          ),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _website,
-                          decoration: const InputDecoration(labelText: 'Website'),
+                          decoration: const InputDecoration(
+                            labelText: 'Website (optional)',
+                          ),
                         ),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -541,29 +472,29 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        Text('Payouts & identity', style: theme.textTheme.titleLarge),
+                        Text('Identity', style: theme.textTheme.titleLarge),
                         const SizedBox(height: 10),
                         PortalCard(
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              PortalDetailRow(
-                                label: 'Bank account',
-                                value: loaded.bankAccountMasked,
-                              ),
-                              PortalDetailRow(label: 'IFSC', value: loaded.ifsc),
                               PortalDetailRow(
                                 label: 'Aadhaar',
                                 value: '${loaded.aadhaarMasked} · ${loaded.aadhaarStatus.name}',
                                 gold: loaded.aadhaarStatus == AadhaarStatus.verified,
                               ),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: TextButton.icon(
-                                  onPressed: _openBankSheet,
-                                  icon: const Icon(LucideIcons.pencil, size: 14),
-                                  label: const Text('Update bank details'),
-                                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                                ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Identity documents',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Submit an additional ID or address proof if support '
+                                'has requested one for your account. PAN is preferred '
+                                '(optional). Contact support to send one — uploads are '
+                                'not wired up in this build.',
+                                style: theme.textTheme.labelSmall,
                               ),
                             ],
                           ),
@@ -643,6 +574,8 @@ class ArtistSettingsScreen extends ConsumerWidget {
                         'record your preference.',
                         style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
                       ),
+                      const Divider(height: 32),
+                      const DeactivationTile(),
                       const Divider(height: 32),
                       const DeleteAccountTile(),
                     ],

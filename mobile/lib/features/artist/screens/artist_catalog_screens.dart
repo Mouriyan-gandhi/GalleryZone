@@ -10,6 +10,8 @@ import '../../../data/mock/seed/aggregator_seed.dart' show fixtureToday;
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/repositories/artist_repository.dart';
+import '../../marketplace/screens/passport_screen.dart'
+    show ProvenanceTimeline;
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../providers/artist_providers.dart';
@@ -120,15 +122,60 @@ class CoaNfcScreen extends ConsumerWidget {
                                     label: 'Location',
                                     value: resolveCustody(entry.artwork).locationLabel,
                                   ),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: TextButton.icon(
-                                      onPressed: () =>
-                                          context.push('/verify/${entry.artwork.id}'),
-                                      icon: const Icon(LucideIcons.scanLine, size: 14),
-                                      label: const Text('Preview passport'),
-                                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                                    ),
+                                  Row(
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: () =>
+                                            context.push('/verify/${entry.artwork.id}'),
+                                        icon: const Icon(LucideIcons.scanLine, size: 14),
+                                        label: const Text('Preview passport'),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      // History answers a different question
+                                      // from the certificate — where the piece
+                                      // has been, not whether it is genuine —
+                                      // so it gets its own way in.
+                                      TextButton.icon(
+                                        onPressed: () => showModalBottomSheet<void>(
+                                          context: context,
+                                          builder: (sheetContext) => Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              20,
+                                              20,
+                                              20,
+                                              32,
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  entry.artwork.title,
+                                                  style: Theme.of(sheetContext)
+                                                      .textTheme
+                                                      .titleMedium,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                ProvenanceTimeline(
+                                                  history: entry
+                                                      .artwork
+                                                      .statusHistory,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(LucideIcons.history, size: 14),
+                                        label: const Text('History'),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

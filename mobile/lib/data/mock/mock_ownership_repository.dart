@@ -78,6 +78,8 @@ class MockOwnershipRepository implements OwnershipRepository {
     required String fromName,
     required String toName,
     required String toEmail,
+    TransferKind kind = TransferKind.ownership,
+    String? displayEndsAt,
   }) {
     final artwork = _findArtwork(artworkId);
     if (artwork == null) return mockError('Artwork not found');
@@ -85,10 +87,25 @@ class MockOwnershipRepository implements OwnershipRepository {
     if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(toEmail.trim())) {
       return mockError('Enter a valid email address');
     }
+    if (kind == TransferKind.display) {
+      if (displayEndsAt == null) {
+        return mockError('Pick the date the display runs to');
+      }
+      if (!DateTime.parse(displayEndsAt).isAfter(DateTime.now())) {
+        return mockError('The display end date has to be in the future');
+      }
+    }
     // One open transfer per artwork: two pending ones would let two people
     // each claim the same piece.
     if (_read().any((t) => t.artworkId == artworkId && t.status == TransferStatus.pending)) {
       return mockError('A transfer for this artwork is already waiting to be accepted');
+    }
+    // A piece cannot be lent twice over. The active loan has to end — by its
+    // own date or by the owner ending it — before another one starts.
+    if (_read().any((t) => t.artworkId == artworkId && isDisplayActive(t))) {
+      return mockError(
+        'This artwork is already on display somewhere. End that display first.',
+      );
     }
 
     return mockDelay(() {
@@ -101,6 +118,8 @@ class MockOwnershipRepository implements OwnershipRepository {
         toEmail: toEmail.trim(),
         initiatedAt: DateTime.now().toIso8601String(),
         status: TransferStatus.pending,
+        kind: kind,
+        displayEndsAt: kind == TransferKind.display ? displayEndsAt : null,
       );
       _write([transfer, ..._read()]);
       return transfer;
@@ -127,21 +146,42 @@ class MockOwnershipRepository implements OwnershipRepository {
       _write([for (final t in transfers) t.id == transferId ? accepted : t]);
 
       // Ownership moves; custody only follows if the artist was still
-      // holding it. A piece sitting with an aggregator stays there.
-      final current = resolveCustody(artwork);
-      _writeArtwork(
-        artwork.copyWith(
-          custody: current.copyWith(
-            legalOwner: CustodyParty.customer,
-            legalOwnerName: accepted.toName,
-            custodian: current.custodian == CustodyParty.artist
-                ? CustodyParty.customer
-                : current.custodian,
-            locationLabel: 'With ${accepted.toName}',
+      // holding it. A piece sitting with an aggregator stays there. A display
+      // transfer writes nothing: it is derived from the record and the date.
+      if (transferKindOf(accepted) == TransferKind.ownership) {
+        final current = resolveCustody(artwork);
+        _writeArtwork(
+          artwork.copyWith(
+            custody: current.copyWith(
+              legalOwner: CustodyParty.customer,
+              legalOwnerName: accepted.toName,
+              custodian: current.custodian == CustodyParty.artist
+                  ? CustodyParty.customer
+                  : current.custodian,
+              locationLabel: 'With ${accepted.toName}',
+            ),
           ),
-        ),
-      );
+        );
+      }
       return accepted;
+    });
+  }
+
+  @override
+  Future<OwnershipTransfer> endDisplay(String transferId) {
+    final transfers = _read();
+    final transfer = transfers.where((t) => t.id == transferId).firstOrNull;
+    if (transfer == null) return mockError('Display record not found');
+    if (!isDisplayActive(transfer)) {
+      return mockError('This display has already ended');
+    }
+
+    return mockDelay(() {
+      final ended = transfer.copyWith(
+        displayEndedAt: DateTime.now().toIso8601String(),
+      );
+      _write([for (final t in transfers) t.id == transferId ? ended : t]);
+      return ended;
     });
   }
 

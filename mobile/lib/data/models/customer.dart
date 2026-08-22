@@ -15,6 +15,10 @@ abstract class CustomerProfile with _$CustomerProfile {
     required String name,
     required String email,
     required String phone,
+
+    /// Optional, and never blocks anything — a collector who wants GST
+    /// invoices for a business or office collection can add one.
+    String? gstin,
   }) = _CustomerProfile;
 
   factory CustomerProfile.fromJson(Map<String, dynamic> json) =>

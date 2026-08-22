@@ -112,7 +112,33 @@ class ArtistArtworkRow extends ConsumerWidget {
                       style: theme.textTheme.labelSmall,
                     ),
                     const SizedBox(height: 8),
-                    ArtworkStatusPill(status: artwork.status),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        ArtworkStatusPill(status: artwork.status),
+                        if (artwork.rarityType != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: theme.colorScheme.tertiary.withValues(alpha: 0.4),
+                              ),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              artworkRarityCode[artwork.rarityType]!,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.tertiary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),

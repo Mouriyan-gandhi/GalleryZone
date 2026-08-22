@@ -457,6 +457,7 @@ class MockArtistRepository implements ArtistRepository {
         socialProofLinks: const [],
         statusHistory: [ArtworkStatusEvent(status: status, changedAt: now)],
         nfcTagId: input.nfcTagId,
+        rarityType: input.rarityType,
         physical: input.physical,
       );
 
@@ -511,6 +512,7 @@ class MockArtistRepository implements ArtistRepository {
         listingType: patch.listingType,
         insured: patch.insuranceOpted || isAggregatorListed(patch.listingType),
         nfcTagId: patch.nfcTagId,
+        rarityType: patch.rarityType,
         physical: patch.physical ?? existing.physical,
         images: patch.images.isEmpty ? existing.images : patch.images,
         thumbnailUrl: patch.images.isEmpty ? existing.thumbnailUrl : patch.images.first.url,

@@ -82,6 +82,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   final _nfcTag = TextEditingController();
 
   String _category = 'painting';
+  ArtworkRarity? _rarity;
   String _medium = 'Oil on Canvas';
   ListingType _listingType = ListingType.marketplaceAndAggregator;
   bool _insuranceOpted = false;
@@ -141,6 +142,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
       setState(() {
         _editing = artwork;
         _category = artwork.category;
+        _rarity = artwork.rarityType;
         _medium = artwork.medium;
         _listingType = artwork.listingType;
         _insuranceOpted = artwork.insured;
@@ -202,6 +204,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
         title: _title.text,
         description: _description.text.trim(),
         category: _category,
+        rarityType: _rarity,
         medium: _medium,
         artistPrice: _artistPrice,
         listingType: _listingType,
@@ -424,6 +427,25 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     onChanged: (value) => setState(() => _category = value!),
                   ),
                   const SizedBox(height: 14),
+                  DropdownButtonFormField<ArtworkRarity>(
+                    initialValue: _rarity,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Artwork type / rarity',
+                      helperText:
+                          'R = Rare · U = Unique · O = Original · N = Normal. '
+                          'Shown as a badge on your artwork card.',
+                    ),
+                    items: [
+                      for (final rarity in ArtworkRarity.values)
+                        DropdownMenuItem(
+                          value: rarity,
+                          child: Text(artworkRarityLabel[rarity]!),
+                        ),
+                    ],
+                    onChanged: (value) => setState(() => _rarity = value),
+                  ),
+                  const SizedBox(height: 14),
                   _Dropdown(
                     label: 'Medium',
                     value: _medium,
@@ -451,39 +473,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Pricing', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _price,
-                    keyboardType: TextInputType.number,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) {
-                      final parsed = double.tryParse((value ?? '').trim());
-                      if (parsed == null || parsed <= 0) {
-                        return 'Enter your price for this artwork';
-                      }
-                      return null;
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'Your price (₹)',
-                      helperText: 'Only you ever see this figure.',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  PortalCard(
-                    gold: true,
-                    child: Column(
-                      children: [
-                        PortalDetailRow(
-                          label: 'Listed price buyers see (incl. 30% markup)',
-                          value: formatInr(customerPrice),
-                          gold: true,
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 24),
                   Text('Sales channel', style: theme.textTheme.titleLarge),
@@ -526,6 +515,48 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                       ],
                     ),
                   ),
+                  Text('Pricing', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _price,
+                    keyboardType: TextInputType.number,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    onChanged: (_) => setState(() {}),
+                    validator: (value) {
+                      final parsed = double.tryParse((value ?? '').trim());
+                      if (parsed == null || parsed <= 0) {
+                        return 'Enter your price for this artwork';
+                      }
+                      return null;
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Your price (₹)',
+                      helperText: 'Only you ever see this figure.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PortalCard(
+                    gold: true,
+                    child: Column(
+                      children: [
+                        PortalDetailRow(
+                          label: 'Listed price buyers see (incl. 30% markup)',
+                          value: formatInr(customerPrice),
+                          gold: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _nfcTag,
+                    decoration: const InputDecoration(
+                      labelText: 'NFC tag id (optional)',
+                      helperText: 'Links the physical tag to this piece and its passport.',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _insuranceRequired || _insuranceOpted,
@@ -544,8 +575,8 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                                 'studio and is held by a partner while on display. The '
                                 'premium is deducted from your settlement.'
                           : _artistPrice > _insuranceRecommendedThreshold
-                          ? 'Recommended above ₹20,000 — uninsured pieces carry no '
-                                'platform liability in transit.'
+                          ? 'Strongly recommended for a piece at this price — '
+                                'uninsured pieces carry no platform liability in transit.'
                           : 'Optional at this price.',
                       style: theme.textTheme.labelSmall,
                     ),
@@ -665,14 +696,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _nfcTag,
-                    decoration: const InputDecoration(
-                      labelText: 'NFC tag id (optional)',
-                      helperText: 'For a physical tag already attached to the piece.',
                     ),
                   ),
                   const SizedBox(height: 24),

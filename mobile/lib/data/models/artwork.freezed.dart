@@ -820,7 +820,8 @@ as String,
 /// @nodoc
 mixin _$Artwork {
 
- String get id; String get title; String get artistId; String get artistName; bool get verifiedArtist; String get category; String get medium; double get customerPrice; String get thumbnailUrl; bool get insured; ArtworkStatus get status; ListingType get listingType; String get description; String? get dimensions; int? get yearCreated; List<ArtworkImage> get images; String get coaCertificateNumber; String get coaIssueDate; List<SocialProofLink> get socialProofLinks; List<ArtworkStatusEvent> get statusHistory; String? get nfcTagId;/// Weight, framing and packing. Nullable because the fixture records
+ String get id; String get title; String get artistId; String get artistName; bool get verifiedArtist; String get category; String get medium; double get customerPrice; String get thumbnailUrl; bool get insured; ArtworkStatus get status; ListingType get listingType; String get description; String? get dimensions; int? get yearCreated; List<ArtworkImage> get images; String get coaCertificateNumber; String get coaIssueDate; List<SocialProofLink> get socialProofLinks; List<ArtworkStatusEvent> get statusHistory; String? get nfcTagId;/// R / U / O / N. Null on fixtures that predate the field.
+ ArtworkRarity? get rarityType;/// Weight, framing and packing. Nullable because the fixture records
 /// predate the fields; the submit form collects them and requires them
 /// once the aggregator channel is picked.
  ArtworkPhysical? get physical;/// Ownership, physical custody and location are three independent
@@ -841,16 +842,16 @@ $ArtworkCopyWith<Artwork> get copyWith => _$ArtworkCopyWithImpl<Artwork>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other.socialProofLinks, socialProofLinks)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other.images, images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other.socialProofLinks, socialProofLinks)&&const DeepCollectionEquality().equals(other.statusHistory, statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.rarityType, rarityType) || other.rarityType == rarityType)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(socialProofLinks),const DeepCollectionEquality().hash(statusHistory),nfcTagId,physical,custody]);
+int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(socialProofLinks),const DeepCollectionEquality().hash(statusHistory),nfcTagId,rarityType,physical,custody]);
 
 @override
 String toString() {
-  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, physical: $physical, custody: $custody)';
+  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, rarityType: $rarityType, physical: $physical, custody: $custody)';
 }
 
 
@@ -861,7 +862,7 @@ abstract mixin class $ArtworkCopyWith<$Res>  {
   factory $ArtworkCopyWith(Artwork value, $Res Function(Artwork) _then) = _$ArtworkCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkPhysical? physical, ArtworkCustody? custody
+ String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkRarity? rarityType, ArtworkPhysical? physical, ArtworkCustody? custody
 });
 
 
@@ -878,7 +879,7 @@ class _$ArtworkCopyWithImpl<$Res>
 
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? physical = freezed,Object? custody = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? rarityType = freezed,Object? physical = freezed,Object? custody = freezed,}) {
   return _then(Artwork(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -901,7 +902,8 @@ as String,coaIssueDate: null == coaIssueDate ? _self.coaIssueDate : coaIssueDate
 as String,socialProofLinks: null == socialProofLinks ? _self.socialProofLinks : socialProofLinks // ignore: cast_nullable_to_non_nullable
 as List<SocialProofLink>,statusHistory: null == statusHistory ? _self.statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
 as List<ArtworkStatusEvent>,nfcTagId: freezed == nfcTagId ? _self.nfcTagId : nfcTagId // ignore: cast_nullable_to_non_nullable
-as String?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
+as String?,rarityType: freezed == rarityType ? _self.rarityType : rarityType // ignore: cast_nullable_to_non_nullable
+as ArtworkRarity?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
 as ArtworkPhysical?,custody: freezed == custody ? _self.custody : custody // ignore: cast_nullable_to_non_nullable
 as ArtworkCustody?,
   ));
@@ -1012,10 +1014,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkRarity? rarityType,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Artwork() when $default != null:
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.rarityType,_that.physical,_that.custody);case _:
   return orElse();
 
 }
@@ -1033,10 +1035,10 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkRarity? rarityType,  ArtworkPhysical? physical,  ArtworkCustody? custody)  $default,) {final _that = this;
 switch (_that) {
 case _Artwork():
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.rarityType,_that.physical,_that.custody);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1053,10 +1055,10 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String artistId,  String artistName,  bool verifiedArtist,  String category,  String medium,  double customerPrice,  String thumbnailUrl,  bool insured,  ArtworkStatus status,  ListingType listingType,  String description,  String? dimensions,  int? yearCreated,  List<ArtworkImage> images,  String coaCertificateNumber,  String coaIssueDate,  List<SocialProofLink> socialProofLinks,  List<ArtworkStatusEvent> statusHistory,  String? nfcTagId,  ArtworkRarity? rarityType,  ArtworkPhysical? physical,  ArtworkCustody? custody)?  $default,) {final _that = this;
 switch (_that) {
 case _Artwork() when $default != null:
-return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.physical,_that.custody);case _:
+return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verifiedArtist,_that.category,_that.medium,_that.customerPrice,_that.thumbnailUrl,_that.insured,_that.status,_that.listingType,_that.description,_that.dimensions,_that.yearCreated,_that.images,_that.coaCertificateNumber,_that.coaIssueDate,_that.socialProofLinks,_that.statusHistory,_that.nfcTagId,_that.rarityType,_that.physical,_that.custody);case _:
   return null;
 
 }
@@ -1068,7 +1070,7 @@ return $default(_that.id,_that.title,_that.artistId,_that.artistName,_that.verif
 @JsonSerializable()
 
 class _Artwork implements Artwork {
-  const _Artwork({required this.id, required this.title, required this.artistId, required this.artistName, required this.verifiedArtist, required this.category, required this.medium, required this.customerPrice, required this.thumbnailUrl, required this.insured, required this.status, required this.listingType, required this.description, this.dimensions, this.yearCreated, required  List<ArtworkImage> images, required this.coaCertificateNumber, required this.coaIssueDate, required  List<SocialProofLink> socialProofLinks, required  List<ArtworkStatusEvent> statusHistory, this.nfcTagId, this.physical, this.custody}): _images = images,_socialProofLinks = socialProofLinks,_statusHistory = statusHistory;
+  const _Artwork({required this.id, required this.title, required this.artistId, required this.artistName, required this.verifiedArtist, required this.category, required this.medium, required this.customerPrice, required this.thumbnailUrl, required this.insured, required this.status, required this.listingType, required this.description, this.dimensions, this.yearCreated, required  List<ArtworkImage> images, required this.coaCertificateNumber, required this.coaIssueDate, required  List<SocialProofLink> socialProofLinks, required  List<ArtworkStatusEvent> statusHistory, this.nfcTagId, this.rarityType, this.physical, this.custody}): _images = images,_socialProofLinks = socialProofLinks,_statusHistory = statusHistory;
   factory _Artwork.fromJson(Map<String, dynamic> json) => _$ArtworkFromJson(json);
 
 @override final  String id;
@@ -1110,6 +1112,8 @@ class _Artwork implements Artwork {
 }
 
 @override final  String? nfcTagId;
+/// R / U / O / N. Null on fixtures that predate the field.
+@override final  ArtworkRarity? rarityType;
 /// Weight, framing and packing. Nullable because the fixture records
 /// predate the fields; the submit form collects them and requires them
 /// once the aggregator channel is picked.
@@ -1134,16 +1138,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other._socialProofLinks, _socialProofLinks)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Artwork&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.artistId, artistId) || other.artistId == artistId)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.verifiedArtist, verifiedArtist) || other.verifiedArtist == verifiedArtist)&&(identical(other.category, category) || other.category == category)&&(identical(other.medium, medium) || other.medium == medium)&&(identical(other.customerPrice, customerPrice) || other.customerPrice == customerPrice)&&(identical(other.thumbnailUrl, thumbnailUrl) || other.thumbnailUrl == thumbnailUrl)&&(identical(other.insured, insured) || other.insured == insured)&&(identical(other.status, status) || other.status == status)&&(identical(other.listingType, listingType) || other.listingType == listingType)&&(identical(other.description, description) || other.description == description)&&(identical(other.dimensions, dimensions) || other.dimensions == dimensions)&&(identical(other.yearCreated, yearCreated) || other.yearCreated == yearCreated)&&const DeepCollectionEquality().equals(other._images, _images)&&(identical(other.coaCertificateNumber, coaCertificateNumber) || other.coaCertificateNumber == coaCertificateNumber)&&(identical(other.coaIssueDate, coaIssueDate) || other.coaIssueDate == coaIssueDate)&&const DeepCollectionEquality().equals(other._socialProofLinks, _socialProofLinks)&&const DeepCollectionEquality().equals(other._statusHistory, _statusHistory)&&(identical(other.nfcTagId, nfcTagId) || other.nfcTagId == nfcTagId)&&(identical(other.rarityType, rarityType) || other.rarityType == rarityType)&&(identical(other.physical, physical) || other.physical == physical)&&(identical(other.custody, custody) || other.custody == custody));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(_images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(_socialProofLinks),const DeepCollectionEquality().hash(_statusHistory),nfcTagId,physical,custody]);
+int get hashCode => Object.hashAll([runtimeType,id,title,artistId,artistName,verifiedArtist,category,medium,customerPrice,thumbnailUrl,insured,status,listingType,description,dimensions,yearCreated,const DeepCollectionEquality().hash(_images),coaCertificateNumber,coaIssueDate,const DeepCollectionEquality().hash(_socialProofLinks),const DeepCollectionEquality().hash(_statusHistory),nfcTagId,rarityType,physical,custody]);
 
 @override
 String toString() {
-  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, physical: $physical, custody: $custody)';
+  return 'Artwork(id: $id, title: $title, artistId: $artistId, artistName: $artistName, verifiedArtist: $verifiedArtist, category: $category, medium: $medium, customerPrice: $customerPrice, thumbnailUrl: $thumbnailUrl, insured: $insured, status: $status, listingType: $listingType, description: $description, dimensions: $dimensions, yearCreated: $yearCreated, images: $images, coaCertificateNumber: $coaCertificateNumber, coaIssueDate: $coaIssueDate, socialProofLinks: $socialProofLinks, statusHistory: $statusHistory, nfcTagId: $nfcTagId, rarityType: $rarityType, physical: $physical, custody: $custody)';
 }
 
 
@@ -1154,7 +1158,7 @@ abstract mixin class _$ArtworkCopyWith<$Res> implements $ArtworkCopyWith<$Res> {
   factory _$ArtworkCopyWith(_Artwork value, $Res Function(_Artwork) _then) = __$ArtworkCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkPhysical? physical, ArtworkCustody? custody
+ String id, String title, String artistId, String artistName, bool verifiedArtist, String category, String medium, double customerPrice, String thumbnailUrl, bool insured, ArtworkStatus status, ListingType listingType, String description, String? dimensions, int? yearCreated, List<ArtworkImage> images, String coaCertificateNumber, String coaIssueDate, List<SocialProofLink> socialProofLinks, List<ArtworkStatusEvent> statusHistory, String? nfcTagId, ArtworkRarity? rarityType, ArtworkPhysical? physical, ArtworkCustody? custody
 });
 
 
@@ -1171,7 +1175,7 @@ class __$ArtworkCopyWithImpl<$Res>
 
 /// Create a copy of Artwork
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? physical = freezed,Object? custody = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? artistId = null,Object? artistName = null,Object? verifiedArtist = null,Object? category = null,Object? medium = null,Object? customerPrice = null,Object? thumbnailUrl = null,Object? insured = null,Object? status = null,Object? listingType = null,Object? description = null,Object? dimensions = freezed,Object? yearCreated = freezed,Object? images = null,Object? coaCertificateNumber = null,Object? coaIssueDate = null,Object? socialProofLinks = null,Object? statusHistory = null,Object? nfcTagId = freezed,Object? rarityType = freezed,Object? physical = freezed,Object? custody = freezed,}) {
   return _then(_Artwork(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -1194,7 +1198,8 @@ as String,coaIssueDate: null == coaIssueDate ? _self.coaIssueDate : coaIssueDate
 as String,socialProofLinks: null == socialProofLinks ? _self._socialProofLinks : socialProofLinks // ignore: cast_nullable_to_non_nullable
 as List<SocialProofLink>,statusHistory: null == statusHistory ? _self._statusHistory : statusHistory // ignore: cast_nullable_to_non_nullable
 as List<ArtworkStatusEvent>,nfcTagId: freezed == nfcTagId ? _self.nfcTagId : nfcTagId // ignore: cast_nullable_to_non_nullable
-as String?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
+as String?,rarityType: freezed == rarityType ? _self.rarityType : rarityType // ignore: cast_nullable_to_non_nullable
+as ArtworkRarity?,physical: freezed == physical ? _self.physical : physical // ignore: cast_nullable_to_non_nullable
 as ArtworkPhysical?,custody: freezed == custody ? _self.custody : custody // ignore: cast_nullable_to_non_nullable
 as ArtworkCustody?,
   ));
@@ -2076,7 +2081,11 @@ as String?,
 /// @nodoc
 mixin _$OwnershipTransfer {
 
- String get id; String get artworkId; String get artworkTitle; String get fromName; String get toName; String get toEmail; String get initiatedAt; String? get acceptedAt; String? get cancelledAt; TransferStatus get status;
+ String get id; String get artworkId; String get artworkTitle; String get fromName; String get toName; String get toEmail; String get initiatedAt; String? get acceptedAt; String? get cancelledAt; TransferStatus get status;/// Null on records written before display rights existed — those are all
+/// ownership hand-overs. Read it through [transferKindOf].
+ TransferKind? get kind;/// Display transfers only: the date the display period runs to.
+ String? get displayEndsAt;/// Display transfers only: set when the owner pulls the piece back early.
+ String? get displayEndedAt;
 /// Create a copy of OwnershipTransfer
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2089,16 +2098,16 @@ $OwnershipTransferCopyWith<OwnershipTransfer> get copyWith => _$OwnershipTransfe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.displayEndsAt, displayEndsAt) || other.displayEndsAt == displayEndsAt)&&(identical(other.displayEndedAt, displayEndedAt) || other.displayEndedAt == displayEndedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status);
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status,kind,displayEndsAt,displayEndedAt);
 
 @override
 String toString() {
-  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status)';
+  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status, kind: $kind, displayEndsAt: $displayEndsAt, displayEndedAt: $displayEndedAt)';
 }
 
 
@@ -2109,7 +2118,7 @@ abstract mixin class $OwnershipTransferCopyWith<$Res>  {
   factory $OwnershipTransferCopyWith(OwnershipTransfer value, $Res Function(OwnershipTransfer) _then) = _$OwnershipTransferCopyWithImpl;
 @useResult
 $Res call({
- String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status
+ String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status, TransferKind? kind, String? displayEndsAt, String? displayEndedAt
 });
 
 
@@ -2126,7 +2135,7 @@ class _$OwnershipTransferCopyWithImpl<$Res>
 
 /// Create a copy of OwnershipTransfer
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,Object? kind = freezed,Object? displayEndsAt = freezed,Object? displayEndedAt = freezed,}) {
   return _then(OwnershipTransfer(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -2138,7 +2147,10 @@ as String,initiatedAt: null == initiatedAt ? _self.initiatedAt : initiatedAt // 
 as String,acceptedAt: freezed == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
 as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as TransferStatus,
+as TransferStatus,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as TransferKind?,displayEndsAt: freezed == displayEndsAt ? _self.displayEndsAt : displayEndsAt // ignore: cast_nullable_to_non_nullable
+as String?,displayEndedAt: freezed == displayEndedAt ? _self.displayEndedAt : displayEndedAt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -2223,10 +2235,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status,  TransferKind? kind,  String? displayEndsAt,  String? displayEndedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _OwnershipTransfer() when $default != null:
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status,_that.kind,_that.displayEndsAt,_that.displayEndedAt);case _:
   return orElse();
 
 }
@@ -2244,10 +2256,10 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status,  TransferKind? kind,  String? displayEndsAt,  String? displayEndedAt)  $default,) {final _that = this;
 switch (_that) {
 case _OwnershipTransfer():
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status,_that.kind,_that.displayEndsAt,_that.displayEndedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2264,10 +2276,10 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  String fromName,  String toName,  String toEmail,  String initiatedAt,  String? acceptedAt,  String? cancelledAt,  TransferStatus status,  TransferKind? kind,  String? displayEndsAt,  String? displayEndedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _OwnershipTransfer() when $default != null:
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that.toName,_that.toEmail,_that.initiatedAt,_that.acceptedAt,_that.cancelledAt,_that.status,_that.kind,_that.displayEndsAt,_that.displayEndedAt);case _:
   return null;
 
 }
@@ -2279,7 +2291,7 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.fromName,_that
 @JsonSerializable()
 
 class _OwnershipTransfer implements OwnershipTransfer {
-  const _OwnershipTransfer({required this.id, required this.artworkId, required this.artworkTitle, required this.fromName, required this.toName, required this.toEmail, required this.initiatedAt, this.acceptedAt, this.cancelledAt, required this.status});
+  const _OwnershipTransfer({required this.id, required this.artworkId, required this.artworkTitle, required this.fromName, required this.toName, required this.toEmail, required this.initiatedAt, this.acceptedAt, this.cancelledAt, required this.status, this.kind, this.displayEndsAt, this.displayEndedAt});
   factory _OwnershipTransfer.fromJson(Map<String, dynamic> json) => _$OwnershipTransferFromJson(json);
 
 @override final  String id;
@@ -2292,6 +2304,13 @@ class _OwnershipTransfer implements OwnershipTransfer {
 @override final  String? acceptedAt;
 @override final  String? cancelledAt;
 @override final  TransferStatus status;
+/// Null on records written before display rights existed — those are all
+/// ownership hand-overs. Read it through [transferKindOf].
+@override final  TransferKind? kind;
+/// Display transfers only: the date the display period runs to.
+@override final  String? displayEndsAt;
+/// Display transfers only: set when the owner pulls the piece back early.
+@override final  String? displayEndedAt;
 
 /// Create a copy of OwnershipTransfer
 /// with the given fields replaced by the non-null parameter values.
@@ -2306,16 +2325,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OwnershipTransfer&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.fromName, fromName) || other.fromName == fromName)&&(identical(other.toName, toName) || other.toName == toName)&&(identical(other.toEmail, toEmail) || other.toEmail == toEmail)&&(identical(other.initiatedAt, initiatedAt) || other.initiatedAt == initiatedAt)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.cancelledAt, cancelledAt) || other.cancelledAt == cancelledAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.displayEndsAt, displayEndsAt) || other.displayEndsAt == displayEndsAt)&&(identical(other.displayEndedAt, displayEndedAt) || other.displayEndedAt == displayEndedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status);
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,fromName,toName,toEmail,initiatedAt,acceptedAt,cancelledAt,status,kind,displayEndsAt,displayEndedAt);
 
 @override
 String toString() {
-  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status)';
+  return 'OwnershipTransfer(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, fromName: $fromName, toName: $toName, toEmail: $toEmail, initiatedAt: $initiatedAt, acceptedAt: $acceptedAt, cancelledAt: $cancelledAt, status: $status, kind: $kind, displayEndsAt: $displayEndsAt, displayEndedAt: $displayEndedAt)';
 }
 
 
@@ -2326,7 +2345,7 @@ abstract mixin class _$OwnershipTransferCopyWith<$Res> implements $OwnershipTran
   factory _$OwnershipTransferCopyWith(_OwnershipTransfer value, $Res Function(_OwnershipTransfer) _then) = __$OwnershipTransferCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status
+ String id, String artworkId, String artworkTitle, String fromName, String toName, String toEmail, String initiatedAt, String? acceptedAt, String? cancelledAt, TransferStatus status, TransferKind? kind, String? displayEndsAt, String? displayEndedAt
 });
 
 
@@ -2343,7 +2362,7 @@ class __$OwnershipTransferCopyWithImpl<$Res>
 
 /// Create a copy of OwnershipTransfer
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? fromName = null,Object? toName = null,Object? toEmail = null,Object? initiatedAt = null,Object? acceptedAt = freezed,Object? cancelledAt = freezed,Object? status = null,Object? kind = freezed,Object? displayEndsAt = freezed,Object? displayEndedAt = freezed,}) {
   return _then(_OwnershipTransfer(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -2355,7 +2374,10 @@ as String,initiatedAt: null == initiatedAt ? _self.initiatedAt : initiatedAt // 
 as String,acceptedAt: freezed == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
 as String?,cancelledAt: freezed == cancelledAt ? _self.cancelledAt : cancelledAt // ignore: cast_nullable_to_non_nullable
 as String?,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as TransferStatus,
+as TransferStatus,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as TransferKind?,displayEndsAt: freezed == displayEndsAt ? _self.displayEndsAt : displayEndsAt // ignore: cast_nullable_to_non_nullable
+as String?,displayEndedAt: freezed == displayEndedAt ? _self.displayEndedAt : displayEndedAt // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

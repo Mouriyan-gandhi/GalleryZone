@@ -11,6 +11,7 @@ import '../../auth/screens/login_screen.dart';
 import '../../marketing/screens/about_screen.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
+import '../widgets/rating_widgets.dart';
 
 /// Port of `app/dashboard/page.tsx` — KPI cards, verification ladder,
 /// activity feed, and the entry points the web keeps in its sidebar.
@@ -25,6 +26,12 @@ class ArtistDashboardScreen extends ConsumerWidget {
       label: 'Analytics',
       subtitle: 'Revenue, categories, conversion',
       route: '/dashboard/analytics'
+    ),
+    (
+      icon: LucideIcons.users,
+      label: 'Connections',
+      subtitle: 'Other artists, and joint work',
+      route: '/dashboard/network'
     ),
     (
       icon: LucideIcons.fingerprint,
@@ -204,6 +211,10 @@ class ArtistDashboardScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  const RatingCard(),
+                  const SizedBox(height: 20),
+                  const CommunityTeaser(),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -117,6 +117,25 @@ class AggregatorWalletScreen extends ConsumerWidget {
                 else
                   for (final transaction in transactions)
                     _TransactionRow(transaction: transaction),
+                const SizedBox(height: 24),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final profile = ref.watch(aggregatorProfileProvider).value;
+                    if (profile == null) return const SizedBox.shrink();
+                    return GstNumberCard(
+                      value: profile.gstNumber,
+                      description:
+                          'Used on your commission statements and invoices. Also '
+                          'editable from your company profile.',
+                      onSave: (gstNumber) async {
+                        await ref
+                            .read(aggregatorRepositoryProvider)
+                            .updateProfile(profile.copyWith(gstNumber: gstNumber));
+                        ref.invalidate(aggregatorProfileProvider);
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           ),

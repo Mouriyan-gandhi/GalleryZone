@@ -20,6 +20,7 @@ class SubmitArtworkInput {
     this.dimensions,
     this.yearCreated,
     this.nfcTagId,
+    this.rarityType,
     this.physical,
   });
 
@@ -38,6 +39,9 @@ class SubmitArtworkInput {
   final String? dimensions;
   final int? yearCreated;
   final String? nfcTagId;
+
+  /// R / U / O / N, shown as a badge on the artist's card.
+  final ArtworkRarity? rarityType;
 
   /// Weight, framing and packing. Required in practice once the aggregator
   /// channel is picked — see [missingForAggregator].

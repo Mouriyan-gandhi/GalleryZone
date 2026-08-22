@@ -93,7 +93,7 @@ class _PassportBody extends ConsumerWidget {
           const SizedBox(height: 32),
           OwnershipHistory(artworkId: artwork.id, artistName: artwork.artistName),
           const SizedBox(height: 36),
-          _ProvenanceTimeline(history: artwork.statusHistory),
+          ProvenanceTimeline(history: artwork.statusHistory),
           if (artist != null) ...[
             const SizedBox(height: 36),
             Center(
@@ -309,8 +309,8 @@ class _Field extends StatelessWidget {
 
 /// `artwork.statusHistory` oldest-first — the append-only provenance record
 /// behind the certificate, straight from `artwork_status_history`.
-class _ProvenanceTimeline extends StatelessWidget {
-  const _ProvenanceTimeline({required this.history});
+class ProvenanceTimeline extends StatelessWidget {
+  const ProvenanceTimeline({super.key, required this.history});
 
   final List<ArtworkStatusEvent> history;
 

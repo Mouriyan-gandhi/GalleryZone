@@ -36,6 +36,7 @@ import '../../features/artist/screens/artist_dashboard_screen.dart';
 import '../../features/artist/screens/artist_orders_screen.dart';
 import '../../features/artist/screens/artist_wallet_screen.dart';
 import '../../features/artist/screens/artwork_upload_screen.dart';
+import '../../features/artist/screens/artist_network_screen.dart';
 import '../../features/artist/screens/mou_screen.dart';
 import '../../features/artist/widgets/artist_shell.dart';
 import '../../features/checkout/screens/checkout_screen.dart';
@@ -284,6 +285,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'mou',
                     builder: (context, state) => const MouScreen(),
+                  ),
+                  GoRoute(
+                    path: 'network',
+                    builder: (context, state) => const ArtistNetworkScreen(),
                   ),
                   GoRoute(
                     path: 'settlements',

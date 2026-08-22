@@ -49,7 +49,7 @@ class _TransferAcceptScreenState extends ConsumerState<TransferAcceptScreen> {
     final transfer = ref.watch(transferProvider(widget.transferId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ownership transfer')),
+      appBar: AppBar(title: const Text('Transfer rights')),
       body: transfer.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
@@ -82,6 +82,7 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artwork = ref.watch(artworkProvider(transfer.artworkId)).value;
+    final isDisplay = transferKindOf(transfer) == TransferKind.display;
 
     return ContentWidth(
       maxWidth: 520,
@@ -110,11 +111,31 @@ class _Body extends ConsumerWidget {
           PortalCard(
             child: Column(
               children: [
+                PortalDetailRow(
+                  label: 'What',
+                  value: transferKindLabel[transferKindOf(transfer)]!,
+                ),
                 PortalDetailRow(label: 'From', value: transfer.fromName),
                 PortalDetailRow(label: 'To', value: transfer.toName, gold: true),
                 PortalDetailRow(label: 'Started', value: formatLongDate(transfer.initiatedAt)),
+                if (isDisplay && transfer.displayEndsAt != null)
+                  PortalDetailRow(
+                    label: 'On display until',
+                    value: formatLongDate(transfer.displayEndsAt!),
+                  ),
+                // The link is all the recipient gets, so the piece's own tag and
+                // its full record are reachable from here rather than from a
+                // second URL the sender would have to send separately.
+                if (artwork?.nfcTagId != null)
+                  PortalDetailRow(label: 'NFC tag', value: artwork!.nfcTagId!),
               ],
             ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/verify/${transfer.artworkId}'),
+            icon: const Icon(LucideIcons.scanLine, size: 15),
+            label: const Text('View full passport'),
           ),
           const SizedBox(height: 20),
           switch (transfer.status) {
@@ -126,12 +147,19 @@ class _Body extends ConsumerWidget {
                   color: theme.colorScheme.tertiary,
                 ),
                 const SizedBox(height: 10),
-                Text('Ownership accepted', style: theme.textTheme.titleMedium),
+                Text(
+                  isDisplay ? 'Display rights recorded' : 'Ownership accepted',
+                  style: theme.textTheme.titleMedium,
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  'The passport now records ${transfer.toName} as the owner. Its full '
-                  'provenance — every hand this piece has passed through — stays on '
-                  'the record.',
+                  isDisplay
+                      ? 'The passport records this piece as on display with '
+                            '${transfer.toName}. Ownership has not changed — the '
+                            'passport shows both.'
+                      : 'The passport now records ${transfer.toName} as the owner. Its full '
+                            'provenance — every hand this piece has passed through — stays on '
+                            'the record.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
@@ -159,15 +187,25 @@ class _Body extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Accepting records you as the owner of this piece on its digital '
-                  'passport, and adds this hand-over to its provenance. Nothing has '
-                  'changed yet.',
+                  isDisplay
+                      ? 'Accepting records the piece as on display with you until '
+                            'that date. Ownership stays where it is, and the display '
+                            'ends on its own when the date passes.'
+                      : 'Accepting records you as the owner of this piece on its digital '
+                            'passport, and adds this hand-over to its provenance. Nothing has '
+                            'changed yet.',
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
                 const SizedBox(height: 18),
                 FilledButton(
                   onPressed: busy ? null : onAccept,
-                  child: Text(busy ? 'Accepting…' : 'Accept ownership'),
+                  child: Text(
+                    busy
+                        ? 'Accepting…'
+                        : isDisplay
+                        ? 'Accept display rights'
+                        : 'Accept ownership',
+                  ),
                 ),
               ],
             ),

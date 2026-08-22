@@ -7,6 +7,7 @@ import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/customer.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/portal_widgets.dart';
 import '../providers/account_providers.dart';
 
 /// Port of `features/account/wallet-overview.tsx`. Deliberately simpler than
@@ -83,6 +84,25 @@ class WalletScreen extends ConsumerWidget {
                 else
                   for (final transaction in transactions)
                     _TransactionRow(transaction: transaction),
+                const SizedBox(height: 24),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final profile = ref.watch(customerProfileProvider).value;
+                    if (profile == null) return const SizedBox.shrink();
+                    return GstNumberCard(
+                      value: profile.gstin ?? '',
+                      description:
+                          'Add it if you need GST invoices for your purchases — '
+                          'for a business or an office collection, say.',
+                      onSave: (gstin) async {
+                        await ref
+                            .read(customerRepositoryProvider)
+                            .updateProfile(profile.copyWith(gstin: gstin));
+                        ref.invalidate(customerProfileProvider);
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           ),

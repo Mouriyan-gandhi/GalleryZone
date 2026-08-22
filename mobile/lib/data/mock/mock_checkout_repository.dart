@@ -16,6 +16,12 @@ import 'seed/customer_seed.dart';
 const checkoutGstRate = 0.05;
 const checkoutDeliveryCharge = 250.0;
 
+/// Platform fee and convenience fee are ₹0 during the early launch period.
+/// They apply equally to marketplace and aggregator-channel sales. Change
+/// them here when pricing is finalised — nowhere else.
+const checkoutPlatformFee = 0.0;
+const checkoutConvenienceFee = 0.0;
+
 const _ordersKey = 'orders';
 const _artworksKey = 'artworks';
 

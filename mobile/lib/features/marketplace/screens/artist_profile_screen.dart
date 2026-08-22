@@ -4,7 +4,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/launch.dart';
+import '../../../data/mock/seed/artist_seed.dart' show currentArtistId;
 import '../../../data/models/artist.dart';
+import '../../../data/models/artist_network.dart';
+import '../../../data/models/auth.dart';
+import '../../artist/providers/artist_network_providers.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../providers/marketplace_providers.dart';
 import '../widgets/artwork_card.dart';
 import '../widgets/social_glyphs.dart';
@@ -96,6 +101,9 @@ class _ArtistProfileBody extends ConsumerWidget {
               ),
               const SizedBox(height: 14),
               _FollowButton(artistId: artist.id, artistName: artist.name),
+              // Artist-to-artist connect. Renders nothing unless the viewer is
+              // a signed-in artist looking at someone else's profile.
+              _ConnectButton(artistId: artist.id),
               if (artist.socialLinks.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 Wrap(
@@ -201,6 +209,146 @@ class _FollowButton extends ConsumerWidget {
       child: following
           ? OutlinedButton.icon(onPressed: toggle, icon: icon, label: label)
           : FilledButton.icon(onPressed: toggle, icon: icon, label: label),
+    );
+  }
+}
+
+/// The LinkedIn-shaped half of artist connections: one button on another
+/// artist's public profile. The dashboard's Connections screen is the other
+/// half — it is where a request is accepted.
+///
+/// Only a signed-in artist sees this. Collectors and aggregators have no use
+/// for it, and a dead button shown to a signed-out visitor is worse than no
+/// button. There is one demo artist account, so "who am I" is that artist's id
+/// whenever the session says artist.
+class _ConnectButton extends ConsumerStatefulWidget {
+  const _ConnectButton({required this.artistId});
+
+  final String artistId;
+
+  @override
+  ConsumerState<_ConnectButton> createState() => _ConnectButtonState();
+}
+
+class _ConnectButtonState extends ConsumerState<_ConnectButton> {
+  final _messageController = TextEditingController();
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    setState(() => _sending = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    try {
+      await ref
+          .read(artistNetworkRepositoryProvider)
+          .sendConnectionRequest(
+            requesterId: currentArtistId,
+            recipientId: widget.artistId,
+            message: _messageController.text,
+          );
+      ref.read(artistNetworkRevisionProvider.notifier).bump();
+      _messageController.clear();
+      navigator.pop();
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _openComposer() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Send a connection request',
+                style: Theme.of(sheetContext).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _messageController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Add a note (optional)',
+                hintText:
+                    'We both work coastal light — would be good to compare notes.',
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _sending ? null : _send,
+              child: const Text('Send request'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final role = ref.watch(sessionProvider);
+    if (role != Role.artist || widget.artistId == currentArtistId) {
+      return const SizedBox.shrink();
+    }
+
+    final connection = ref.watch(connectionWithProvider(widget.artistId)).value;
+
+    if (connection?.status == ConnectionStatus.accepted) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.check, size: 15, color: theme.colorScheme.tertiary),
+            const SizedBox(width: 6),
+            Text('Connected', style: theme.textTheme.bodySmall),
+          ],
+        ),
+      );
+    }
+
+    if (connection?.status == ConnectionStatus.pending) {
+      final waitingOnMe = connection!.recipientId == currentArtistId;
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text(
+          waitingOnMe
+              ? 'They asked to connect — answer under Connections'
+              : 'Request sent',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.tertiary,
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: SizedBox(
+        height: 40,
+        child: OutlinedButton.icon(
+          onPressed: _openComposer,
+          icon: const Icon(LucideIcons.userPlus, size: 16),
+          label: const Text('Connect'),
+        ),
+      ),
     );
   }
 }

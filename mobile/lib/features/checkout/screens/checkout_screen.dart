@@ -529,6 +529,10 @@ class _ReviewStep extends StatelessWidget {
         _line(context, 'Artwork', artwork.customerPrice),
         _line(context, 'GST (${(checkoutGstRate * 100).round()}%)', gst),
         _line(context, 'Delivery', checkoutDeliveryCharge),
+        // Both are ₹0 for now and shown anyway: a fee that appears at the
+        // payment step having never been mentioned is the thing buyers hate.
+        _freeOrAmount(context, 'Platform fee', checkoutPlatformFee),
+        _freeOrAmount(context, 'Convenience fee', checkoutConvenienceFee),
         const SizedBox(height: 8),
         const Divider(),
         const SizedBox(height: 8),
@@ -576,6 +580,27 @@ class _ReviewStep extends StatelessWidget {
           PriceTag(
             amount: amount,
             style: bold ? theme.textTheme.titleMedium : theme.textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A zero fee reads better as "Free" than as ₹0.
+  Widget _freeOrAmount(BuildContext context, String label, double amount) {
+    final theme = Theme.of(context);
+    if (amount > 0) return _line(context, label, amount);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: theme.textTheme.bodySmall),
+          Text(
+            'Free',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.tertiary,
+            ),
           ),
         ],
       ),

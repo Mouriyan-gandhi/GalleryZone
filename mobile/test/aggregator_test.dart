@@ -74,7 +74,11 @@ void main() {
     for (final artwork in reservable) {
       expect(claimed.contains(artwork.id), isFalse);
       expect(artwork.status, ArtworkStatus.marketplace);
-      expect(artwork.listingType, ListingType.marketplaceAndAggregator);
+      // Aggregator-eligible, not specifically marketplaceAndAggregator: an
+      // aggregator-only piece is reservable here precisely because it never
+      // appears in the online grid. Asserting the literal passed only while
+      // no unclaimed aggregator-only fixture existed.
+      expect(isAggregatorListed(artwork.listingType), isTrue);
     }
   });
 

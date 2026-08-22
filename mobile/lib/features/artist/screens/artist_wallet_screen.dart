@@ -8,6 +8,7 @@ import '../../../data/mock/mock_artist_repository.dart' show minimumWithdrawal;
 import '../../../data/models/customer.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/portal_widgets.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 
@@ -103,6 +104,25 @@ class ArtistWalletScreen extends ConsumerWidget {
                 else
                   for (final transaction in transactions)
                     _TransactionRow(transaction: transaction),
+                const SizedBox(height: 24),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final profile = ref.watch(artistProfileDetailsProvider).value;
+                    if (profile == null) return const SizedBox.shrink();
+                    return GstNumberCard(
+                      value: profile.gstin ?? '',
+                      description:
+                          'Used on your settlement statements and invoices. Also '
+                          'editable from your profile.',
+                      onSave: (gstin) async {
+                        await ref
+                            .read(artistRepositoryProvider)
+                            .updateProfile(profile.copyWith(gstin: gstin));
+                        ref.invalidate(artistProfileDetailsProvider);
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           ),

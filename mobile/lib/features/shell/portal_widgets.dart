@@ -207,3 +207,120 @@ class ProvisionalPayoutNotice extends StatelessWidget {
     );
   }
 }
+
+/// Standard GSTIN shape: 2-digit state code, 10-char PAN, entity number, a
+/// literal "Z", then a checksum character.
+final gstinPattern = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$');
+
+/// Shown at the foot of every portal's wallet. GST is optional for everyone —
+/// leaving it blank is a valid answer and must never block a payout. When a
+/// number IS entered its shape is checked locally; there is no GST portal
+/// integration, which the business deliberately does not want.
+///
+/// It sits at the bottom because it is set once, not the first thing anyone
+/// opens their wallet to read.
+class GstNumberCard extends StatefulWidget {
+  const GstNumberCard({
+    super.key,
+    required this.value,
+    required this.onSave,
+    required this.description,
+  });
+
+  final String value;
+  final Future<void> Function(String gstin) onSave;
+  final String description;
+
+  @override
+  State<GstNumberCard> createState() => _GstNumberCardState();
+}
+
+class _GstNumberCardState extends State<GstNumberCard> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.value);
+  bool _saving = false;
+  bool _saved = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _invalid {
+    final value = _controller.text.trim();
+    return value.isNotEmpty && !gstinPattern.hasMatch(value);
+  }
+
+  Future<void> _save() async {
+    if (_invalid) return;
+    setState(() {
+      _saving = true;
+      _saved = false;
+    });
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await widget.onSave(_controller.text.trim());
+      if (mounted) setState(() => _saved = true);
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.receipt, size: 17, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Text('GST number', style: theme.textTheme.titleMedium),
+              const SizedBox(width: 6),
+              Text('(optional)', style: theme.textTheme.labelSmall),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(widget.description, style: theme.textTheme.labelSmall),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            textCapitalization: TextCapitalization.characters,
+            maxLength: 15,
+            onChanged: (_) => setState(() => _saved = false),
+            decoration: InputDecoration(
+              hintText: '22AAAAA0000A1Z5',
+              errorText: _invalid
+                  ? 'That does not look like a valid GSTIN. Leave it blank if '
+                        'you do not have one.'
+                  : null,
+            ),
+          ),
+          Row(
+            children: [
+              OutlinedButton(
+                onPressed: _saving || _invalid ? null : _save,
+                child: Text(_saving ? 'Saving…' : 'Save'),
+              ),
+              if (_saved) ...[
+                const SizedBox(width: 10),
+                Text(
+                  'Saved',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.tertiary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

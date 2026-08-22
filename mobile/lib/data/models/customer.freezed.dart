@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CustomerProfile {
 
- String get name; String get email; String get phone;
+ String get name; String get email; String get phone;/// Optional, and never blocks anything — a collector who wants GST
+/// invoices for a business or office collection can add one.
+ String? get gstin;
 /// Create a copy of CustomerProfile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +31,16 @@ $CustomerProfileCopyWith<CustomerProfile> get copyWith => _$CustomerProfileCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CustomerProfile&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CustomerProfile&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.gstin, gstin) || other.gstin == gstin));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,phone);
+int get hashCode => Object.hash(runtimeType,name,email,phone,gstin);
 
 @override
 String toString() {
-  return 'CustomerProfile(name: $name, email: $email, phone: $phone)';
+  return 'CustomerProfile(name: $name, email: $email, phone: $phone, gstin: $gstin)';
 }
 
 
@@ -49,7 +51,7 @@ abstract mixin class $CustomerProfileCopyWith<$Res>  {
   factory $CustomerProfileCopyWith(CustomerProfile value, $Res Function(CustomerProfile) _then) = _$CustomerProfileCopyWithImpl;
 @useResult
 $Res call({
- String name, String email, String phone
+ String name, String email, String phone, String? gstin
 });
 
 
@@ -66,12 +68,13 @@ class _$CustomerProfileCopyWithImpl<$Res>
 
 /// Create a copy of CustomerProfile
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? phone = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? email = null,Object? phone = null,Object? gstin = freezed,}) {
   return _then(CustomerProfile(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,phone: null == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
-as String,
+as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -156,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email,  String phone)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String name,  String email,  String phone,  String? gstin)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CustomerProfile() when $default != null:
-return $default(_that.name,_that.email,_that.phone);case _:
+return $default(_that.name,_that.email,_that.phone,_that.gstin);case _:
   return orElse();
 
 }
@@ -177,10 +180,10 @@ return $default(_that.name,_that.email,_that.phone);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email,  String phone)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String name,  String email,  String phone,  String? gstin)  $default,) {final _that = this;
 switch (_that) {
 case _CustomerProfile():
-return $default(_that.name,_that.email,_that.phone);case _:
+return $default(_that.name,_that.email,_that.phone,_that.gstin);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +200,10 @@ return $default(_that.name,_that.email,_that.phone);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email,  String phone)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String name,  String email,  String phone,  String? gstin)?  $default,) {final _that = this;
 switch (_that) {
 case _CustomerProfile() when $default != null:
-return $default(_that.name,_that.email,_that.phone);case _:
+return $default(_that.name,_that.email,_that.phone,_that.gstin);case _:
   return null;
 
 }
@@ -212,12 +215,15 @@ return $default(_that.name,_that.email,_that.phone);case _:
 @JsonSerializable()
 
 class _CustomerProfile implements CustomerProfile {
-  const _CustomerProfile({required this.name, required this.email, required this.phone});
+  const _CustomerProfile({required this.name, required this.email, required this.phone, this.gstin});
   factory _CustomerProfile.fromJson(Map<String, dynamic> json) => _$CustomerProfileFromJson(json);
 
 @override final  String name;
 @override final  String email;
 @override final  String phone;
+/// Optional, and never blocks anything — a collector who wants GST
+/// invoices for a business or office collection can add one.
+@override final  String? gstin;
 
 /// Create a copy of CustomerProfile
 /// with the given fields replaced by the non-null parameter values.
@@ -232,16 +238,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CustomerProfile&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CustomerProfile&&(identical(other.name, name) || other.name == name)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.gstin, gstin) || other.gstin == gstin));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,email,phone);
+int get hashCode => Object.hash(runtimeType,name,email,phone,gstin);
 
 @override
 String toString() {
-  return 'CustomerProfile(name: $name, email: $email, phone: $phone)';
+  return 'CustomerProfile(name: $name, email: $email, phone: $phone, gstin: $gstin)';
 }
 
 
@@ -252,7 +258,7 @@ abstract mixin class _$CustomerProfileCopyWith<$Res> implements $CustomerProfile
   factory _$CustomerProfileCopyWith(_CustomerProfile value, $Res Function(_CustomerProfile) _then) = __$CustomerProfileCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String email, String phone
+ String name, String email, String phone, String? gstin
 });
 
 
@@ -269,12 +275,13 @@ class __$CustomerProfileCopyWithImpl<$Res>
 
 /// Create a copy of CustomerProfile
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? phone = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? email = null,Object? phone = null,Object? gstin = freezed,}) {
   return _then(_CustomerProfile(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String,phone: null == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
-as String,
+as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
