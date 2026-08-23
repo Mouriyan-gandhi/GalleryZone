@@ -29,6 +29,7 @@ const _seeds = <({
   double artistPrice,
   ArtworkStatus status,
   int submittedDaysAgo,
+  ArtworkRarity rarity,
 })>[
   (
     id: 'aw-1',
@@ -40,6 +41,7 @@ const _seeds = <({
     artistPrice: 28000,
     status: ArtworkStatus.marketplace,
     submittedDaysAgo: 34,
+    rarity: ArtworkRarity.original,
   ),
   (
     id: 'aw-2',
@@ -51,6 +53,7 @@ const _seeds = <({
     artistPrice: 15000,
     status: ArtworkStatus.pendingApproval,
     submittedDaysAgo: 7,
+    rarity: ArtworkRarity.rare,
   ),
   (
     id: 'aw-3',
@@ -62,6 +65,7 @@ const _seeds = <({
     artistPrice: 22000,
     status: ArtworkStatus.draft,
     submittedDaysAgo: 5,
+    rarity: ArtworkRarity.normal,
   ),
   (
     id: 'aw-4',
@@ -73,6 +77,7 @@ const _seeds = <({
     artistPrice: 18000,
     status: ArtworkStatus.withAggregator,
     submittedDaysAgo: 74,
+    rarity: ArtworkRarity.unique,
   ),
   (
     id: 'aw-5',
@@ -84,6 +89,7 @@ const _seeds = <({
     artistPrice: 32000,
     status: ArtworkStatus.sold,
     submittedDaysAgo: 119,
+    rarity: ArtworkRarity.rare,
   ),
   (
     id: 'aw-6',
@@ -95,6 +101,7 @@ const _seeds = <({
     artistPrice: 19500,
     status: ArtworkStatus.marketplace,
     submittedDaysAgo: 17,
+    rarity: ArtworkRarity.original,
   ),
   (
     id: 'aw-7',
@@ -106,6 +113,7 @@ const _seeds = <({
     artistPrice: 24000,
     status: ArtworkStatus.draft,
     submittedDaysAgo: 6,
+    rarity: ArtworkRarity.unique,
   ),
 ];
 
@@ -147,6 +155,7 @@ List<Artwork> _buildAll() => [
           statusHistory: [
             ArtworkStatusEvent(status: seed.status, changedAt: _daysAgo(seed.submittedDaysAgo)),
           ],
+          rarityType: seed.rarity,
         ),
     ];
 

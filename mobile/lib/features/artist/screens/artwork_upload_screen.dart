@@ -278,11 +278,18 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
     final editState = _editing == null ? null : artworkEditState(_editing!);
     // Only on a new listing: an edit isn't the "next listing" the fee waits
     // for, so showing it there would be a lie about what Save does.
-    final outstandingFee = _isEdit
-        ? 0.0
-        : (ref.watch(artistPenaltiesProvider).value ?? [])
-              .where((penalty) => penalty.settledAt == null)
-              .fold<double>(0, (sum, penalty) => sum + penalty.amount);
+    // Two different things, and conflating them is what made the old banner
+    // lie: an approved fee WILL be charged on this listing; one still under
+    // review may never be charged at all.
+    final penalties = _isEdit
+        ? const <ExternalSalePenalty>[]
+        : (ref.watch(artistPenaltiesProvider).value ?? []);
+    final outstandingFee = penalties
+        .where(isPenaltyCollectable)
+        .fold<double>(0, (sum, penalty) => sum + penalty.amount);
+    final reviewingFee = penalties
+        .where((p) => penaltyStatusOf(p) == PenaltyStatus.pendingReview)
+        .fold<double>(0, (sum, penalty) => sum + penalty.amount);
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit artwork' : 'Submit artwork')),
@@ -320,9 +327,49 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'You marked artwork as sold on another platform. The '
-                                  '1% fee is charged to your wallet when you submit this '
-                                  "piece for review. Saving a draft doesn't trigger it.",
+                                  'You marked artwork as sold on another platform and '
+                                  'GalleryZone approved the fee. It is charged to your '
+                                  'wallet when you submit this piece for review. Saving '
+                                  "a draft doesn't trigger it.",
+                                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  if (reviewingFee > 0) ...[
+                    PortalCard(
+                      gold: true,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            LucideIcons.clock3,
+                            size: 16,
+                            color: theme.colorScheme.tertiary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${formatInr(reviewingFee)} off-platform sale fee '
+                                  'is with GalleryZone for review',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Selling elsewhere doesn't always mean a fee — a "
+                                  'piece promised to a gallery before you listed it, '
+                                  'say. Nothing is charged unless GalleryZone approves '
+                                  'it, and this listing goes through either way.',
                                   style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
                                 ),
                               ],

@@ -282,6 +282,9 @@ _ExternalSalePenalty _$ExternalSalePenaltyFromJson(Map<String, dynamic> json) =>
       amount: (json['amount'] as num).toDouble(),
       createdAt: json['createdAt'] as String,
       settledAt: json['settledAt'] as String?,
+      status: $enumDecodeNullable(_$PenaltyStatusEnumMap, json['status']),
+      decidedAt: json['decidedAt'] as String?,
+      decisionNote: json['decisionNote'] as String?,
     );
 
 Map<String, dynamic> _$ExternalSalePenaltyToJson(
@@ -293,4 +296,13 @@ Map<String, dynamic> _$ExternalSalePenaltyToJson(
   'amount': instance.amount,
   'createdAt': instance.createdAt,
   'settledAt': instance.settledAt,
+  'status': _$PenaltyStatusEnumMap[instance.status],
+  'decidedAt': instance.decidedAt,
+  'decisionNote': instance.decisionNote,
+};
+
+const _$PenaltyStatusEnumMap = {
+  PenaltyStatus.pendingReview: 'pending_review',
+  PenaltyStatus.approved: 'approved',
+  PenaltyStatus.waived: 'waived',
 };

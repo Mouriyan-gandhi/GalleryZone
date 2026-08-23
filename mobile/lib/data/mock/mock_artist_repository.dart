@@ -316,13 +316,18 @@ class MockArtistRepository implements ArtistRepository {
         (p) => p.toJson(),
       );
 
-  /// Any fee the artist owes for selling a piece elsewhere is collected the
-  /// next time they actually list something — drafts don't trigger it.
-  /// Charged as a wallet adjustment; the balance floors at 0 because there is
-  /// no negative-balance/recovery flow in the mock.
+  /// A fee the artist owes for selling a piece elsewhere is collected the next
+  /// time they actually list something — drafts don't trigger it. Charged as a
+  /// wallet adjustment; the balance floors at 0 because there is no
+  /// negative-balance/recovery flow in the mock.
+  ///
+  /// Only fees an admin has APPROVED are collected. One still awaiting review,
+  /// or waived, is passed over — the artist is never charged for a decision
+  /// nobody has made. This app has no admin portal; the decision is made in
+  /// the web console.
   void _settlePendingPenalties(String listingTitle) {
     final penalties = _readPenalties();
-    final outstanding = penalties.where((p) => p.settledAt == null).toList();
+    final outstanding = penalties.where(isPenaltyCollectable).toList();
     if (outstanding.isEmpty) return;
 
     final now = DateTime.now().toIso8601String();
@@ -570,14 +575,15 @@ class MockArtistRepository implements ArtistRepository {
         artworkTitle: existing.title,
         amount: (existing.customerPrice * externalSalePenaltyRate).roundToDouble(),
         createdAt: now,
+        status: PenaltyStatus.pendingReview,
       );
       MockDb.setCollection(_penaltiesKey, [penalty, ..._readPenalties()], (p) => p.toJson());
 
       _appendActivity(
         ActivityKind.artworkSubmitted,
         '"${existing.title}" marked sold elsewhere',
-        'Removed from GalleryZone. ${formatInr(penalty.amount)} will be charged '
-            'on your next listing.',
+        'Removed from GalleryZone. A ${formatInr(penalty.amount)} fee has gone '
+            'to GalleryZone for review — nothing is charged unless it is approved.',
       );
       return updated;
     });

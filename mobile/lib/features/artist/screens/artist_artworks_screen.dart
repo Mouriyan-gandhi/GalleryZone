@@ -130,7 +130,8 @@ class ArtistArtworkRow extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
-                              artworkRarityCode[artwork.rarityType]!,
+                              '${artworkRarityCode[artwork.rarityType]!} '
+                              '${artworkRarityLabel[artwork.rarityType]!.split(' ').first}',
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.tertiary,
                                 fontWeight: FontWeight.w600,
@@ -231,8 +232,9 @@ Future<void> _confirmSoldElsewhere(BuildContext context, WidgetRef ref, ArtistAr
       title: const Text('Mark as sold on another platform?'),
       content: Text(
         '"${entry.artwork.title}" is removed from every GalleryZone sales channel '
-        'immediately and cannot be relisted. A 1% fee of its listed price — '
-        '${formatInr(fee)} — is charged on your next listing.',
+        'immediately and cannot be relisted. A fee of up to 1% of its listed '
+        "price — ${formatInr(fee)} — may be applied at GalleryZone's "
+        'discretion, and is only charged if they approve it.',
       ),
       actions: [
         TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),

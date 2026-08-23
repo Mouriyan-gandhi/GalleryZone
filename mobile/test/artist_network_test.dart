@@ -409,6 +409,56 @@ void main() {
     });
   });
 
+  group('off-platform sale fee', () {
+    // Raising a fee is not charging one: an admin decides, and until they do
+    // nothing comes out of the artist's wallet.
+    ExternalSalePenalty fee({PenaltyStatus? status, String? settledAt}) =>
+        ExternalSalePenalty(
+          id: 'pen-1',
+          artworkId: 'aw-1',
+          artworkTitle: 'Monsoon Reverie',
+          amount: 1300,
+          createdAt: DateTime.now().toIso8601String(),
+          settledAt: settledAt,
+          status: status,
+        );
+
+    test('only an approved, uncollected fee is collectable', () {
+      expect(isPenaltyCollectable(fee(status: PenaltyStatus.pendingReview)), isFalse);
+      expect(isPenaltyCollectable(fee(status: PenaltyStatus.waived)), isFalse);
+      expect(isPenaltyCollectable(fee(status: PenaltyStatus.approved)), isTrue);
+      expect(
+        isPenaltyCollectable(
+          fee(
+            status: PenaltyStatus.approved,
+            settledAt: DateTime.now().toIso8601String(),
+          ),
+        ),
+        isFalse,
+      );
+    });
+
+    test('a record with no status reads as approved, not as unreviewed', () {
+      // Those were charged automatically before the fee became reviewable;
+      // flipping them back to pending would collect them a second time.
+      expect(penaltyStatusOf(fee()), PenaltyStatus.approved);
+    });
+
+    test('marking sold elsewhere raises the fee for review, not for payment', () async {
+      final walletBefore = await artist.getWallet();
+
+      await artist.markSoldElsewhere('aw-1');
+      final penalties = await artist.listPenalties();
+      final raised = penalties.firstWhere((p) => p.artworkId == 'aw-1');
+
+      expect(penaltyStatusOf(raised), PenaltyStatus.pendingReview);
+      expect(raised.settledAt, isNull);
+
+      final walletAfter = await artist.getWallet();
+      expect(walletAfter.balance, walletBefore.balance);
+    });
+  });
+
   test('the demo artist has an avatar the seeds agree on', () {
     expect(currentArtistAvatar, isNotEmpty);
     final connections = seedArtistConnections();

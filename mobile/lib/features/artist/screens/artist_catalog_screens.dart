@@ -509,7 +509,8 @@ class PortfolioScreen extends ConsumerWidget {
                       childAspectRatio: 0.56,
                     ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => ArtworkCard(artwork: visible[index]),
+                      (context, index) =>
+                          ArtworkCard(artwork: visible[index], showRarity: true),
                       childCount: visible.length,
                     ),
                   ),

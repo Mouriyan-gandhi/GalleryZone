@@ -157,14 +157,34 @@ void main() {
       expect(await MockArtworkRepository().get('aw-1'), isNotNull);
     });
 
-    test('the withdrawal fee is 1% of the listed price, charged on the next listing', () async {
+    test('the fee is 1% of the listed price, raised for review not charged', () async {
       final withdrawn = await artist.markSoldElsewhere('aw-1');
       final penalties = await artist.listPenalties();
       expect(penalties, hasLength(1));
       expect(penalties.single.amount, (withdrawn.customerPrice * 0.01).roundToDouble());
       expect(penalties.single.settledAt, isNull);
+      // Raised, not imposed: an admin decides in the web console whether this
+      // stands, and nothing is taken until they do.
+      expect(penaltyStatusOf(penalties.single), PenaltyStatus.pendingReview);
 
-      // A draft is not a listing, so it doesn't trigger collection.
+      final balanceBefore = (await artist.getWallet()).balance;
+      await artist.submitArtwork(_input(title: 'A listing while under review'));
+      expect((await artist.listPenalties()).single.settledAt, isNull);
+      expect((await artist.getWallet()).balance, balanceBefore);
+    });
+
+    test('an approved fee is collected on the next listing', () async {
+      await artist.markSoldElsewhere('aw-1');
+
+      // Stand in for the admin's decision — this app has no admin portal.
+      final raised = (await artist.listPenalties()).single;
+      MockDb.setCollection(
+        'artistPenalties',
+        [raised.copyWith(status: PenaltyStatus.approved)],
+        (p) => p.toJson(),
+      );
+
+      // A draft is not a listing, so it still doesn't trigger collection.
       await artist.submitArtwork(_input(asDraft: true, title: 'A draft'));
       expect((await artist.listPenalties()).single.settledAt, isNull);
 

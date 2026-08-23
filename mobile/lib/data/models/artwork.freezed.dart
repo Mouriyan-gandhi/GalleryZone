@@ -2388,7 +2388,10 @@ as String?,
 /// @nodoc
 mixin _$ExternalSalePenalty {
 
- String get id; String get artworkId; String get artworkTitle; double get amount; String get createdAt; String? get settledAt;
+ String get id; String get artworkId; String get artworkTitle; double get amount; String get createdAt; String? get settledAt;/// Null on records written before the fee became reviewable — those were
+/// charged automatically, so they read as already approved.
+ PenaltyStatus? get status; String? get decidedAt;/// The admin's note, shown back to the artist.
+ String? get decisionNote;
 /// Create a copy of ExternalSalePenalty
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2401,16 +2404,16 @@ $ExternalSalePenaltyCopyWith<ExternalSalePenalty> get copyWith => _$ExternalSale
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.decidedAt, decidedAt) || other.decidedAt == decidedAt)&&(identical(other.decisionNote, decisionNote) || other.decisionNote == decisionNote));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt);
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt,status,decidedAt,decisionNote);
 
 @override
 String toString() {
-  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt)';
+  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt, status: $status, decidedAt: $decidedAt, decisionNote: $decisionNote)';
 }
 
 
@@ -2421,7 +2424,7 @@ abstract mixin class $ExternalSalePenaltyCopyWith<$Res>  {
   factory $ExternalSalePenaltyCopyWith(ExternalSalePenalty value, $Res Function(ExternalSalePenalty) _then) = _$ExternalSalePenaltyCopyWithImpl;
 @useResult
 $Res call({
- String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt
+ String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt, PenaltyStatus? status, String? decidedAt, String? decisionNote
 });
 
 
@@ -2438,7 +2441,7 @@ class _$ExternalSalePenaltyCopyWithImpl<$Res>
 
 /// Create a copy of ExternalSalePenalty
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,Object? status = freezed,Object? decidedAt = freezed,Object? decisionNote = freezed,}) {
   return _then(ExternalSalePenalty(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -2446,6 +2449,9 @@ as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,settledAt: freezed == settledAt ? _self.settledAt : settledAt // ignore: cast_nullable_to_non_nullable
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as PenaltyStatus?,decidedAt: freezed == decidedAt ? _self.decidedAt : decidedAt // ignore: cast_nullable_to_non_nullable
+as String?,decisionNote: freezed == decisionNote ? _self.decisionNote : decisionNote // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -2531,10 +2537,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt,  PenaltyStatus? status,  String? decidedAt,  String? decisionNote)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ExternalSalePenalty() when $default != null:
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt,_that.status,_that.decidedAt,_that.decisionNote);case _:
   return orElse();
 
 }
@@ -2552,10 +2558,10 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt,  PenaltyStatus? status,  String? decidedAt,  String? decisionNote)  $default,) {final _that = this;
 switch (_that) {
 case _ExternalSalePenalty():
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt,_that.status,_that.decidedAt,_that.decisionNote);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -2572,10 +2578,10 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  String artworkTitle,  double amount,  String createdAt,  String? settledAt,  PenaltyStatus? status,  String? decidedAt,  String? decisionNote)?  $default,) {final _that = this;
 switch (_that) {
 case _ExternalSalePenalty() when $default != null:
-return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt);case _:
+return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.createdAt,_that.settledAt,_that.status,_that.decidedAt,_that.decisionNote);case _:
   return null;
 
 }
@@ -2587,7 +2593,7 @@ return $default(_that.id,_that.artworkId,_that.artworkTitle,_that.amount,_that.c
 @JsonSerializable()
 
 class _ExternalSalePenalty implements ExternalSalePenalty {
-  const _ExternalSalePenalty({required this.id, required this.artworkId, required this.artworkTitle, required this.amount, required this.createdAt, this.settledAt});
+  const _ExternalSalePenalty({required this.id, required this.artworkId, required this.artworkTitle, required this.amount, required this.createdAt, this.settledAt, this.status, this.decidedAt, this.decisionNote});
   factory _ExternalSalePenalty.fromJson(Map<String, dynamic> json) => _$ExternalSalePenaltyFromJson(json);
 
 @override final  String id;
@@ -2596,6 +2602,12 @@ class _ExternalSalePenalty implements ExternalSalePenalty {
 @override final  double amount;
 @override final  String createdAt;
 @override final  String? settledAt;
+/// Null on records written before the fee became reviewable — those were
+/// charged automatically, so they read as already approved.
+@override final  PenaltyStatus? status;
+@override final  String? decidedAt;
+/// The admin's note, shown back to the artist.
+@override final  String? decisionNote;
 
 /// Create a copy of ExternalSalePenalty
 /// with the given fields replaced by the non-null parameter values.
@@ -2610,16 +2622,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ExternalSalePenalty&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.amount, amount) || other.amount == amount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.settledAt, settledAt) || other.settledAt == settledAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.decidedAt, decidedAt) || other.decidedAt == decidedAt)&&(identical(other.decisionNote, decisionNote) || other.decisionNote == decisionNote));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt);
+int get hashCode => Object.hash(runtimeType,id,artworkId,artworkTitle,amount,createdAt,settledAt,status,decidedAt,decisionNote);
 
 @override
 String toString() {
-  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt)';
+  return 'ExternalSalePenalty(id: $id, artworkId: $artworkId, artworkTitle: $artworkTitle, amount: $amount, createdAt: $createdAt, settledAt: $settledAt, status: $status, decidedAt: $decidedAt, decisionNote: $decisionNote)';
 }
 
 
@@ -2630,7 +2642,7 @@ abstract mixin class _$ExternalSalePenaltyCopyWith<$Res> implements $ExternalSal
   factory _$ExternalSalePenaltyCopyWith(_ExternalSalePenalty value, $Res Function(_ExternalSalePenalty) _then) = __$ExternalSalePenaltyCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt
+ String id, String artworkId, String artworkTitle, double amount, String createdAt, String? settledAt, PenaltyStatus? status, String? decidedAt, String? decisionNote
 });
 
 
@@ -2647,7 +2659,7 @@ class __$ExternalSalePenaltyCopyWithImpl<$Res>
 
 /// Create a copy of ExternalSalePenalty
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? artworkTitle = null,Object? amount = null,Object? createdAt = null,Object? settledAt = freezed,Object? status = freezed,Object? decidedAt = freezed,Object? decisionNote = freezed,}) {
   return _then(_ExternalSalePenalty(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -2655,6 +2667,9 @@ as String,artworkTitle: null == artworkTitle ? _self.artworkTitle : artworkTitle
 as String,amount: null == amount ? _self.amount : amount // ignore: cast_nullable_to_non_nullable
 as double,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,settledAt: freezed == settledAt ? _self.settledAt : settledAt // ignore: cast_nullable_to_non_nullable
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as PenaltyStatus?,decidedAt: freezed == decidedAt ? _self.decidedAt : decidedAt // ignore: cast_nullable_to_non_nullable
+as String?,decisionNote: freezed == decisionNote ? _self.decisionNote : decisionNote // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

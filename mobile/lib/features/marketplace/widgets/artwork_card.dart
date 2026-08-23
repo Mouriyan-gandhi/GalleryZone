@@ -122,10 +122,20 @@ class VerifiedBadge extends StatelessWidget {
 /// Grid/rail tile. Taps through to the artwork detail route; the heart is a
 /// nested tap target that must not trigger the card's own navigation.
 class ArtworkCard extends ConsumerWidget {
-  const ArtworkCard({super.key, required this.artwork, this.width});
+  const ArtworkCard({
+    super.key,
+    required this.artwork,
+    this.width,
+    this.showRarity = false,
+  });
 
   final Artwork artwork;
   final double? width;
+
+  /// The artist's own Portfolio marks R/U/O/N over the image; the public
+  /// marketplace does not — a buyer browsing has no use for the artist's
+  /// edition shorthand.
+  final bool showRarity;
 
   // Only `reserved` and `sold` ever occur as a *current* status on a
   // marketplace fixture; every other value appears solely in statusHistory.
@@ -174,6 +184,14 @@ class ArtworkCard extends ConsumerWidget {
                         top: 10,
                         left: 10,
                         child: _Pill(icon: badge.$2, label: badge.$1),
+                      ),
+                    // Top-right belongs to the wishlist heart, so the rarity
+                    // mark sits directly under it rather than fighting it.
+                    if (showRarity && artwork.rarityType != null)
+                      Positioned(
+                        top: 44,
+                        right: 10,
+                        child: RarityBadge(rarity: artwork.rarityType!),
                       ),
                     Positioned(
                       top: 6,
@@ -325,6 +343,35 @@ class EmptyState extends StatelessWidget {
           ),
           if (action != null) ...[const SizedBox(height: 20), action!],
         ],
+      ),
+    );
+  }
+}
+
+/// The rarity mark shown over an artwork image: the word, not a bare letter.
+/// "R" means nothing to someone seeing it for the first time.
+class RarityBadge extends StatelessWidget {
+  const RarityBadge({super.key, required this.rarity});
+
+  final ArtworkRarity rarity;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface.withValues(alpha: 0.85),
+        border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '${artworkRarityCode[rarity]!} ${artworkRarityLabel[rarity]!.split(' ').first.toUpperCase()}',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.tertiary,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }

@@ -523,6 +523,23 @@ OwnershipTransfer? activeDisplayTransfer(
   return null;
 }
 
+/// The off-platform sale fee is proposed, not imposed. Selling elsewhere can
+/// be perfectly reasonable — a piece promised to a gallery before listing, a
+/// commission that fell through — so an admin decides case by case whether it
+/// is actually charged. Only an approved fee is ever collected.
+enum PenaltyStatus {
+  @JsonValue('pending_review')
+  pendingReview,
+  approved,
+  waived,
+}
+
+const penaltyStatusLabel = {
+  PenaltyStatus.pendingReview: 'Awaiting review',
+  PenaltyStatus.approved: 'Approved',
+  PenaltyStatus.waived: 'Waived',
+};
+
 @freezed
 abstract class ExternalSalePenalty with _$ExternalSalePenalty {
   const factory ExternalSalePenalty({
@@ -532,11 +549,27 @@ abstract class ExternalSalePenalty with _$ExternalSalePenalty {
     required double amount,
     required String createdAt,
     String? settledAt,
+
+    /// Null on records written before the fee became reviewable — those were
+    /// charged automatically, so they read as already approved.
+    PenaltyStatus? status,
+    String? decidedAt,
+
+    /// The admin's note, shown back to the artist.
+    String? decisionNote,
   }) = _ExternalSalePenalty;
 
   factory ExternalSalePenalty.fromJson(Map<String, dynamic> json) =>
       _$ExternalSalePenaltyFromJson(json);
 }
+
+PenaltyStatus penaltyStatusOf(ExternalSalePenalty penalty) =>
+    penalty.status ?? PenaltyStatus.approved;
+
+/// Only an approved, uncollected fee is ever taken from a wallet.
+bool isPenaltyCollectable(ExternalSalePenalty penalty) =>
+    penaltyStatusOf(penalty) == PenaltyStatus.approved &&
+    penalty.settledAt == null;
 
 /// Artist-scoped view of an [Artwork] with the private asking price
 /// attached. Only ever constructed by artist-scoped repository methods
