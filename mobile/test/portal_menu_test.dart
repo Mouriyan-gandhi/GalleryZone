@@ -19,8 +19,8 @@ void main() {
 
       final routes = [
         for (final menu in [customerMenu, artistMenu, aggregatorMenu])
-          for (final group in menu)
-            for (final item in group) item.route,
+          for (final section in menu)
+            for (final item in section.items) item.route,
       ];
       expect(routes, isNotEmpty);
 
@@ -33,8 +33,8 @@ void main() {
     test('no route is listed twice within one portal', () {
       for (final menu in [customerMenu, artistMenu, aggregatorMenu]) {
         final routes = [
-          for (final group in menu)
-            for (final item in group) item.route,
+          for (final section in menu)
+            for (final item in section.items) item.route,
         ];
         expect(routes.toSet().length, routes.length);
       }
@@ -48,7 +48,7 @@ void main() {
               appBar: AppBar(
                 actions: const [PortalAvatarButton(name: 'Devika Rao', badgeCount: 2)],
               ),
-              endDrawer: const PortalMenuDrawer(
+              endDrawer: PortalMenuDrawer(
                 name: 'Devika Rao',
                 roleLabel: 'Artist',
                 groups: artistMenu,
@@ -67,8 +67,22 @@ void main() {
       expect(find.text('Artist'), findsOneWidget);
       // The list is longer than a test window, so this checks the top of it
       // plus the pinned footer — not every row.
+      expect(find.text('ACCOUNT'), findsOneWidget);
       expect(find.text('Profile & KYC'), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    test('every section is titled, and every portal ends in help and legal', () {
+      for (final menu in [customerMenu, artistMenu, aggregatorMenu]) {
+        for (final section in menu) {
+          expect(section.title.trim(), isNotEmpty);
+          expect(section.items, isNotEmpty);
+        }
+        // Support, FAQs and About & legal are the same three rows everywhere,
+        // and they are always the last thing in the menu.
+        expect(menu.last.items.map((item) => item.label).toList(),
+            ['Support', 'FAQs', 'About & legal']);
+      }
     });
 
     test('initials take at most two letters', () {

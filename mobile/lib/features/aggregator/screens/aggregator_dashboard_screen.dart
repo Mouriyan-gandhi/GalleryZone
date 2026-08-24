@@ -35,7 +35,7 @@ class AggregatorDashboardScreen extends ConsumerWidget {
         title: const Text('Dashboard'),
         actions: [PortalAvatarButton(name: currentAggregatorName, badgeCount: unread)],
       ),
-      endDrawer: const PortalMenuDrawer(
+      endDrawer: PortalMenuDrawer(
         name: currentAggregatorName,
         roleLabel: 'Aggregator',
         groups: aggregatorMenu,

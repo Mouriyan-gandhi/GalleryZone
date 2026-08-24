@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../auth/providers/auth_providers.dart';
 import '../auth/screens/login_screen.dart';
+import '../legal/screens/faq_screen.dart';
 import '../marketing/screens/about_screen.dart';
 
 /// One row of a portal's menu. Same four fields the three dashboards each
@@ -25,222 +26,249 @@ class PortalMenuItem {
   final String route;
 }
 
-/// Menus are grouped and a divider is drawn between groups — the shape the
-/// web sidebars use, and the only thing keeping an eleven-item list
-/// readable. Order within a group is the order it is written here.
-typedef PortalMenuGroups = List<List<PortalMenuItem>>;
+/// A titled block of rows. The title is what tells someone which of four
+/// plausible places a setting lives in before they have opened any of them —
+/// an eleven-row list separated only by hairlines does not.
+class PortalMenuSection {
+  const PortalMenuSection({required this.title, required this.items});
 
-const customerMenu = <List<PortalMenuItem>>[
-  [
-    PortalMenuItem(
-      icon: LucideIcons.circleUserRound,
-      label: 'Profile',
-      subtitle: 'Name, email and phone',
-      route: '/account/settings',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.wallet,
-      label: 'Wallet',
-      subtitle: 'Store credit and refunds',
-      route: '/account/wallet',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.repeat2,
-      label: 'Resell artwork',
-      subtitle: 'List a piece from your collection',
-      route: '/account/resale',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.mapPin,
-      label: 'Addresses',
-      subtitle: 'Delivery address book',
-      route: '/account/addresses',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.lifeBuoy,
-      label: 'Support',
-      subtitle: 'FAQs and tickets',
-      route: '/account/support',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.info,
-      label: 'About & legal',
-      subtitle: 'The company, terms and privacy',
-      route: AboutScreen.path,
-    ),
-  ],
+  final String title;
+  final List<PortalMenuItem> items;
+}
+
+typedef PortalMenuGroups = List<PortalMenuSection>;
+
+/// The rows every portal ends with. Support, the FAQs and the About/legal hub
+/// are the same three destinations for a collector, an artist and an
+/// aggregator, so they are written once — only Support's route differs.
+List<PortalMenuItem> _helpSection(String supportRoute) => [
+      PortalMenuItem(
+        icon: LucideIcons.lifeBuoy,
+        label: 'Support',
+        subtitle: 'Raise a ticket, or read your open ones',
+        route: supportRoute,
+      ),
+      const PortalMenuItem(
+        icon: LucideIcons.circleHelp,
+        label: 'FAQs',
+        subtitle: 'Buying, selling, authenticity and delivery',
+        route: FaqScreen.path,
+      ),
+      const PortalMenuItem(
+        icon: LucideIcons.info,
+        label: 'About & legal',
+        subtitle: 'The company, terms, privacy and cookies',
+        route: AboutScreen.path,
+      ),
+    ];
+
+final customerMenu = <PortalMenuSection>[
+  const PortalMenuSection(
+    title: 'Account',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.circleUserRound,
+        label: 'Profile',
+        subtitle: 'Name, email and phone',
+        route: '/account/settings',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.mapPin,
+        label: 'Addresses',
+        subtitle: 'Delivery address book',
+        route: '/account/addresses',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.wallet,
+        label: 'Wallet',
+        subtitle: 'Store credit and refunds',
+        route: '/account/wallet',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Selling',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.repeat2,
+        label: 'Resell artwork',
+        subtitle: 'List a piece from your collection',
+        route: '/account/resale',
+      ),
+    ],
+  ),
+  PortalMenuSection(title: 'Help & legal', items: _helpSection('/account/support')),
 ];
 
-const artistMenu = <List<PortalMenuItem>>[
-  [
-    PortalMenuItem(
-      icon: LucideIcons.circleUserRound,
-      label: 'Profile & KYC',
-      subtitle: 'Identity, bio and bank details',
-      route: '/dashboard/profile',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.mail,
-      label: 'Messages',
-      subtitle: 'Notices from GalleryZone',
-      route: '/dashboard/messages',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.images,
-      label: 'Portfolio',
-      subtitle: 'What buyers see of your work',
-      route: '/dashboard/portfolio',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.frame,
-      label: 'Aggregator Display',
-      subtitle: 'Pieces placed with aggregators',
-      route: '/dashboard/gallery-spaces',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.fingerprint,
-      label: 'COA & NFC',
-      subtitle: 'Certificates and physical tags',
-      route: '/dashboard/coa-nfc',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.users,
-      label: 'Connections',
-      subtitle: 'Other artists, and joint work',
-      route: '/dashboard/network',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.receipt,
-      label: 'Settlements',
-      subtitle: 'Payout records per sale',
-      route: '/dashboard/settlements',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.badgeCheck,
-      label: 'Verification',
-      subtitle: 'Progress to Gold Verified',
-      route: '/dashboard/verification',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.fileText,
-      label: 'Artist MOU',
-      subtitle: 'Your agreement with GalleryZone',
-      route: '/dashboard/mou',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.scale,
-      label: 'Artist Terms & Conditions',
-      subtitle: 'Listing, verification, pricing and settlement',
-      route: '/legal/artist-terms',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.settings,
-      label: 'Settings',
-      subtitle: 'Notification preferences',
-      route: '/dashboard/settings',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.lifeBuoy,
-      label: 'Support',
-      subtitle: 'Tickets and help',
-      route: '/dashboard/support',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.info,
-      label: 'About & legal',
-      subtitle: 'The company, terms and privacy',
-      route: AboutScreen.path,
-    ),
-  ],
+final artistMenu = <PortalMenuSection>[
+  const PortalMenuSection(
+    title: 'Account',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.circleUserRound,
+        label: 'Profile & KYC',
+        subtitle: 'Identity, bio and bank details',
+        route: '/dashboard/profile',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.badgeCheck,
+        label: 'Verification',
+        subtitle: 'Progress to Gold Verified',
+        route: '/dashboard/verification',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.mail,
+        label: 'Messages',
+        subtitle: 'Notices from GalleryZone',
+        route: '/dashboard/messages',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.settings,
+        label: 'Settings',
+        subtitle: 'Notification preferences',
+        route: '/dashboard/settings',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'My work',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.images,
+        label: 'Portfolio',
+        subtitle: 'What buyers see of your work',
+        route: '/dashboard/portfolio',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.frame,
+        label: 'Aggregator Display',
+        subtitle: 'Pieces placed with aggregators',
+        route: '/dashboard/gallery-spaces',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.fingerprint,
+        label: 'COA & NFC',
+        subtitle: 'Certificates and physical tags',
+        route: '/dashboard/coa-nfc',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.users,
+        label: 'Connections',
+        subtitle: 'Other artists, and joint work',
+        route: '/dashboard/network',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Money',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.receipt,
+        label: 'Settlements',
+        subtitle: 'Payout records per sale',
+        route: '/dashboard/settlements',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Agreements',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.fileText,
+        label: 'Artist MOU',
+        subtitle: 'Your signed agreement with GalleryZone',
+        route: '/dashboard/mou',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.scale,
+        label: 'Artist Terms & Conditions',
+        subtitle: 'Listing, verification, pricing and settlement',
+        route: '/legal/artist-terms',
+      ),
+    ],
+  ),
+  PortalMenuSection(title: 'Help & legal', items: _helpSection('/dashboard/support')),
 ];
 
-const aggregatorMenu = <List<PortalMenuItem>>[
-  [
-    PortalMenuItem(
-      icon: LucideIcons.circleUserRound,
-      label: 'Company profile',
-      subtitle: 'GST, contact and bank details',
-      route: '/aggregator/dashboard/profile',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.mail,
-      label: 'Messages',
-      subtitle: 'Notices from GalleryZone',
-      route: '/aggregator/dashboard/messages',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.shoppingBag,
-      label: 'Orders & sales',
-      subtitle: 'What you have sold, and to whom',
-      route: '/aggregator/dashboard/orders',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.users,
-      label: 'Customers',
-      subtitle: 'Buyers from your recorded sales',
-      route: '/aggregator/dashboard/customers',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.truck,
-      label: 'Shipping & logistics',
-      subtitle: 'Inbound pieces and outbound deliveries',
-      route: '/aggregator/dashboard/shipping',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.building2,
-      label: 'Display Spaces',
-      subtitle: 'Your premises and their occupancy',
-      route: '/aggregator/dashboard/gallery-spaces',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.landmark,
-      label: 'Settlements',
-      subtitle: 'Commission records per sale',
-      route: '/aggregator/dashboard/settlements',
-    ),
-  ],
-  [
-    PortalMenuItem(
-      icon: LucideIcons.scale,
-      label: 'Aggregator Terms & Conditions',
-      subtitle: 'Display, custody, commission and returns',
-      route: '/legal/aggregator-terms',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.settings,
-      label: 'Settings',
-      subtitle: 'Notification preferences',
-      route: '/aggregator/dashboard/settings',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.lifeBuoy,
-      label: 'Support',
-      subtitle: 'Tickets and help',
-      route: '/aggregator/dashboard/support',
-    ),
-    PortalMenuItem(
-      icon: LucideIcons.info,
-      label: 'About & legal',
-      subtitle: 'The company, terms and privacy',
-      route: AboutScreen.path,
-    ),
-  ],
+final aggregatorMenu = <PortalMenuSection>[
+  const PortalMenuSection(
+    title: 'Account',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.circleUserRound,
+        label: 'Company profile',
+        subtitle: 'GST, contact and bank details',
+        route: '/aggregator/dashboard/profile',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.mail,
+        label: 'Messages',
+        subtitle: 'Notices from GalleryZone',
+        route: '/aggregator/dashboard/messages',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.settings,
+        label: 'Settings',
+        subtitle: 'Notification preferences',
+        route: '/aggregator/dashboard/settings',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Operations',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.shoppingBag,
+        label: 'Orders & sales',
+        subtitle: 'What you have sold, and to whom',
+        route: '/aggregator/dashboard/orders',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.users,
+        label: 'Customers',
+        subtitle: 'Buyers from your recorded sales',
+        route: '/aggregator/dashboard/customers',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.truck,
+        label: 'Shipping & logistics',
+        subtitle: 'Inbound pieces and outbound deliveries',
+        route: '/aggregator/dashboard/shipping',
+      ),
+      PortalMenuItem(
+        icon: LucideIcons.building2,
+        label: 'Display Spaces',
+        subtitle: 'Your premises and their occupancy',
+        route: '/aggregator/dashboard/gallery-spaces',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Money',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.landmark,
+        label: 'Settlements',
+        subtitle: 'Commission records per sale',
+        route: '/aggregator/dashboard/settlements',
+      ),
+    ],
+  ),
+  const PortalMenuSection(
+    title: 'Agreements',
+    items: [
+      PortalMenuItem(
+        icon: LucideIcons.scale,
+        label: 'Aggregator Terms & Conditions',
+        subtitle: 'Display, custody, commission and returns',
+        route: '/legal/aggregator-terms',
+      ),
+    ],
+  ),
+  PortalMenuSection(
+    title: 'Help & legal',
+    items: _helpSection('/aggregator/dashboard/support'),
+  ),
 ];
 
 /// Initials for the avatar. Two words give two letters, one gives one — no
@@ -335,10 +363,21 @@ class PortalMenuDrawer extends ConsumerWidget {
                       ),
                       closeOnly: true,
                     ),
-                  for (final (index, group) in groups.indexed) ...[
+                  for (final (index, section) in groups.indexed) ...[
                     if (index > 0 || homeRoute != null)
                       const Divider(height: 1, indent: 16, endIndent: 16),
-                    for (final item in group) _MenuRow(item: item),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+                      child: Text(
+                        section.title.toUpperCase(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.tertiary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.4,
+                        ),
+                      ),
+                    ),
+                    for (final item in section.items) _MenuRow(item: item),
                   ],
                 ],
               ),

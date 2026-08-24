@@ -32,7 +32,7 @@ class ArtistDashboardScreen extends ConsumerWidget {
         title: const Text('Dashboard'),
         actions: [PortalAvatarButton(name: currentArtistName, badgeCount: unread)],
       ),
-      endDrawer: const PortalMenuDrawer(
+      endDrawer: PortalMenuDrawer(
         name: currentArtistName,
         roleLabel: 'Artist',
         groups: artistMenu,
