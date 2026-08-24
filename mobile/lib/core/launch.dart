@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// The public site. Phase 7 ships the marketing and legal pages as link-outs
-/// to here rather than as native screens: they are low-interaction
-/// marketing/legal copy that changes on the web team's schedule, and a native
-/// rebuild would mean maintaining the same words in two places.
-const galleryZoneSite = 'https://galleryzone.in';
+/// The public site. The legal documents and the FAQ are native screens now
+/// (see `features/legal/`); what still links out is the marketing copy —
+/// the landing page, About, Contact and the artist survey.
+const galleryZoneSite = 'https://www.galleryzone.art';
 
 /// The app's public contact points, as the web's support pages show them.
 const galleryZoneEmail = 'galleryzone@zohomail.in';

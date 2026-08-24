@@ -8,10 +8,8 @@ import '../../../core/format.dart';
 import '../../../data/mock/seed/aggregator_seed.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/screens/login_screen.dart';
+import '../../shell/portal_menu.dart';
 import '../../shell/portal_widgets.dart';
-import '../../marketing/screens/about_screen.dart';
 import '../providers/aggregator_providers.dart';
 import '../widgets/aggregator_widgets.dart';
 
@@ -22,75 +20,6 @@ class AggregatorDashboardScreen extends ConsumerWidget {
   const AggregatorDashboardScreen({super.key});
 
   static const path = '/aggregator/dashboard';
-
-  static const _manage = <({IconData icon, String label, String subtitle, String route})>[
-    (
-      icon: LucideIcons.shoppingBag,
-      label: 'Orders & sales',
-      subtitle: 'What you have sold, and to whom',
-      route: '/aggregator/dashboard/orders'
-    ),
-    (
-      icon: LucideIcons.users,
-      label: 'Customers',
-      subtitle: 'Buyers from your recorded sales',
-      route: '/aggregator/dashboard/customers'
-    ),
-    (
-      icon: LucideIcons.truck,
-      label: 'Shipping & logistics',
-      subtitle: 'Inbound pieces and outbound deliveries',
-      route: '/aggregator/dashboard/shipping'
-    ),
-    (
-      icon: LucideIcons.building2,
-      label: 'Display Spaces',
-      subtitle: 'Your premises and their occupancy',
-      route: '/aggregator/dashboard/gallery-spaces'
-    ),
-    (
-      icon: LucideIcons.landmark,
-      label: 'Settlements',
-      subtitle: 'Commission records per sale',
-      route: '/aggregator/dashboard/settlements'
-    ),
-    (
-      icon: LucideIcons.chartLine,
-      label: 'Analytics',
-      subtitle: 'Revenue, categories, sell-through',
-      route: '/aggregator/dashboard/analytics'
-    ),
-    (
-      icon: LucideIcons.mail,
-      label: 'Messages',
-      subtitle: 'Notices from GalleryZone',
-      route: '/aggregator/dashboard/messages'
-    ),
-    (
-      icon: LucideIcons.circleUserRound,
-      label: 'Company profile',
-      subtitle: 'GST, contact and bank details',
-      route: '/aggregator/dashboard/profile'
-    ),
-    (
-      icon: LucideIcons.settings,
-      label: 'Settings',
-      subtitle: 'Notification preferences',
-      route: '/aggregator/dashboard/settings'
-    ),
-    (
-      icon: LucideIcons.lifeBuoy,
-      label: 'Support',
-      subtitle: 'Tickets and help',
-      route: '/aggregator/dashboard/support'
-    ),
-    (
-      icon: LucideIcons.info,
-      label: 'About & legal',
-      subtitle: 'The company, terms and privacy',
-      route: AboutScreen.path
-    ),
-  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -104,16 +33,13 @@ class AggregatorDashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(LucideIcons.logOut),
-            onPressed: () async {
-              await ref.read(sessionProvider.notifier).signOut();
-              if (context.mounted) context.go(LoginScreen.path);
-            },
-          ),
-        ],
+        actions: [PortalAvatarButton(name: currentAggregatorName, badgeCount: unread)],
+      ),
+      endDrawer: const PortalMenuDrawer(
+        name: currentAggregatorName,
+        roleLabel: 'Aggregator',
+        groups: aggregatorMenu,
+        homeRoute: AggregatorDashboardScreen.path,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -194,20 +120,6 @@ class AggregatorDashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: _ActivityRow(view: view),
                       ),
-                  const SizedBox(height: 16),
-                  Text('Manage', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  for (final item in _manage)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(item.icon, size: 20, color: theme.colorScheme.tertiary),
-                      title: Text(item.label, style: theme.textTheme.bodyMedium),
-                      subtitle: Text(item.subtitle, style: theme.textTheme.labelSmall),
-                      trailing: item.label == 'Messages' && unread > 0
-                          ? Badge(label: Text('$unread'))
-                          : const Icon(Icons.chevron_right, size: 18),
-                      onTap: () => context.push(item.route),
-                    ),
                 ],
               ),
             ),

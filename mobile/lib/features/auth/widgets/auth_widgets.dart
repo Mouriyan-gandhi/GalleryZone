@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../shell/brand_mark.dart';
 import '../validators.dart';
 
 /// Shared pieces of the five Auth screens, ported from
@@ -43,22 +44,7 @@ class AuthCrest extends StatelessWidget {
     final theme = Theme.of(context);
     return Column(
       children: [
-        Text(
-          'GZ',
-          style: theme.textTheme.displaySmall?.copyWith(
-            color: theme.colorScheme.tertiary,
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'GALLERYZONE',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            letterSpacing: 3.5,
-          ),
-        ),
+        const BrandMark(size: 92),
         const SizedBox(height: 8),
         // The brand line, directly under the wordmark rather than tucked at
         // the bottom of a panel a phone never scrolls to.

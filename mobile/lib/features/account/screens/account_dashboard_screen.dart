@@ -6,10 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/screens/login_screen.dart';
 import '../../marketplace/providers/marketplace_providers.dart';
-import '../../marketing/screens/about_screen.dart';
+import '../../shell/portal_menu.dart';
 import '../providers/account_providers.dart';
 import '../widgets/order_widgets.dart';
 
@@ -42,19 +40,20 @@ class AccountDashboardScreen extends ConsumerWidget {
       ),
     ];
 
+    // The profile arrives a frame late; the avatar and the drawer header
+    // both need a name before it does, so they share one fallback.
+    final name = profile?.name ?? 'Collector';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Account'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(LucideIcons.logOut),
-            onPressed: () async {
-              await ref.read(sessionProvider.notifier).signOut();
-              if (context.mounted) context.go(LoginScreen.path);
-            },
-          ),
-        ],
+        actions: [PortalAvatarButton(name: name)],
+      ),
+      endDrawer: PortalMenuDrawer(
+        name: name,
+        roleLabel: 'Collector',
+        groups: customerMenu,
+        homeRoute: AccountDashboardScreen.path,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -126,45 +125,6 @@ class AccountDashboardScreen extends ConsumerWidget {
                         padding: const EdgeInsets.only(bottom: 10),
                         child: OrderRow(order: order, artwork: artworks[order.artworkId]),
                       ),
-                  const SizedBox(height: 20),
-                  Text('Manage', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  const _ManageTile(
-                    icon: LucideIcons.wallet,
-                    label: 'Wallet',
-                    subtitle: 'Store credit and refunds',
-                    route: '/account/wallet',
-                  ),
-                  const _ManageTile(
-                    icon: LucideIcons.repeat2,
-                    label: 'Resell artwork',
-                    subtitle: 'List a piece from your collection',
-                    route: '/account/resale',
-                  ),
-                  const _ManageTile(
-                    icon: LucideIcons.mapPin,
-                    label: 'Addresses',
-                    subtitle: 'Delivery address book',
-                    route: '/account/addresses',
-                  ),
-                  const _ManageTile(
-                    icon: LucideIcons.circleUserRound,
-                    label: 'Profile',
-                    subtitle: 'Name, email and phone',
-                    route: '/account/settings',
-                  ),
-                  const _ManageTile(
-                    icon: LucideIcons.lifeBuoy,
-                    label: 'Support',
-                    subtitle: 'FAQs and tickets',
-                    route: '/account/support',
-                  ),
-                  const _ManageTile(
-                    icon: LucideIcons.info,
-                    label: 'About & legal',
-                    subtitle: 'The company, terms and privacy',
-                    route: AboutScreen.path,
-                  ),
                 ],
               ),
             ),
@@ -270,29 +230,3 @@ class _DiscoverBanner extends StatelessWidget {
   }
 }
 
-class _ManageTile extends StatelessWidget {
-  const _ManageTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.route,
-  });
-
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final String route;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, size: 20, color: theme.colorScheme.tertiary),
-      title: Text(label, style: theme.textTheme.bodyMedium),
-      subtitle: Text(subtitle, style: theme.textTheme.labelSmall),
-      trailing: const Icon(Icons.chevron_right, size: 18),
-      onTap: () => context.push(route),
-    );
-  }
-}

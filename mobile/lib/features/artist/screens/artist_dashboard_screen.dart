@@ -6,12 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../data/mock/seed/artist_seed.dart';
 import '../../../data/models/artist_portal.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/screens/login_screen.dart';
-import '../../marketing/screens/about_screen.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 import '../widgets/rating_widgets.dart';
+import '../../shell/portal_menu.dart';
 
 /// Port of `app/dashboard/page.tsx` — KPI cards, verification ladder,
 /// activity feed, and the entry points the web keeps in its sidebar.
@@ -19,87 +17,6 @@ class ArtistDashboardScreen extends ConsumerWidget {
   const ArtistDashboardScreen({super.key});
 
   static const path = '/dashboard';
-
-  static const _manage = <({IconData icon, String label, String subtitle, String route})>[
-    (
-      icon: LucideIcons.chartLine,
-      label: 'Analytics',
-      subtitle: 'Revenue, categories, conversion',
-      route: '/dashboard/analytics'
-    ),
-    (
-      icon: LucideIcons.users,
-      label: 'Connections',
-      subtitle: 'Other artists, and joint work',
-      route: '/dashboard/network'
-    ),
-    (
-      icon: LucideIcons.fingerprint,
-      label: 'COA & NFC',
-      subtitle: 'Certificates and physical tags',
-      route: '/dashboard/coa-nfc'
-    ),
-    (
-      icon: LucideIcons.frame,
-      label: 'Aggregator Display',
-      subtitle: 'Pieces placed with aggregators',
-      route: '/dashboard/gallery-spaces'
-    ),
-    (
-      icon: LucideIcons.images,
-      label: 'Portfolio',
-      subtitle: 'What buyers see of your work',
-      route: '/dashboard/portfolio'
-    ),
-    (
-      icon: LucideIcons.receipt,
-      label: 'Settlements',
-      subtitle: 'Payout records per sale',
-      route: '/dashboard/settlements'
-    ),
-    (
-      icon: LucideIcons.fileText,
-      label: 'Artist MOU',
-      subtitle: 'Your agreement with GalleryZone',
-      route: '/dashboard/mou'
-    ),
-    (
-      icon: LucideIcons.badgeCheck,
-      label: 'Verification',
-      subtitle: 'Progress to Gold ✦ Verified',
-      route: '/dashboard/verification'
-    ),
-    (
-      icon: LucideIcons.mail,
-      label: 'Messages',
-      subtitle: 'Notices from GalleryZone',
-      route: '/dashboard/messages'
-    ),
-    (
-      icon: LucideIcons.circleUserRound,
-      label: 'Profile & KYC',
-      subtitle: 'Identity, bio and bank details',
-      route: '/dashboard/profile'
-    ),
-    (
-      icon: LucideIcons.settings,
-      label: 'Settings',
-      subtitle: 'Notification preferences',
-      route: '/dashboard/settings'
-    ),
-    (
-      icon: LucideIcons.lifeBuoy,
-      label: 'Support',
-      subtitle: 'Tickets and help',
-      route: '/dashboard/support'
-    ),
-    (
-      icon: LucideIcons.info,
-      label: 'About & legal',
-      subtitle: 'The company, terms and privacy',
-      route: AboutScreen.path
-    ),
-  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,16 +30,13 @@ class ArtistDashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        actions: [
-          IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(LucideIcons.logOut),
-            onPressed: () async {
-              await ref.read(sessionProvider.notifier).signOut();
-              if (context.mounted) context.go(LoginScreen.path);
-            },
-          ),
-        ],
+        actions: [PortalAvatarButton(name: currentArtistName, badgeCount: unread)],
+      ),
+      endDrawer: const PortalMenuDrawer(
+        name: currentArtistName,
+        roleLabel: 'Artist',
+        groups: artistMenu,
+        homeRoute: ArtistDashboardScreen.path,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -231,20 +145,6 @@ class ArtistDashboardScreen extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _ActivityRow(entry: entry),
-                    ),
-                  const SizedBox(height: 16),
-                  Text('Manage', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 8),
-                  for (final item in _manage)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(item.icon, size: 20, color: theme.colorScheme.tertiary),
-                      title: Text(item.label, style: theme.textTheme.bodyMedium),
-                      subtitle: Text(item.subtitle, style: theme.textTheme.labelSmall),
-                      trailing: item.route == '/dashboard/messages' && unread > 0
-                          ? Badge(label: Text('$unread'))
-                          : const Icon(Icons.chevron_right, size: 18),
-                      onTap: () => context.push(item.route),
                     ),
                 ],
               ),

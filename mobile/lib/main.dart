@@ -36,10 +36,10 @@ class GalleryZoneApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      // Dark is the product's hard default — the web forces it with
-      // `next-themes` `enableSystem: false`. A user-facing toggle lands with
-      // the settings screens (Phase 4).
-      themeMode: ThemeMode.dark,
+      // Light is the app's default, regardless of the device setting. The
+      // dark palette is still built above and still correct; nothing selects
+      // it today.
+      themeMode: ThemeMode.light,
       routerConfig: ref.watch(routerProvider),
     );
   }

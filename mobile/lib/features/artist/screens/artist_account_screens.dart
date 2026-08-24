@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../legal/data/faq_data.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -734,7 +736,7 @@ class _ArtistSupportScreenState extends ConsumerState<ArtistSupportScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                const SupportFaqPanel(),
+                const SupportFaqPanel(audience: FaqAudience.artists),
                 const SizedBox(height: 24),
                 Text('Raise a ticket', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 12),

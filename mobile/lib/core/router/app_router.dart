@@ -29,7 +29,6 @@ import '../../features/aggregator/screens/aggregator_operations_screens.dart';
 import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
 import '../../features/artist/screens/artist_account_screens.dart';
-import '../../features/artist/screens/artist_analytics_screen.dart';
 import '../../features/artist/screens/artist_artworks_screen.dart';
 import '../../features/artist/screens/artist_catalog_screens.dart';
 import '../../features/artist/screens/artist_dashboard_screen.dart';
@@ -40,12 +39,15 @@ import '../../features/artist/screens/artist_network_screen.dart';
 import '../../features/artist/screens/mou_screen.dart';
 import '../../features/artist/widgets/artist_shell.dart';
 import '../../features/checkout/screens/checkout_screen.dart';
+import '../../features/legal/screens/faq_screen.dart';
+import '../../features/legal/screens/legal_document_screen.dart';
 import '../../features/marketing/screens/about_screen.dart';
 import '../../features/marketplace/screens/artist_profile_screen.dart';
 import '../../features/marketplace/screens/artwork_detail_screen.dart';
 import '../../features/marketplace/screens/marketplace_screen.dart';
 import '../../features/marketplace/screens/passport_screen.dart';
 import '../../features/ownership/screens/transfer_accept_screen.dart';
+import '../../features/splash/splash_screen.dart';
 
 /// Sections a signed-in role owns. Port of `proxy.ts`'s `GUARDED_PREFIXES`
 /// minus `/admin`, which never mounts on mobile.
@@ -83,7 +85,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(session.dispose);
 
   return GoRouter(
-    initialLocation: session.value?.home ?? LoginScreen.path,
+    // Every cold start opens on the splash, which holds the mark and then
+    // sends the launch on to `splashDestination` — the same
+    // `role.home ?? /login` this used to pick synchronously.
+    initialLocation: SplashScreen.path,
     refreshListenable: session,
     redirect: (context, state) => redirectFor(session.value, state.matchedLocation),
     // A bad deep link (or a stale link to a screen a later phase hasn't
@@ -113,6 +118,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ),
     routes: [
+      GoRoute(
+        path: SplashScreen.path,
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: LoginScreen.path,
         builder: (context, state) =>
@@ -170,6 +179,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AboutScreen.path,
         builder: (context, state) => const AboutScreen(),
       ),
+      GoRoute(
+        path: FaqScreen.path,
+        builder: (context, state) => const FaqScreen(),
+      ),
+      // One route per document rather than `/legal/:docId`, so an unknown
+      // legal path hits the real error page instead of an empty document.
+      for (final spec in legalDocs.values)
+        GoRoute(
+          path: '/legal/${spec.id}',
+          builder: (context, state) => LegalDocumentScreen(spec: spec),
+        ),
       // An ownership transfer link has to open for whoever is handed the
       // piece, account or not — same reasoning as the passport above.
       GoRoute(
@@ -266,10 +286,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ArtistDashboardScreen.path,
                 builder: (context, state) => const ArtistDashboardScreen(),
                 routes: [
-                  GoRoute(
-                    path: 'analytics',
-                    builder: (context, state) => const ArtistAnalyticsScreen(),
-                  ),
                   GoRoute(
                     path: 'coa-nfc',
                     builder: (context, state) => const CoaNfcScreen(),
@@ -388,10 +404,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'settlements',
                     builder: (context, state) => const AggregatorSettlementsScreen(),
-                  ),
-                  GoRoute(
-                    path: 'analytics',
-                    builder: (context, state) => const AggregatorAnalyticsScreen(),
                   ),
                   GoRoute(
                     path: 'messages',

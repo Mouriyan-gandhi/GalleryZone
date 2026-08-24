@@ -327,6 +327,10 @@ class EmptyState extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
       child: Column(
+        // Callers hand this the whole body of a screen, so start-aligned
+        // content parks it under the app bar with the rest of the page
+        // empty. Centering is a no-op where the height is unbounded.
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 32, color: theme.colorScheme.tertiary),
           const SizedBox(height: 16),

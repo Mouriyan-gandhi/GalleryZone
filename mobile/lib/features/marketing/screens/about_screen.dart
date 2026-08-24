@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/launch.dart';
 import '../../../data/models/artwork.dart' show SocialProofPlatform;
 import '../../marketplace/widgets/social_glyphs.dart';
+import '../../legal/screens/faq_screen.dart';
+import '../../legal/screens/legal_document_screen.dart';
 import '../../shell/portal_widgets.dart';
 
-/// Phase 7, link-out form. The eight public pages the web serves —
-/// home, about, contact, faq, privacy, terms, cookies, artist-survey — are
-/// reached from this one native screen rather than rebuilt as eight native
-/// screens.
+/// The company and legal hub.
 ///
-/// The reasoning, so a later session doesn't undo it by accident: these are
-/// marketing and legal copy with essentially no interaction. Rebuilding them
-/// natively means the same paragraphs live in two repositories and drift the
-/// first time legal changes a sentence. What the app owes the reader is a
-/// reliable way to reach the current text, which is what this is.
+/// The legal documents and the FAQ are native screens (`features/legal/`) —
+/// they are what a reader needs in front of them while signing something, so
+/// they ship with the app and work offline. The wording is generated from the
+/// web's own content files, which is what keeps the two from drifting.
+///
+/// The marketing pages — the landing page, About, Contact, the artist survey
+/// — still open the website, because they change on the web team's schedule
+/// and nothing in the app depends on their text.
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -29,12 +32,6 @@ class AboutScreen extends StatelessWidget {
       label: 'About GalleryZone',
       subtitle: 'Who we are and how the platform works',
       path: '/about'
-    ),
-    (
-      icon: LucideIcons.circleHelp,
-      label: 'Frequently asked questions',
-      subtitle: 'Buying, selling, authenticity and delivery',
-      path: '/faq'
     ),
     (
       icon: LucideIcons.mail,
@@ -51,24 +48,31 @@ class AboutScreen extends StatelessWidget {
   ];
 
   @visibleForTesting
-  static const legalLinks = <({IconData icon, String label, String subtitle, String path})>[
+  static const legalDocs = <({LegalDoc doc, IconData icon, String subtitle})>[
     (
+      doc: LegalDoc.terms,
       icon: LucideIcons.scale,
-      label: 'Terms of service',
-      subtitle: 'The agreement covering your use of GalleryZone',
-      path: '/terms'
+      subtitle: 'The agreement covering your use of GalleryZone'
     ),
     (
+      doc: LegalDoc.privacy,
       icon: LucideIcons.shieldCheck,
-      label: 'Privacy policy',
-      subtitle: 'What we collect and what we do with it',
-      path: '/privacy'
+      subtitle: 'What we collect and what we do with it'
     ),
     (
+      doc: LegalDoc.cookies,
       icon: LucideIcons.cookie,
-      label: 'Cookie policy',
-      subtitle: 'Cookies the website sets, and why',
-      path: '/cookies'
+      subtitle: 'Cookies the website sets, and why'
+    ),
+    (
+      doc: LegalDoc.artistTerms,
+      icon: LucideIcons.palette,
+      subtitle: 'Listing, verification, pricing and settlement'
+    ),
+    (
+      doc: LegalDoc.aggregatorTerms,
+      icon: LucideIcons.building2,
+      subtitle: 'Display, custody, commission and returns'
     ),
   ];
 
@@ -128,16 +132,34 @@ class AboutScreen extends StatelessWidget {
                 Text('Company', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 4),
                 Text(
-                  'These pages open galleryzone.in in your browser, so you always '
-                  'get the current version.',
+                  'These pages open galleryzone.art in your browser, so you '
+                  'always get the current version.',
                   style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
                 ),
                 const SizedBox(height: 8),
                 for (final item in companyLinks) _LinkRow(item: item),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(LucideIcons.circleHelp,
+                      size: 20, color: theme.colorScheme.tertiary),
+                  title: Text('Frequently asked questions',
+                      style: theme.textTheme.bodyMedium),
+                  subtitle: Text('Buying, selling, authenticity and delivery',
+                      style: theme.textTheme.labelSmall),
+                  trailing: const Icon(Icons.chevron_right, size: 18),
+                  onTap: () => context.push(FaqScreen.path),
+                ),
                 const SizedBox(height: 20),
                 Text('Legal', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 4),
+                Text(
+                  'Read in full here — these ship with the app, so they work '
+                  'offline and match this build.',
+                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                ),
                 const SizedBox(height: 8),
-                for (final item in legalLinks) _LinkRow(item: item),
+                for (final item in legalDocs)
+                  LegalDocRow(doc: item.doc, icon: item.icon, subtitle: item.subtitle),
                 const SizedBox(height: 24),
                 Text('Get in touch', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
@@ -164,7 +186,7 @@ class AboutScreen extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: () => openExternal(context, galleryZoneSite),
                     icon: const Icon(LucideIcons.externalLink, size: 15),
-                    label: const Text('Visit galleryzone.in'),
+                    label: const Text('Visit galleryzone.art'),
                   ),
                 ),
               ],

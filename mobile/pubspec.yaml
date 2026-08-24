@@ -87,6 +87,11 @@ flutter:
   # seeds still carry the web paths, so `ArtworkImageView` maps
   # `/artworks/bird.png` to `assets/images/artworks/bird.jpg`.
   assets:
+    # The brand mark, taken from production's `public/brand/gz-logo.png` with
+    # its white studio background keyed out. Drawn twice at launch: by
+    # flutter_native_splash before Flutter boots, and by SplashScreen after,
+    # so the handoff is invisible.
+    - assets/brand/gz-logo.png
     - assets/images/artworks/
     - assets/images/early-program/
     - assets/images/ecosystem/
@@ -144,16 +149,17 @@ flutter_launcher_icons:
   min_sdk_android: 21
 
 flutter_native_splash:
-  color: "#0B0A08"
-  image: assets/icon/splash.png
-  # The theme is dark-first and the splash is brand black either way, so the
-  # light-mode splash is the same rather than a washed-out inversion.
-  color_dark: "#0B0A08"
-  image_dark: assets/icon/splash.png
+  # The app opens in light mode regardless of the device setting, so both
+  # splashes use the light background — a dark one would flash black before
+  # the first Flutter frame.
+  color: "#F7F3E9"
+  image: assets/brand/splash.png
+  color_dark: "#F7F3E9"
+  image_dark: assets/brand/splash.png
   android_12:
-    color: "#0B0A08"
-    color_dark: "#0B0A08"
+    color: "#F7F3E9"
+    color_dark: "#F7F3E9"
     # Android 12+ masks the splash icon to a circle and shows only the inner
     # two-thirds, which would crop the wider image above.
-    image: assets/icon/splash_android12.png
-    image_dark: assets/icon/splash_android12.png
+    image: assets/brand/splash_android12.png
+    image_dark: assets/brand/splash_android12.png

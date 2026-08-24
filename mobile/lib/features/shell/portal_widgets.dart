@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/launch.dart';
 import '../../core/theme/app_theme.dart';
+import '../legal/data/faq_data.dart';
+import '../legal/screens/faq_screen.dart';
 
 /// One destination model, shared by all three portal shells. Each portal's
 /// web sidebar (nine to fifteen grouped items) collapses to four primary
@@ -122,13 +124,14 @@ class ContactLinkRow extends StatelessWidget {
 /// FAQs and walkthrough videos, shown inside every portal's Support screen —
 /// one place a signed-in user goes when they need an answer.
 ///
-/// The answers themselves stay on galleryzone.in/faq rather than being
-/// copied into this app. That is the Phase 7 decision applied to Batch A's
-/// "fold the FAQs into Support": the web keeps one canonical copy of the
-/// wording, so the two surfaces cannot drift the first time legal changes a
-/// sentence.
+/// The answers are native now, generated from the web's own `faq-data.ts`, so
+/// they read the same on both clients without a network round trip.
 class SupportFaqPanel extends StatelessWidget {
-  const SupportFaqPanel({super.key});
+  const SupportFaqPanel({super.key, this.audience});
+
+  /// Opens the FAQ on this portal's own tab — an artist should not land on
+  /// the buyer questions.
+  final FaqAudience? audience;
 
   @override
   Widget build(BuildContext context) {
@@ -138,11 +141,29 @@ class SupportFaqPanel extends StatelessWidget {
       children: [
         Text('FAQs', style: theme.textTheme.titleLarge),
         const SizedBox(height: 8),
-        const ContactLinkRow(
-          icon: LucideIcons.circleHelp,
-          label: 'Read the FAQs on galleryzone.in',
-          url: '$galleryZoneSite/faq',
+        PortalCard(
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => FaqScreen(initialAudience: audience)),
+            ),
+            child: Row(
+              children: [
+                Icon(LucideIcons.circleHelp, size: 16, color: theme.colorScheme.tertiary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Read the FAQs',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.tertiary,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 18, color: theme.colorScheme.outline),
+              ],
+            ),
+          ),
         ),
+        const SizedBox(height: 8),
         // Placeholder for the walkthrough videos: everything beyond the
         // aggregator-terms explainer is hosted on YouTube and linked from
         // here — drop the links in when the channel is ready.
