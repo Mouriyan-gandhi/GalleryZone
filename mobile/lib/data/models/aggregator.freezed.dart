@@ -288,7 +288,10 @@ as String,
 /// @nodoc
 mixin _$AggregatorSale {
 
- String get id; String get holdingId; String get artworkId; double get soldPrice; String get buyerName; String get buyerEmail; String get buyerPhone; DeliveryAddress get deliveryAddress; DeliveryMode get deliveryMode; String get soldAt; ShipmentStatus get shipmentStatus; String? get dispatchedAt; String? get deliveredAt;/// Null when [deliveryMode] is [DeliveryMode.selfPickup].
+ String get id; String get holdingId; String get artworkId; double get soldPrice; String get buyerName; String get buyerEmail; String get buyerPhone; DeliveryAddress get deliveryAddress; DeliveryMode get deliveryMode; String get soldAt; ShipmentStatus get shipmentStatus; String? get dispatchedAt; String? get deliveredAt;/// How the buyer's money reached GalleryZone.
+ PaymentRoute get paymentRoute;/// Set when the aggregator has transferred cash they collected. Null
+/// while the money is still sitting in their till.
+ String? get remittedAt;/// Null when [deliveryMode] is [DeliveryMode.selfPickup].
  String? get courierRef;
 /// Create a copy of AggregatorSale
 /// with the given fields replaced by the non-null parameter values.
@@ -302,16 +305,16 @@ $AggregatorSaleCopyWith<AggregatorSale> get copyWith => _$AggregatorSaleCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorSale&&(identical(other.id, id) || other.id == id)&&(identical(other.holdingId, holdingId) || other.holdingId == holdingId)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.soldPrice, soldPrice) || other.soldPrice == soldPrice)&&(identical(other.buyerName, buyerName) || other.buyerName == buyerName)&&(identical(other.buyerEmail, buyerEmail) || other.buyerEmail == buyerEmail)&&(identical(other.buyerPhone, buyerPhone) || other.buyerPhone == buyerPhone)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.deliveryMode, deliveryMode) || other.deliveryMode == deliveryMode)&&(identical(other.soldAt, soldAt) || other.soldAt == soldAt)&&(identical(other.shipmentStatus, shipmentStatus) || other.shipmentStatus == shipmentStatus)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorSale&&(identical(other.id, id) || other.id == id)&&(identical(other.holdingId, holdingId) || other.holdingId == holdingId)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.soldPrice, soldPrice) || other.soldPrice == soldPrice)&&(identical(other.buyerName, buyerName) || other.buyerName == buyerName)&&(identical(other.buyerEmail, buyerEmail) || other.buyerEmail == buyerEmail)&&(identical(other.buyerPhone, buyerPhone) || other.buyerPhone == buyerPhone)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.deliveryMode, deliveryMode) || other.deliveryMode == deliveryMode)&&(identical(other.soldAt, soldAt) || other.soldAt == soldAt)&&(identical(other.shipmentStatus, shipmentStatus) || other.shipmentStatus == shipmentStatus)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.paymentRoute, paymentRoute) || other.paymentRoute == paymentRoute)&&(identical(other.remittedAt, remittedAt) || other.remittedAt == remittedAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,holdingId,artworkId,soldPrice,buyerName,buyerEmail,buyerPhone,deliveryAddress,deliveryMode,soldAt,shipmentStatus,dispatchedAt,deliveredAt,courierRef);
+int get hashCode => Object.hash(runtimeType,id,holdingId,artworkId,soldPrice,buyerName,buyerEmail,buyerPhone,deliveryAddress,deliveryMode,soldAt,shipmentStatus,dispatchedAt,deliveredAt,paymentRoute,remittedAt,courierRef);
 
 @override
 String toString() {
-  return 'AggregatorSale(id: $id, holdingId: $holdingId, artworkId: $artworkId, soldPrice: $soldPrice, buyerName: $buyerName, buyerEmail: $buyerEmail, buyerPhone: $buyerPhone, deliveryAddress: $deliveryAddress, deliveryMode: $deliveryMode, soldAt: $soldAt, shipmentStatus: $shipmentStatus, dispatchedAt: $dispatchedAt, deliveredAt: $deliveredAt, courierRef: $courierRef)';
+  return 'AggregatorSale(id: $id, holdingId: $holdingId, artworkId: $artworkId, soldPrice: $soldPrice, buyerName: $buyerName, buyerEmail: $buyerEmail, buyerPhone: $buyerPhone, deliveryAddress: $deliveryAddress, deliveryMode: $deliveryMode, soldAt: $soldAt, shipmentStatus: $shipmentStatus, dispatchedAt: $dispatchedAt, deliveredAt: $deliveredAt, paymentRoute: $paymentRoute, remittedAt: $remittedAt, courierRef: $courierRef)';
 }
 
 
@@ -322,7 +325,7 @@ abstract mixin class $AggregatorSaleCopyWith<$Res>  {
   factory $AggregatorSaleCopyWith(AggregatorSale value, $Res Function(AggregatorSale) _then) = _$AggregatorSaleCopyWithImpl;
 @useResult
 $Res call({
- String id, String holdingId, String artworkId, double soldPrice, String buyerName, String buyerEmail, String buyerPhone, DeliveryAddress deliveryAddress, DeliveryMode deliveryMode, String soldAt, ShipmentStatus shipmentStatus, String? dispatchedAt, String? deliveredAt, String? courierRef
+ String id, String holdingId, String artworkId, double soldPrice, String buyerName, String buyerEmail, String buyerPhone, DeliveryAddress deliveryAddress, DeliveryMode deliveryMode, String soldAt, ShipmentStatus shipmentStatus, String? dispatchedAt, String? deliveredAt, PaymentRoute paymentRoute, String? remittedAt, String? courierRef
 });
 
 
@@ -339,7 +342,7 @@ class _$AggregatorSaleCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorSale
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? holdingId = null,Object? artworkId = null,Object? soldPrice = null,Object? buyerName = null,Object? buyerEmail = null,Object? buyerPhone = null,Object? deliveryAddress = null,Object? deliveryMode = null,Object? soldAt = null,Object? shipmentStatus = null,Object? dispatchedAt = freezed,Object? deliveredAt = freezed,Object? courierRef = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? holdingId = null,Object? artworkId = null,Object? soldPrice = null,Object? buyerName = null,Object? buyerEmail = null,Object? buyerPhone = null,Object? deliveryAddress = null,Object? deliveryMode = null,Object? soldAt = null,Object? shipmentStatus = null,Object? dispatchedAt = freezed,Object? deliveredAt = freezed,Object? paymentRoute = null,Object? remittedAt = freezed,Object? courierRef = freezed,}) {
   return _then(AggregatorSale(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,holdingId: null == holdingId ? _self.holdingId : holdingId // ignore: cast_nullable_to_non_nullable
@@ -354,6 +357,8 @@ as DeliveryMode,soldAt: null == soldAt ? _self.soldAt : soldAt // ignore: cast_n
 as String,shipmentStatus: null == shipmentStatus ? _self.shipmentStatus : shipmentStatus // ignore: cast_nullable_to_non_nullable
 as ShipmentStatus,dispatchedAt: freezed == dispatchedAt ? _self.dispatchedAt : dispatchedAt // ignore: cast_nullable_to_non_nullable
 as String?,deliveredAt: freezed == deliveredAt ? _self.deliveredAt : deliveredAt // ignore: cast_nullable_to_non_nullable
+as String?,paymentRoute: null == paymentRoute ? _self.paymentRoute : paymentRoute // ignore: cast_nullable_to_non_nullable
+as PaymentRoute,remittedAt: freezed == remittedAt ? _self.remittedAt : remittedAt // ignore: cast_nullable_to_non_nullable
 as String?,courierRef: freezed == courierRef ? _self.courierRef : courierRef // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -449,10 +454,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  String? courierRef)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  PaymentRoute paymentRoute,  String? remittedAt,  String? courierRef)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AggregatorSale() when $default != null:
-return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.courierRef);case _:
+return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.paymentRoute,_that.remittedAt,_that.courierRef);case _:
   return orElse();
 
 }
@@ -470,10 +475,10 @@ return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.b
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  String? courierRef)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  PaymentRoute paymentRoute,  String? remittedAt,  String? courierRef)  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorSale():
-return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.courierRef);case _:
+return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.paymentRoute,_that.remittedAt,_that.courierRef);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -490,10 +495,10 @@ return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.b
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  String? courierRef)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String holdingId,  String artworkId,  double soldPrice,  String buyerName,  String buyerEmail,  String buyerPhone,  DeliveryAddress deliveryAddress,  DeliveryMode deliveryMode,  String soldAt,  ShipmentStatus shipmentStatus,  String? dispatchedAt,  String? deliveredAt,  PaymentRoute paymentRoute,  String? remittedAt,  String? courierRef)?  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorSale() when $default != null:
-return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.courierRef);case _:
+return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.buyerName,_that.buyerEmail,_that.buyerPhone,_that.deliveryAddress,_that.deliveryMode,_that.soldAt,_that.shipmentStatus,_that.dispatchedAt,_that.deliveredAt,_that.paymentRoute,_that.remittedAt,_that.courierRef);case _:
   return null;
 
 }
@@ -505,7 +510,7 @@ return $default(_that.id,_that.holdingId,_that.artworkId,_that.soldPrice,_that.b
 @JsonSerializable()
 
 class _AggregatorSale implements AggregatorSale {
-  const _AggregatorSale({required this.id, required this.holdingId, required this.artworkId, required this.soldPrice, required this.buyerName, required this.buyerEmail, required this.buyerPhone, required this.deliveryAddress, required this.deliveryMode, required this.soldAt, required this.shipmentStatus, this.dispatchedAt, this.deliveredAt, this.courierRef});
+  const _AggregatorSale({required this.id, required this.holdingId, required this.artworkId, required this.soldPrice, required this.buyerName, required this.buyerEmail, required this.buyerPhone, required this.deliveryAddress, required this.deliveryMode, required this.soldAt, required this.shipmentStatus, this.dispatchedAt, this.deliveredAt, this.paymentRoute = PaymentRoute.directToGalleryZone, this.remittedAt, this.courierRef});
   factory _AggregatorSale.fromJson(Map<String, dynamic> json) => _$AggregatorSaleFromJson(json);
 
 @override final  String id;
@@ -521,6 +526,11 @@ class _AggregatorSale implements AggregatorSale {
 @override final  ShipmentStatus shipmentStatus;
 @override final  String? dispatchedAt;
 @override final  String? deliveredAt;
+/// How the buyer's money reached GalleryZone.
+@override@JsonKey() final  PaymentRoute paymentRoute;
+/// Set when the aggregator has transferred cash they collected. Null
+/// while the money is still sitting in their till.
+@override final  String? remittedAt;
 /// Null when [deliveryMode] is [DeliveryMode.selfPickup].
 @override final  String? courierRef;
 
@@ -537,16 +547,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorSale&&(identical(other.id, id) || other.id == id)&&(identical(other.holdingId, holdingId) || other.holdingId == holdingId)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.soldPrice, soldPrice) || other.soldPrice == soldPrice)&&(identical(other.buyerName, buyerName) || other.buyerName == buyerName)&&(identical(other.buyerEmail, buyerEmail) || other.buyerEmail == buyerEmail)&&(identical(other.buyerPhone, buyerPhone) || other.buyerPhone == buyerPhone)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.deliveryMode, deliveryMode) || other.deliveryMode == deliveryMode)&&(identical(other.soldAt, soldAt) || other.soldAt == soldAt)&&(identical(other.shipmentStatus, shipmentStatus) || other.shipmentStatus == shipmentStatus)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorSale&&(identical(other.id, id) || other.id == id)&&(identical(other.holdingId, holdingId) || other.holdingId == holdingId)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.soldPrice, soldPrice) || other.soldPrice == soldPrice)&&(identical(other.buyerName, buyerName) || other.buyerName == buyerName)&&(identical(other.buyerEmail, buyerEmail) || other.buyerEmail == buyerEmail)&&(identical(other.buyerPhone, buyerPhone) || other.buyerPhone == buyerPhone)&&(identical(other.deliveryAddress, deliveryAddress) || other.deliveryAddress == deliveryAddress)&&(identical(other.deliveryMode, deliveryMode) || other.deliveryMode == deliveryMode)&&(identical(other.soldAt, soldAt) || other.soldAt == soldAt)&&(identical(other.shipmentStatus, shipmentStatus) || other.shipmentStatus == shipmentStatus)&&(identical(other.dispatchedAt, dispatchedAt) || other.dispatchedAt == dispatchedAt)&&(identical(other.deliveredAt, deliveredAt) || other.deliveredAt == deliveredAt)&&(identical(other.paymentRoute, paymentRoute) || other.paymentRoute == paymentRoute)&&(identical(other.remittedAt, remittedAt) || other.remittedAt == remittedAt)&&(identical(other.courierRef, courierRef) || other.courierRef == courierRef));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,holdingId,artworkId,soldPrice,buyerName,buyerEmail,buyerPhone,deliveryAddress,deliveryMode,soldAt,shipmentStatus,dispatchedAt,deliveredAt,courierRef);
+int get hashCode => Object.hash(runtimeType,id,holdingId,artworkId,soldPrice,buyerName,buyerEmail,buyerPhone,deliveryAddress,deliveryMode,soldAt,shipmentStatus,dispatchedAt,deliveredAt,paymentRoute,remittedAt,courierRef);
 
 @override
 String toString() {
-  return 'AggregatorSale(id: $id, holdingId: $holdingId, artworkId: $artworkId, soldPrice: $soldPrice, buyerName: $buyerName, buyerEmail: $buyerEmail, buyerPhone: $buyerPhone, deliveryAddress: $deliveryAddress, deliveryMode: $deliveryMode, soldAt: $soldAt, shipmentStatus: $shipmentStatus, dispatchedAt: $dispatchedAt, deliveredAt: $deliveredAt, courierRef: $courierRef)';
+  return 'AggregatorSale(id: $id, holdingId: $holdingId, artworkId: $artworkId, soldPrice: $soldPrice, buyerName: $buyerName, buyerEmail: $buyerEmail, buyerPhone: $buyerPhone, deliveryAddress: $deliveryAddress, deliveryMode: $deliveryMode, soldAt: $soldAt, shipmentStatus: $shipmentStatus, dispatchedAt: $dispatchedAt, deliveredAt: $deliveredAt, paymentRoute: $paymentRoute, remittedAt: $remittedAt, courierRef: $courierRef)';
 }
 
 
@@ -557,7 +567,7 @@ abstract mixin class _$AggregatorSaleCopyWith<$Res> implements $AggregatorSaleCo
   factory _$AggregatorSaleCopyWith(_AggregatorSale value, $Res Function(_AggregatorSale) _then) = __$AggregatorSaleCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String holdingId, String artworkId, double soldPrice, String buyerName, String buyerEmail, String buyerPhone, DeliveryAddress deliveryAddress, DeliveryMode deliveryMode, String soldAt, ShipmentStatus shipmentStatus, String? dispatchedAt, String? deliveredAt, String? courierRef
+ String id, String holdingId, String artworkId, double soldPrice, String buyerName, String buyerEmail, String buyerPhone, DeliveryAddress deliveryAddress, DeliveryMode deliveryMode, String soldAt, ShipmentStatus shipmentStatus, String? dispatchedAt, String? deliveredAt, PaymentRoute paymentRoute, String? remittedAt, String? courierRef
 });
 
 
@@ -574,7 +584,7 @@ class __$AggregatorSaleCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorSale
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? holdingId = null,Object? artworkId = null,Object? soldPrice = null,Object? buyerName = null,Object? buyerEmail = null,Object? buyerPhone = null,Object? deliveryAddress = null,Object? deliveryMode = null,Object? soldAt = null,Object? shipmentStatus = null,Object? dispatchedAt = freezed,Object? deliveredAt = freezed,Object? courierRef = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? holdingId = null,Object? artworkId = null,Object? soldPrice = null,Object? buyerName = null,Object? buyerEmail = null,Object? buyerPhone = null,Object? deliveryAddress = null,Object? deliveryMode = null,Object? soldAt = null,Object? shipmentStatus = null,Object? dispatchedAt = freezed,Object? deliveredAt = freezed,Object? paymentRoute = null,Object? remittedAt = freezed,Object? courierRef = freezed,}) {
   return _then(_AggregatorSale(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,holdingId: null == holdingId ? _self.holdingId : holdingId // ignore: cast_nullable_to_non_nullable
@@ -589,6 +599,8 @@ as DeliveryMode,soldAt: null == soldAt ? _self.soldAt : soldAt // ignore: cast_n
 as String,shipmentStatus: null == shipmentStatus ? _self.shipmentStatus : shipmentStatus // ignore: cast_nullable_to_non_nullable
 as ShipmentStatus,dispatchedAt: freezed == dispatchedAt ? _self.dispatchedAt : dispatchedAt // ignore: cast_nullable_to_non_nullable
 as String?,deliveredAt: freezed == deliveredAt ? _self.deliveredAt : deliveredAt // ignore: cast_nullable_to_non_nullable
+as String?,paymentRoute: null == paymentRoute ? _self.paymentRoute : paymentRoute // ignore: cast_nullable_to_non_nullable
+as PaymentRoute,remittedAt: freezed == remittedAt ? _self.remittedAt : remittedAt // ignore: cast_nullable_to_non_nullable
 as String?,courierRef: freezed == courierRef ? _self.courierRef : courierRef // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
@@ -898,7 +910,12 @@ as String,
 /// @nodoc
 mixin _$AggregatorProfile {
 
- String get companyName; String get contactPerson; String get avatar; String get gstNumber; String get phone; String get addressLine1; String get bankAccountMasked; String get ifsc; String get securityDepositStatus;
+ String get companyName; String get contactPerson; String get avatar; String get gstNumber; String get phone; String get addressLine1; String get bankAccountMasked; String get ifsc; String get securityDepositStatus;/// Signed once from the aggregator's profile screen — the partner
+/// agreement, separate from the artist MOU. Null until they sign it, and
+/// reserving is refused until they do: an unsigned aggregator has no
+/// agreement covering custody, pricing or settlement, so they cannot take
+/// possession of anyone's artwork.
+ MouAcceptance? get mouAcceptance;
 /// Create a copy of AggregatorProfile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -911,16 +928,16 @@ $AggregatorProfileCopyWith<AggregatorProfile> get copyWith => _$AggregatorProfil
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorProfile&&(identical(other.companyName, companyName) || other.companyName == companyName)&&(identical(other.contactPerson, contactPerson) || other.contactPerson == contactPerson)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.gstNumber, gstNumber) || other.gstNumber == gstNumber)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.addressLine1, addressLine1) || other.addressLine1 == addressLine1)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.securityDepositStatus, securityDepositStatus) || other.securityDepositStatus == securityDepositStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorProfile&&(identical(other.companyName, companyName) || other.companyName == companyName)&&(identical(other.contactPerson, contactPerson) || other.contactPerson == contactPerson)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.gstNumber, gstNumber) || other.gstNumber == gstNumber)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.addressLine1, addressLine1) || other.addressLine1 == addressLine1)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.securityDepositStatus, securityDepositStatus) || other.securityDepositStatus == securityDepositStatus)&&(identical(other.mouAcceptance, mouAcceptance) || other.mouAcceptance == mouAcceptance));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,companyName,contactPerson,avatar,gstNumber,phone,addressLine1,bankAccountMasked,ifsc,securityDepositStatus);
+int get hashCode => Object.hash(runtimeType,companyName,contactPerson,avatar,gstNumber,phone,addressLine1,bankAccountMasked,ifsc,securityDepositStatus,mouAcceptance);
 
 @override
 String toString() {
-  return 'AggregatorProfile(companyName: $companyName, contactPerson: $contactPerson, avatar: $avatar, gstNumber: $gstNumber, phone: $phone, addressLine1: $addressLine1, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, securityDepositStatus: $securityDepositStatus)';
+  return 'AggregatorProfile(companyName: $companyName, contactPerson: $contactPerson, avatar: $avatar, gstNumber: $gstNumber, phone: $phone, addressLine1: $addressLine1, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, securityDepositStatus: $securityDepositStatus, mouAcceptance: $mouAcceptance)';
 }
 
 
@@ -931,11 +948,11 @@ abstract mixin class $AggregatorProfileCopyWith<$Res>  {
   factory $AggregatorProfileCopyWith(AggregatorProfile value, $Res Function(AggregatorProfile) _then) = _$AggregatorProfileCopyWithImpl;
 @useResult
 $Res call({
- String companyName, String contactPerson, String avatar, String gstNumber, String phone, String addressLine1, String bankAccountMasked, String ifsc, String securityDepositStatus
+ String companyName, String contactPerson, String avatar, String gstNumber, String phone, String addressLine1, String bankAccountMasked, String ifsc, String securityDepositStatus, MouAcceptance? mouAcceptance
 });
 
 
-
+$MouAcceptanceCopyWith<$Res>? get mouAcceptance;
 
 }
 /// @nodoc
@@ -948,7 +965,7 @@ class _$AggregatorProfileCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorProfile
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? companyName = null,Object? contactPerson = null,Object? avatar = null,Object? gstNumber = null,Object? phone = null,Object? addressLine1 = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? securityDepositStatus = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? companyName = null,Object? contactPerson = null,Object? avatar = null,Object? gstNumber = null,Object? phone = null,Object? addressLine1 = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? securityDepositStatus = null,Object? mouAcceptance = freezed,}) {
   return _then(AggregatorProfile(
 companyName: null == companyName ? _self.companyName : companyName // ignore: cast_nullable_to_non_nullable
 as String,contactPerson: null == contactPerson ? _self.contactPerson : contactPerson // ignore: cast_nullable_to_non_nullable
@@ -959,10 +976,23 @@ as String,addressLine1: null == addressLine1 ? _self.addressLine1 : addressLine1
 as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked : bankAccountMasked // ignore: cast_nullable_to_non_nullable
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,securityDepositStatus: null == securityDepositStatus ? _self.securityDepositStatus : securityDepositStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,mouAcceptance: freezed == mouAcceptance ? _self.mouAcceptance : mouAcceptance // ignore: cast_nullable_to_non_nullable
+as MouAcceptance?,
   ));
 }
+/// Create a copy of AggregatorProfile
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MouAcceptanceCopyWith<$Res>? get mouAcceptance {
+    if (_self.mouAcceptance == null) {
+    return null;
+  }
 
+  return $MouAcceptanceCopyWith<$Res>(_self.mouAcceptance!, (value) {
+    return _then(_self.copyWith(mouAcceptance: value));
+  });
+}
 }
 
 
@@ -1044,10 +1074,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus,  MouAcceptance? mouAcceptance)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AggregatorProfile() when $default != null:
-return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus);case _:
+return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus,_that.mouAcceptance);case _:
   return orElse();
 
 }
@@ -1065,10 +1095,10 @@ return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumb
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus,  MouAcceptance? mouAcceptance)  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorProfile():
-return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus);case _:
+return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus,_that.mouAcceptance);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1085,10 +1115,10 @@ return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumb
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String companyName,  String contactPerson,  String avatar,  String gstNumber,  String phone,  String addressLine1,  String bankAccountMasked,  String ifsc,  String securityDepositStatus,  MouAcceptance? mouAcceptance)?  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorProfile() when $default != null:
-return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus);case _:
+return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumber,_that.phone,_that.addressLine1,_that.bankAccountMasked,_that.ifsc,_that.securityDepositStatus,_that.mouAcceptance);case _:
   return null;
 
 }
@@ -1100,7 +1130,7 @@ return $default(_that.companyName,_that.contactPerson,_that.avatar,_that.gstNumb
 @JsonSerializable()
 
 class _AggregatorProfile implements AggregatorProfile {
-  const _AggregatorProfile({required this.companyName, required this.contactPerson, required this.avatar, required this.gstNumber, required this.phone, required this.addressLine1, required this.bankAccountMasked, required this.ifsc, required this.securityDepositStatus});
+  const _AggregatorProfile({required this.companyName, required this.contactPerson, required this.avatar, required this.gstNumber, required this.phone, required this.addressLine1, required this.bankAccountMasked, required this.ifsc, required this.securityDepositStatus, this.mouAcceptance});
   factory _AggregatorProfile.fromJson(Map<String, dynamic> json) => _$AggregatorProfileFromJson(json);
 
 @override final  String companyName;
@@ -1112,6 +1142,12 @@ class _AggregatorProfile implements AggregatorProfile {
 @override final  String bankAccountMasked;
 @override final  String ifsc;
 @override final  String securityDepositStatus;
+/// Signed once from the aggregator's profile screen — the partner
+/// agreement, separate from the artist MOU. Null until they sign it, and
+/// reserving is refused until they do: an unsigned aggregator has no
+/// agreement covering custody, pricing or settlement, so they cannot take
+/// possession of anyone's artwork.
+@override final  MouAcceptance? mouAcceptance;
 
 /// Create a copy of AggregatorProfile
 /// with the given fields replaced by the non-null parameter values.
@@ -1126,16 +1162,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorProfile&&(identical(other.companyName, companyName) || other.companyName == companyName)&&(identical(other.contactPerson, contactPerson) || other.contactPerson == contactPerson)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.gstNumber, gstNumber) || other.gstNumber == gstNumber)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.addressLine1, addressLine1) || other.addressLine1 == addressLine1)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.securityDepositStatus, securityDepositStatus) || other.securityDepositStatus == securityDepositStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorProfile&&(identical(other.companyName, companyName) || other.companyName == companyName)&&(identical(other.contactPerson, contactPerson) || other.contactPerson == contactPerson)&&(identical(other.avatar, avatar) || other.avatar == avatar)&&(identical(other.gstNumber, gstNumber) || other.gstNumber == gstNumber)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.addressLine1, addressLine1) || other.addressLine1 == addressLine1)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.securityDepositStatus, securityDepositStatus) || other.securityDepositStatus == securityDepositStatus)&&(identical(other.mouAcceptance, mouAcceptance) || other.mouAcceptance == mouAcceptance));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,companyName,contactPerson,avatar,gstNumber,phone,addressLine1,bankAccountMasked,ifsc,securityDepositStatus);
+int get hashCode => Object.hash(runtimeType,companyName,contactPerson,avatar,gstNumber,phone,addressLine1,bankAccountMasked,ifsc,securityDepositStatus,mouAcceptance);
 
 @override
 String toString() {
-  return 'AggregatorProfile(companyName: $companyName, contactPerson: $contactPerson, avatar: $avatar, gstNumber: $gstNumber, phone: $phone, addressLine1: $addressLine1, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, securityDepositStatus: $securityDepositStatus)';
+  return 'AggregatorProfile(companyName: $companyName, contactPerson: $contactPerson, avatar: $avatar, gstNumber: $gstNumber, phone: $phone, addressLine1: $addressLine1, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, securityDepositStatus: $securityDepositStatus, mouAcceptance: $mouAcceptance)';
 }
 
 
@@ -1146,11 +1182,11 @@ abstract mixin class _$AggregatorProfileCopyWith<$Res> implements $AggregatorPro
   factory _$AggregatorProfileCopyWith(_AggregatorProfile value, $Res Function(_AggregatorProfile) _then) = __$AggregatorProfileCopyWithImpl;
 @override @useResult
 $Res call({
- String companyName, String contactPerson, String avatar, String gstNumber, String phone, String addressLine1, String bankAccountMasked, String ifsc, String securityDepositStatus
+ String companyName, String contactPerson, String avatar, String gstNumber, String phone, String addressLine1, String bankAccountMasked, String ifsc, String securityDepositStatus, MouAcceptance? mouAcceptance
 });
 
 
-
+@override $MouAcceptanceCopyWith<$Res>? get mouAcceptance;
 
 }
 /// @nodoc
@@ -1163,7 +1199,7 @@ class __$AggregatorProfileCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorProfile
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? companyName = null,Object? contactPerson = null,Object? avatar = null,Object? gstNumber = null,Object? phone = null,Object? addressLine1 = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? securityDepositStatus = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? companyName = null,Object? contactPerson = null,Object? avatar = null,Object? gstNumber = null,Object? phone = null,Object? addressLine1 = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? securityDepositStatus = null,Object? mouAcceptance = freezed,}) {
   return _then(_AggregatorProfile(
 companyName: null == companyName ? _self.companyName : companyName // ignore: cast_nullable_to_non_nullable
 as String,contactPerson: null == contactPerson ? _self.contactPerson : contactPerson // ignore: cast_nullable_to_non_nullable
@@ -1174,11 +1210,24 @@ as String,addressLine1: null == addressLine1 ? _self.addressLine1 : addressLine1
 as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked : bankAccountMasked // ignore: cast_nullable_to_non_nullable
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,securityDepositStatus: null == securityDepositStatus ? _self.securityDepositStatus : securityDepositStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,mouAcceptance: freezed == mouAcceptance ? _self.mouAcceptance : mouAcceptance // ignore: cast_nullable_to_non_nullable
+as MouAcceptance?,
   ));
 }
 
+/// Create a copy of AggregatorProfile
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$MouAcceptanceCopyWith<$Res>? get mouAcceptance {
+    if (_self.mouAcceptance == null) {
+    return null;
+  }
 
+  return $MouAcceptanceCopyWith<$Res>(_self.mouAcceptance!, (value) {
+    return _then(_self.copyWith(mouAcceptance: value));
+  });
+}
 }
 
 

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/core/pricing.dart';
 import 'package:gallery_zone/data/mock/mock_checkout_repository.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/order.dart';
@@ -56,10 +57,12 @@ void main() {
       paymentMethod: PaymentMethod.upi,
     );
 
+    // GST is INSIDE the price, not added to it: 48,000 already contains
+    // 2,286 of tax, and the buyer pays the price plus delivery only.
     expect(order.amount, 48000);
-    expect(order.gstAmount, 2400); // 5%
-    expect(order.deliveryCharge, checkoutDeliveryCharge);
-    expect(order.total, 48000 + 2400 + 250);
+    expect(order.gstAmount, gstIncludedIn(48000));
+    expect(order.deliveryCharge, deliveryCharge);
+    expect(order.total, 48000 + deliveryCharge);
     // Payment succeeds inside createOrder, so an order is never observable
     // in `pending` — but the event is still on the timeline.
     expect(order.status, OrderStatus.paid);

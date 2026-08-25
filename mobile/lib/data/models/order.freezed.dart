@@ -563,7 +563,11 @@ as String,
 /// @nodoc
 mixin _$Order {
 
- String get id; String get artworkId; String get addressId; double get amount; double get gstAmount; double get deliveryCharge; OrderStatus get status; String get createdAt; List<OrderStatusEvent> get statusHistory;/// Null on the seeded fixture orders, which predate the payment step.
+ String get id; String get artworkId; String get addressId;/// The artwork's customerPrice at time of purchase. GST is already
+/// inside this figure — see [gstAmount].
+ double get amount;/// The GST portion of [amount], recorded so a past receipt can show the
+/// tax component. Never added to [total]; it is already in [amount].
+ double get gstAmount; double get deliveryCharge; OrderStatus get status; String get createdAt; List<OrderStatusEvent> get statusHistory;/// Null on the seeded fixture orders, which predate the payment step.
  PaymentMethod? get paymentMethod;
 /// Create a copy of Order
 /// with the given fields replaced by the non-null parameter values.
@@ -773,7 +777,11 @@ class _Order extends Order {
 @override final  String id;
 @override final  String artworkId;
 @override final  String addressId;
+/// The artwork's customerPrice at time of purchase. GST is already
+/// inside this figure — see [gstAmount].
 @override final  double amount;
+/// The GST portion of [amount], recorded so a past receipt can show the
+/// tax component. Never added to [total]; it is already in [amount].
 @override final  double gstAmount;
 @override final  double deliveryCharge;
 @override final  OrderStatus status;

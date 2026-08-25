@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../core/format.dart';
+import '../../core/pricing.dart';
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
@@ -53,25 +54,50 @@ void writeArtistPrices(Map<String, double> prices) =>
       (value) => {'value': jsonEncode(value)},
     );
 
-/// What the artist actually receives on a sale.
+/// What the artist is owed for a piece.
 ///
-/// **Provisional.** The real split is one of the project's open decisions —
-/// the mocked code, the business requirement and the SAD's schema disagree.
-/// This is the figure the artist portal has always shown (their own price
-/// less a ~2% platform pass-through), kept in one function so settling the
-/// argument is a one-line change rather than a hunt.
-double artistPayoutFor(double artistPrice) => (artistPrice * 0.98).roundToDouble();
+/// Most fixture artworks have no stored artist price — for those it is worked
+/// backwards out of the listed price, which is exact because the listed price
+/// was derived from it in the first place. The old `?? 0` silently paid
+/// nothing for every one of them.
+double artistPriceOf(Artwork artwork) =>
+    readArtistPrices()[artwork.id] ?? artistPriceFrom(artwork.customerPrice);
 
-/// Credits the artist's *pending* balance when their piece sells.
+/// What the artist actually receives on a sale, per the money-flow sheets: a
+/// marketplace sale pays their asking price in full, an aggregator sale
+/// deducts the placement delivery leg and 2% convenience. See
+/// `artistSettlementOf` in `core/pricing.dart`.
+double artistPayoutFor(
+  double artistPrice, [
+  SaleChannel channel = SaleChannel.marketplace,
+]) =>
+    artistSettlementOf(artistPrice, channel).net;
+
+List<Settlement> _readArtistSettlements() => MockDb.getCollection(
+      _settlementsKey,
+      seedArtistSettlements,
+      Settlement.fromJson,
+      (s) => s.toJson(),
+    );
+
+/// Credits the artist's *pending* balance when their piece sells, and opens a
+/// pending settlement row for it.
 ///
-/// Pending, not withdrawable: the money becomes available only once the
-/// piece is delivered ([settleArtistForOrder]). Same shape as the aggregator
-/// portal's commission accrual, deliberately — one mechanic, two portals.
+/// Pending, not withdrawable: the money-flow sheets pay the artist within 7
+/// days of the artwork being DELIVERED — not of the sale. So a sale credits
+/// the pending balance and nothing else; delivery starts the clock
+/// ([markSettlementsDelivered]); the money becomes withdrawable only when that
+/// clock runs out ([releaseDueArtistSettlements]).
+///
 /// A no-op for any artwork that isn't the demo artist's, since no other
 /// artist has a wallet in this build.
-void creditArtistForSale({required Artwork artwork, required String orderId}) {
+void creditArtistForSale({
+  required Artwork artwork,
+  required String orderId,
+  SaleChannel channel = SaleChannel.marketplace,
+}) {
   if (artwork.artistId != currentArtistId) return;
-  final payout = artistPayoutFor(readArtistPrices()[artwork.id] ?? 0);
+  final payout = artistPayoutFor(artistPriceOf(artwork), channel);
   if (payout <= 0) return;
 
   final now = DateTime.now();
@@ -96,71 +122,6 @@ void creditArtistForSale({required Artwork artwork, required String orderId}) {
     ],
     (t) => t.toJson(),
   );
-  _appendArtistActivity(
-    ActivityKind.settlement,
-    '"${artwork.title}" sold',
-    '${formatInr(payout)} pending until delivery',
-  );
-}
-
-/// Moves that pending credit into the withdrawable balance and writes the
-/// settlement row. Called when the order reaches `delivered`.
-void settleArtistForOrder({
-  required Artwork artwork,
-  required String orderId,
-  required double orderAmount,
-}) {
-  if (artwork.artistId != currentArtistId) return;
-  final payout = artistPayoutFor(readArtistPrices()[artwork.id] ?? 0);
-  if (payout <= 0) return;
-
-  final settlements = MockDb.getCollection(
-    _settlementsKey,
-    seedArtistSettlements,
-    Settlement.fromJson,
-    (s) => s.toJson(),
-  );
-  if (settlements.any((s) => s.orderId == orderId)) return;
-
-  final wallet = _readArtistWallet();
-  if (wallet.pendingBalance < payout) return;
-
-  final now = DateTime.now();
-  MockDb.setCollection(
-    _walletKey,
-    [
-      wallet.copyWith(
-        pendingBalance: wallet.pendingBalance - payout,
-        balance: wallet.balance + payout,
-      ),
-    ],
-    (w) => w.toJson(),
-  );
-
-  // The pending sale row becomes the settlement row rather than a second
-  // entry appearing beside it — one sale, one line in the ledger.
-  final transactions = _readArtistTransactions();
-  final pendingIndex = transactions.indexWhere(
-    (t) =>
-        t.status == WalletTransactionStatus.pending &&
-        t.amount == payout &&
-        t.label.contains(artwork.title),
-  );
-  MockDb.setCollection(
-    _walletTransactionsKey,
-    [
-      for (var i = 0; i < transactions.length; i++)
-        if (i == pendingIndex)
-          transactions[i].copyWith(
-            status: WalletTransactionStatus.completed,
-            label: 'Settlement: "${artwork.title}"',
-          )
-        else
-          transactions[i],
-    ],
-    (t) => t.toJson(),
-  );
-
   MockDb.setCollection(
     _settlementsKey,
     [
@@ -171,20 +132,135 @@ void settleArtistForOrder({
         artistName: artwork.artistName,
         artistAmount: payout,
         aggregatorCommission: 0,
-        platformRevenue: orderAmount - payout,
-        status: SettlementStatus.processed,
+        platformRevenue: artwork.customerPrice - payout,
+        status: SettlementStatus.pending,
         createdAt: now.toIso8601String(),
-        processedAt: now.toIso8601String(),
+        // Set when the piece is delivered — until then no clock is running.
+        releaseAfter: null,
       ),
-      ...settlements,
+      ..._readArtistSettlements(),
     ],
     (s) => s.toJson(),
   );
   _appendArtistActivity(
     ActivityKind.settlement,
-    'Settlement processed',
-    '${formatInr(payout)} is now withdrawable',
+    '"${artwork.title}" sold',
+    '${formatInr(payout)} — paid $artistPayoutDaysAfterDelivery days after delivery',
   );
+}
+
+/// Starts the 7-day clock on every pending settlement for an order. Called
+/// when the artwork is actually delivered.
+void markSettlementsDelivered(String orderId, [DateTime? deliveredAt]) {
+  final delivered = deliveredAt ?? DateTime.now();
+  final settlements = _readArtistSettlements();
+  MockDb.setCollection(
+    _settlementsKey,
+    [
+      for (final settlement in settlements)
+        if (settlement.orderId == orderId &&
+            settlement.status == SettlementStatus.pending)
+          settlement.copyWith(
+            releaseAfter: payoutReleaseDate(delivered).toIso8601String(),
+          )
+        else
+          settlement,
+    ],
+    (s) => s.toJson(),
+  );
+}
+
+/// Moves any settlement whose 7 days are up out of the pending balance and
+/// into the withdrawable one.
+///
+/// Nothing here runs on a timer — this is called on every wallet read, which
+/// is the only moment the difference is observable, and avoids inventing a
+/// scheduler this mock has no way to run. It does nothing when nothing is due.
+void releaseDueArtistSettlements([DateTime? asOf]) {
+  final now = asOf ?? DateTime.now();
+  final settlements = _readArtistSettlements();
+  final due = [
+    for (final settlement in settlements)
+      if (settlement.status == SettlementStatus.pending &&
+          settlement.releaseAfter != null &&
+          !DateTime.parse(settlement.releaseAfter!).isAfter(now))
+        settlement,
+  ];
+  if (due.isEmpty) return;
+
+  final releasedTotal = due.fold(0.0, (sum, s) => sum + s.artistAmount);
+  final releasedIds = due.map((s) => s.id).toSet();
+  final releasedTitles = due.map((s) => s.artworkTitle).toSet();
+  final stamp = now.toIso8601String();
+
+  final wallet = _readArtistWallet();
+  MockDb.setCollection(
+    _walletKey,
+    [
+      wallet.copyWith(
+        // Never let rounding or a double read push the pending balance below
+        // zero.
+        pendingBalance:
+            (wallet.pendingBalance - releasedTotal).clamp(0, double.infinity),
+        balance: wallet.balance + releasedTotal,
+      ),
+    ],
+    (w) => w.toJson(),
+  );
+
+  MockDb.setCollection(
+    _settlementsKey,
+    [
+      for (final settlement in settlements)
+        if (releasedIds.contains(settlement.id))
+          settlement.copyWith(
+            status: SettlementStatus.processed,
+            processedAt: stamp,
+          )
+        else
+          settlement,
+    ],
+    (s) => s.toJson(),
+  );
+
+  // The pending sale row becomes the settlement row rather than a second entry
+  // appearing beside it — one sale, one line in the ledger.
+  MockDb.setCollection(
+    _walletTransactionsKey,
+    [
+      for (final transaction in _readArtistTransactions())
+        if (transaction.status == WalletTransactionStatus.pending &&
+            releasedTitles.any(transaction.label.contains))
+          transaction.copyWith(
+            status: WalletTransactionStatus.completed,
+            label: transaction.label.replaceFirst('Sale:', 'Settlement:'),
+          )
+        else
+          transaction,
+    ],
+    (t) => t.toJson(),
+  );
+
+  _appendArtistActivity(
+    ActivityKind.settlement,
+    'Settlement released',
+    '${formatInr(releasedTotal)} moved to your available balance',
+  );
+}
+
+/// Demo shortcut: there is no courier here, so nothing ever marks a delivery
+/// long enough ago for the 7 days to have elapsed. This backdates delivery far
+/// enough that the release can actually be seen.
+void simulateDeliveryAndRelease(String settlementId) {
+  final target =
+      _readArtistSettlements().where((s) => s.id == settlementId).firstOrNull;
+  if (target == null || target.status != SettlementStatus.pending) return;
+  markSettlementsDelivered(
+    target.orderId,
+    DateTime.now()
+        .subtract(const Duration(days: artistPayoutDaysAfterDelivery + 1)),
+  );
+  releaseDueArtistSettlements();
 }
 
 WalletSummary _readArtistWallet() => MockDb.getCollection(
@@ -624,10 +700,18 @@ class MockArtistRepository implements ArtistRepository {
   Future<List<ExternalSalePenalty>> listPenalties() => mockDelay(_readPenalties);
 
   @override
-  Future<WalletSummary> getWallet() => mockDelay(_readWallet);
+  Future<WalletSummary> getWallet() => mockDelay(() {
+        // Lazy release: nothing here runs on a timer, so the wallet read is
+        // where a settlement whose 7 days are up actually becomes withdrawable.
+        releaseDueArtistSettlements();
+        return _readWallet();
+      });
 
   @override
-  Future<List<WalletTransaction>> listWalletTransactions() => mockDelay(_readTransactions);
+  Future<List<WalletTransaction>> listWalletTransactions() => mockDelay(() {
+        releaseDueArtistSettlements();
+        return _readTransactions();
+      });
 
   @override
   Future<WalletTransaction> requestWithdrawal(double amount) {
@@ -726,7 +810,9 @@ class MockArtistRepository implements ArtistRepository {
             if (ids.contains(order.artworkId))
               ArtistOrder(
                 order: order,
-                artistPayout: artistPayoutFor(prices[order.artworkId] ?? 0),
+                artistPayout: artistPayoutFor(
+                  prices[order.artworkId] ?? artistPriceFrom(order.amount),
+                ),
               ),
         ];
       });

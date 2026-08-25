@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/mock/mock_aggregator_repository.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
-import '../../../data/models/artwork.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/repositories/aggregator_repository.dart';
 
@@ -18,7 +17,8 @@ final aggregatorDashboardProvider =
   return ref.watch(aggregatorRepositoryProvider).getDashboardSummary();
 });
 
-final aggregatorInventoryProvider = FutureProvider.autoDispose<List<Artwork>>((ref) {
+final aggregatorInventoryProvider =
+    FutureProvider.autoDispose<List<ReservableArtwork>>((ref) {
   return ref.watch(aggregatorRepositoryProvider).listReservableInventory();
 });
 

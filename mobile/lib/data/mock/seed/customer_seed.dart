@@ -1,3 +1,4 @@
+import '../../../core/pricing.dart';
 import '../../models/customer.dart';
 import '../../models/order.dart';
 
@@ -23,16 +24,17 @@ CustomerProfile seedCustomerProfile() => const CustomerProfile(
     );
 
 /// `artworkId` values reference real entries in `artworks_seed.dart`, and
-/// amount/GST/delivery follow `createOrder`'s exact math (5% GST, flat ₹250)
-/// so seeded and freshly-created orders look internally consistent.
+/// amount/GST/delivery are derived through `core/pricing.dart` rather than
+/// written out, so seeded and freshly-created orders can never disagree: GST
+/// is the portion already INSIDE `amount`, never a figure added to it.
 List<Order> seedOrders() => [
       Order(
         id: 'order-monsoon-madurai',
         artworkId: 'monsoon-over-madurai',
         addressId: 'addr-home-pune',
         amount: 23400,
-        gstAmount: 1170,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(23400),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.delivered,
         createdAt: _daysAgo(21),
         statusHistory: _history(const [
@@ -49,8 +51,8 @@ List<Order> seedOrders() => [
         artworkId: 'backwater-light-early-hours',
         addressId: 'addr-home-pune',
         amount: 31200,
-        gstAmount: 1560,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(31200),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.transit,
         createdAt: _daysAgo(6),
         statusHistory: _history(const [
@@ -66,8 +68,8 @@ List<Order> seedOrders() => [
         artworkId: 'tide-line-dusk',
         addressId: 'addr-office-mumbai',
         amount: 18700,
-        gstAmount: 935,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(18700),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.confirmed,
         createdAt: _daysAgo(2),
         statusHistory: _history(const [
@@ -81,8 +83,8 @@ List<Order> seedOrders() => [
         artworkId: 'ancestral-bronze-study',
         addressId: 'addr-family-bengaluru',
         amount: 47450,
-        gstAmount: 2372.5,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(47450),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.paid,
         createdAt: _daysAgo(1),
         statusHistory: _history(const [(OrderStatus.pending, 1), (OrderStatus.paid, 1)]),
@@ -92,8 +94,8 @@ List<Order> seedOrders() => [
         artworkId: 'carved-marble-torso',
         addressId: 'addr-home-pune',
         amount: 62400,
-        gstAmount: 3120,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(62400),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.pending,
         createdAt: _daysAgo(0),
         statusHistory: _history(const [(OrderStatus.pending, 0)]),
@@ -103,8 +105,8 @@ List<Order> seedOrders() => [
         artworkId: 'reclaimed-stone-vessel',
         addressId: 'addr-office-mumbai',
         amount: 15600,
-        gstAmount: 780,
-        deliveryCharge: 250,
+        gstAmount: gstIncludedIn(15600),
+        deliveryCharge: deliveryCharge,
         status: OrderStatus.cancelled,
         createdAt: _daysAgo(14),
         statusHistory: _history(const [(OrderStatus.pending, 14), (OrderStatus.cancelled, 13)]),

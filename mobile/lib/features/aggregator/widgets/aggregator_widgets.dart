@@ -10,6 +10,7 @@ import '../../shell/portal_widgets.dart';
 
 const _sky = Color(0xFF38BDF8);
 const _emerald = Color(0xFF34D399);
+const _slate = Color(0xFF94A3B8);
 
 /// Small status/label pill. The three status vocabularies in this portal
 /// (holding, shipment, settlement) all render as one, so the colour choice
@@ -66,6 +67,11 @@ class HoldingStatusPill extends StatelessWidget {
           label: 'Sold, pending settlement',
           color: _emerald,
           icon: LucideIcons.circleCheckBig,
+        ),
+      HoldingStatus.returned => const StatusPill(
+          label: 'Returned unsold',
+          color: _slate,
+          icon: LucideIcons.undo2,
         ),
     };
   }

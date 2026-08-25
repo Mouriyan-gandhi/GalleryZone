@@ -167,19 +167,36 @@ void main() {
       }
       expect(current.statusHistory.last.status, OrderStatus.delivered);
 
-      // Delivery moves the record and the money together.
+      // Delivery moves the record, but NOT yet the money: the money-flow
+      // sheets pay the artist within 7 days of delivery, so delivery only
+      // starts the clock.
       final delivered = await artworks.get(submitted.id);
       expect(delivered!.status, ArtworkStatus.delivered);
       expect(resolveCustody(delivered).legalOwner, CustodyParty.customer);
       expect(resolveCustody(delivered).custodian, CustodyParty.customer);
 
       wallet = await artist.getWallet();
+      expect(wallet.pendingBalance, walletBefore.pendingBalance + payout,
+          reason: 'still pending — the 7 days have not run');
+      expect(wallet.balance, walletBefore.balance);
+
+      var settlements = await artist.listSettlements();
+      expect(settlements.first.orderId, order.id);
+      expect(settlements.first.artistAmount, payout);
+      expect(settlements.first.status, SettlementStatus.pending);
+      expect(settlements.first.releaseAfter, isNotNull,
+          reason: 'delivery stamps the release date');
+
+      // Seven days on, the money is withdrawable. Nothing runs on a timer, so
+      // this backdates the delivery and reads the wallet, which is where the
+      // release actually happens.
+      simulateDeliveryAndRelease(settlements.first.id);
+
+      wallet = await artist.getWallet();
       expect(wallet.pendingBalance, walletBefore.pendingBalance);
       expect(wallet.balance, walletBefore.balance + payout);
 
-      final settlements = await artist.listSettlements();
-      expect(settlements.first.orderId, order.id);
-      expect(settlements.first.artistAmount, payout);
+      settlements = await artist.listSettlements();
       expect(settlements.first.status, SettlementStatus.processed);
 
       // One sale, one ledger line: the pending row became the settlement row
@@ -212,13 +229,14 @@ void main() {
       }
       expect(checkout.advanceOrder(order.id), throwsA(isA<Exception>()));
 
-      // And settling twice never doubles the artist's money.
+      // And releasing twice never doubles the artist's money — a settlement
+      // leaves `pending` on the first release and is never seen again.
+      final settlement = (await artist.listSettlements())
+          .firstWhere((s) => s.orderId == order.id);
+      simulateDeliveryAndRelease(settlement.id);
       final balance = (await artist.getWallet()).balance;
-      settleArtistForOrder(
-        artwork: (await artworks.get(submitted.id))!,
-        orderId: order.id,
-        orderAmount: order.amount,
-      );
+      simulateDeliveryAndRelease(settlement.id);
+      releaseDueArtistSettlements();
       expect((await artist.getWallet()).balance, balance);
     });
   });

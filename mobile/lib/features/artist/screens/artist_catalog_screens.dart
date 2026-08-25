@@ -440,6 +440,7 @@ class _HoldingPill extends StatelessWidget {
       HoldingStatus.reserved => ('With aggregator', const Color(0xFF38BDF8)),
       HoldingStatus.soldPendingSettlement =>
         ('Sold, pending settlement', const Color(0xFF34D399)),
+      HoldingStatus.returned => ('Returned unsold', const Color(0xFF94A3B8)),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),

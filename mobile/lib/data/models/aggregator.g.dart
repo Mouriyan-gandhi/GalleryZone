@@ -42,6 +42,10 @@ _AggregatorSale _$AggregatorSaleFromJson(Map<String, dynamic> json) =>
       ),
       dispatchedAt: json['dispatchedAt'] as String?,
       deliveredAt: json['deliveredAt'] as String?,
+      paymentRoute:
+          $enumDecodeNullable(_$PaymentRouteEnumMap, json['paymentRoute']) ??
+          PaymentRoute.directToGalleryZone,
+      remittedAt: json['remittedAt'] as String?,
       courierRef: json['courierRef'] as String?,
     );
 
@@ -60,6 +64,8 @@ Map<String, dynamic> _$AggregatorSaleToJson(_AggregatorSale instance) =>
       'shipmentStatus': _$ShipmentStatusEnumMap[instance.shipmentStatus]!,
       'dispatchedAt': instance.dispatchedAt,
       'deliveredAt': instance.deliveredAt,
+      'paymentRoute': _$PaymentRouteEnumMap[instance.paymentRoute]!,
+      'remittedAt': instance.remittedAt,
       'courierRef': instance.courierRef,
     };
 
@@ -72,6 +78,11 @@ const _$ShipmentStatusEnumMap = {
   ShipmentStatus.preparing: 'preparing',
   ShipmentStatus.dispatched: 'dispatched',
   ShipmentStatus.delivered: 'delivered',
+};
+
+const _$PaymentRouteEnumMap = {
+  PaymentRoute.directToGalleryZone: 'direct_to_galleryzone',
+  PaymentRoute.cashAtPremises: 'cash_at_premises',
 };
 
 _GallerySpace _$GallerySpaceFromJson(Map<String, dynamic> json) =>
@@ -109,6 +120,11 @@ _AggregatorProfile _$AggregatorProfileFromJson(Map<String, dynamic> json) =>
       bankAccountMasked: json['bankAccountMasked'] as String,
       ifsc: json['ifsc'] as String,
       securityDepositStatus: json['securityDepositStatus'] as String,
+      mouAcceptance: json['mouAcceptance'] == null
+          ? null
+          : MouAcceptance.fromJson(
+              json['mouAcceptance'] as Map<String, dynamic>,
+            ),
     );
 
 Map<String, dynamic> _$AggregatorProfileToJson(_AggregatorProfile instance) =>
@@ -122,6 +138,7 @@ Map<String, dynamic> _$AggregatorProfileToJson(_AggregatorProfile instance) =>
       'bankAccountMasked': instance.bankAccountMasked,
       'ifsc': instance.ifsc,
       'securityDepositStatus': instance.securityDepositStatus,
+      'mouAcceptance': instance.mouAcceptance,
     };
 
 _AggregatorSettings _$AggregatorSettingsFromJson(Map<String, dynamic> json) =>

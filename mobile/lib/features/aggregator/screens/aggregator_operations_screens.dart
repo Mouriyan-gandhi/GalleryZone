@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/mock/mock_artist_repository.dart' show artistPriceOf;
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
@@ -31,7 +32,7 @@ class _SaleRow {
       ? 0
       : aggregatorCommissionFor(
           displayPrice: holding!.displayPrice,
-          customerPrice: artwork!.customerPrice,
+          artistPrice: artistPriceOf(artwork!),
         );
 }
 

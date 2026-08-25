@@ -20,6 +20,23 @@ enum DeliveryMode {
 
 enum ShipmentStatus { preparing, dispatched, delivered }
 
+/// The aggregator collects "on behalf of GalleryZone", never for themselves.
+/// Either the buyer paid GalleryZone directly (transfer or UPI, using the
+/// details on the checkout screen), or the aggregator took cash — in which
+/// case they owe GalleryZone the WHOLE sale price and their commission is
+/// settled separately afterwards. They never net it off at the counter.
+enum PaymentRoute {
+  @JsonValue('direct_to_galleryzone')
+  directToGalleryZone,
+  @JsonValue('cash_at_premises')
+  cashAtPremises,
+}
+
+const paymentRouteLabel = {
+  PaymentRoute.directToGalleryZone: 'Buyer paid GalleryZone directly',
+  PaymentRoute.cashAtPremises: 'Cash taken at the gallery',
+};
+
 /// The buyer's address as the aggregator records it at the counter. Distinct
 /// from `order.dart`'s `Address`, which is a saved, reusable address-book
 /// entry with an id and a default flag — this one is captured once, on one
@@ -55,6 +72,13 @@ abstract class AggregatorSale with _$AggregatorSale {
     required ShipmentStatus shipmentStatus,
     String? dispatchedAt,
     String? deliveredAt,
+
+    /// How the buyer's money reached GalleryZone.
+    @Default(PaymentRoute.directToGalleryZone) PaymentRoute paymentRoute,
+
+    /// Set when the aggregator has transferred cash they collected. Null
+    /// while the money is still sitting in their till.
+    String? remittedAt,
 
     /// Null when [deliveryMode] is [DeliveryMode.selfPickup].
     String? courierRef,
@@ -100,6 +124,13 @@ abstract class AggregatorProfile with _$AggregatorProfile {
     required String bankAccountMasked,
     required String ifsc,
     required String securityDepositStatus,
+
+    /// Signed once from the aggregator's profile screen — the partner
+    /// agreement, separate from the artist MOU. Null until they sign it, and
+    /// reserving is refused until they do: an unsigned aggregator has no
+    /// agreement covering custody, pricing or settlement, so they cannot take
+    /// possession of anyone's artwork.
+    MouAcceptance? mouAcceptance,
   }) = _AggregatorProfile;
 
   factory AggregatorProfile.fromJson(Map<String, dynamic> json) =>

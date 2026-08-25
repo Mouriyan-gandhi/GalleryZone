@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/format.dart';
+import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/repositories/aggregator_repository.dart';
@@ -53,7 +54,8 @@ class AggregatorBrowseScreen extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                         child: Text(
-                          'Reserving pays the advance and holds the piece for 30 days.',
+                          'Reserving holds the advance and the delivery charge from your wallet, '
+                          'and holds the piece for 30 days.',
                           style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                         ),
                       ),
@@ -68,7 +70,7 @@ class AggregatorBrowseScreen extends ConsumerWidget {
                           childAspectRatio: 0.52,
                         ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, index) => _ReservableCard(artwork: artworks[index]),
+                          (context, index) => _ReservableCard(item: artworks[index]),
                           childCount: artworks.length,
                         ),
                       ),
@@ -82,13 +84,16 @@ class AggregatorBrowseScreen extends ConsumerWidget {
 }
 
 class _ReservableCard extends ConsumerWidget {
-  const _ReservableCard({required this.artwork});
+  const _ReservableCard({required this.item});
 
-  final Artwork artwork;
+  final ReservableArtwork item;
+
+  Artwork get artwork => item.artwork;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final offer = item.offer;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -117,12 +122,26 @@ class _ReservableCard extends ConsumerWidget {
           style: theme.textTheme.labelSmall,
         ),
         const SizedBox(height: 4),
-        PriceTag(amount: artwork.customerPrice, style: theme.textTheme.bodyMedium),
+        PriceTag(amount: offer.offerPrice, style: theme.textTheme.bodyMedium),
+        Text(
+          'Your price · month ${offer.month} of $aggregatorCycleMonths',
+          style: theme.textTheme.labelSmall,
+        ),
+        // Only worth showing once the two have parted company. In month one
+        // they are the same number and the strike-through would read as a
+        // discount that isn't there.
+        if (offer.month > 1)
+          Text(
+            'was ${formatInr(basePriceOf(artistPriceFrom(offer.marketplacePrice)))}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
         const SizedBox(height: 8),
         SizedBox(
           height: 36,
           child: FilledButton(
-            onPressed: () => _openReserveSheet(context, ref, artwork),
+            onPressed: () => _openReserveSheet(context, ref, item),
             child: const Text('Reserve'),
           ),
         ),
@@ -131,22 +150,20 @@ class _ReservableCard extends ConsumerWidget {
   }
 }
 
-/// Confirmation before an advance is paid. The preview uses the exact
-/// helpers `reserve()` itself calls, so what's shown here can't drift from
-/// what gets written.
-Future<void> _openReserveSheet(BuildContext context, WidgetRef ref, Artwork artwork) async {
-  final percent = advancePercentFor(artwork.customerPrice);
-  final amount = advanceAmountFor(artwork.customerPrice, percent);
-
+/// Confirmation before an advance is held. The preview shows the offer the
+/// repository itself built, so what's on screen can't drift from what gets
+/// written.
+Future<void> _openReserveSheet(
+  BuildContext context,
+  WidgetRef ref,
+  ReservableArtwork item,
+) async {
+  final artwork = item.artwork;
   final confirmed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (context) => _ReserveSheet(
-      artwork: artwork,
-      advancePercent: percent,
-      advanceAmount: amount,
-    ),
+    builder: (context) => _ReserveSheet(item: item),
   );
   if (confirmed == null) return;
 
@@ -170,15 +187,9 @@ Future<void> _openReserveSheet(BuildContext context, WidgetRef ref, Artwork artw
 }
 
 class _ReserveSheet extends StatefulWidget {
-  const _ReserveSheet({
-    required this.artwork,
-    required this.advancePercent,
-    required this.advanceAmount,
-  });
+  const _ReserveSheet({required this.item});
 
-  final Artwork artwork;
-  final int advancePercent;
-  final double advanceAmount;
+  final ReservableArtwork item;
 
   @override
   State<_ReserveSheet> createState() => _ReserveSheetState();
@@ -190,6 +201,8 @@ class _ReserveSheetState extends State<_ReserveSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final artwork = widget.item.artwork;
+    final offer = widget.item.offer;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
@@ -199,8 +212,9 @@ class _ReserveSheetState extends State<_ReserveSheet> {
           Text('Reserve this artwork', style: theme.textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            'Confirming pays the advance and holds this piece for a 30-day display '
-            'window.',
+            'Month ${offer.month} of $aggregatorCycleMonths. Confirming holds the '
+            'advance and delivery from your wallet and opens a 30-day display '
+            'window. ${offer.daysLeftInListing} days remain on this piece\'s listing.',
             style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
           ),
           const SizedBox(height: 16),
@@ -212,7 +226,7 @@ class _ReserveSheetState extends State<_ReserveSheet> {
                   child: SizedBox(
                     width: 52,
                     height: 52,
-                    child: ArtworkImageView(url: widget.artwork.thumbnailUrl),
+                    child: ArtworkImageView(url: artwork.thumbnailUrl),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -221,50 +235,65 @@ class _ReserveSheetState extends State<_ReserveSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.artwork.title,
+                        artwork.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium
                             ?.copyWith(fontWeight: FontWeight.w500),
                       ),
-                      Text(widget.artwork.artistName, style: theme.textTheme.labelSmall),
+                      Text(artwork.artistName, style: theme.textTheme.labelSmall),
                     ],
                   ),
                 ),
-                PriceTag(amount: widget.artwork.customerPrice),
+                PriceTag(amount: offer.offerPrice),
               ],
             ),
           ),
           const SizedBox(height: 10),
           PortalCard(
             gold: true,
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Advance due today',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w500)),
-                      Text(
-                        '${widget.advancePercent}% of '
-                        '${formatInr(widget.artwork.customerPrice)}',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
-                  ),
+                _MoneyRow(
+                  label: 'Advance (${(offer.advanceRate * 100).round()}%)',
+                  // The basis changes with the month, so it is spelled out
+                  // rather than assumed: month one is charged on the price the
+                  // piece is displayed at, every later month on the artist's.
+                  detail: offer.advanceBasis == AdvanceBasis.displayPrice
+                      ? 'of the display price, ${formatInr(offer.advanceBase)}'
+                      : "of the artist's price, ${formatInr(offer.advanceBase)}",
+                  amount: offer.advance,
                 ),
-                Text(
-                  formatInr(widget.advanceAmount),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.tertiary,
-                  ),
+                const SizedBox(height: 8),
+                _MoneyRow(
+                  label: 'Delivery',
+                  detail: 'Returned when the piece sells',
+                  amount: offer.deliveryCharge,
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(height: 1),
+                ),
+                _MoneyRow(
+                  label: 'Held from your wallet',
+                  detail: 'Not a payment — released on sale or return',
+                  amount: offer.payable,
+                  emphasized: true,
                 ),
               ],
             ),
           ),
+          if (!offer.canSetPrice) ...[
+            const SizedBox(height: 10),
+            PortalCard(
+              child: Text(
+                'GalleryZone sets the selling price for this piece. From month '
+                'two the advance is lower, so the price is not the '
+                "aggregator's to change.",
+                style: theme.textTheme.labelMedium?.copyWith(height: 1.5),
+              ),
+            ),
+          ],
           const SizedBox(height: 10),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
@@ -301,6 +330,51 @@ class _ReserveSheetState extends State<_ReserveSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One line of the reserve sheet's money card.
+class _MoneyRow extends StatelessWidget {
+  const _MoneyRow({
+    required this.label,
+    required this.detail,
+    required this.amount,
+    this.emphasized = false,
+  });
+
+  final String label;
+  final String detail;
+  final double amount;
+  final bool emphasized;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: emphasized ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              Text(detail, style: theme.textTheme.labelSmall),
+            ],
+          ),
+        ),
+        Text(
+          formatInr(amount),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: emphasized ? theme.colorScheme.tertiary : null,
+          ),
+        ),
+      ],
     );
   }
 }

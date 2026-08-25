@@ -1,26 +1,23 @@
+import '../../core/pricing.dart';
 import '../models/artwork.dart';
 import '../models/order.dart';
 import '../repositories/checkout_repository.dart';
 import '../storage/mock_db.dart';
 import '../models/customer.dart';
-import 'mock_artist_repository.dart' show creditArtistForSale, settleArtistForOrder;
+import 'mock_artist_repository.dart'
+    show creditArtistForSale, markSettlementsDelivered, releaseDueArtistSettlements;
 import 'mock_customer_repository.dart'
     show activeResaleListing, creditSellerForResale, settleSellerForResale;
 import 'mock_artwork_repository.dart' show promoteApprovedSubmissions, seedArtworksCollection;
 import 'mock_utils.dart';
 import 'seed/customer_seed.dart';
 
-/// GST rate and flat delivery charge, pinned here as the single source of
-/// truth exactly as `orderService.ts` pins them — the checkout review step
-/// mirrors this math for its price preview, so the two must stay in sync.
-const checkoutGstRate = 0.05;
-const checkoutDeliveryCharge = 250.0;
-
-/// Platform fee and convenience fee are ₹0 during the early launch period.
-/// They apply equally to marketplace and aggregator-channel sales. Change
-/// them here when pricing is finalised — nowhere else.
+/// Platform fee is ₹0 during the early launch period, and applies equally to
+/// marketplace and aggregator-channel sales. Everything else about the money
+/// — GST, delivery, the convenience fee — comes from `core/pricing.dart`,
+/// which is the port of the web's `lib/pricing.ts`. Nothing in this file
+/// computes a rupee figure of its own any more.
 const checkoutPlatformFee = 0.0;
-const checkoutConvenienceFee = 0.0;
 
 const _ordersKey = 'orders';
 const _artworksKey = 'artworks';
@@ -84,14 +81,17 @@ class MockCheckoutRepository implements CheckoutRepository {
       return mockError('This artwork is no longer available for purchase');
     }
 
+    final totals = checkoutTotal(artwork.customerPrice);
     final now = DateTime.now().toIso8601String();
     final order = Order(
       id: 'order-${DateTime.now().microsecondsSinceEpoch}',
       artworkId: artworkId,
       addressId: addressId,
-      amount: artwork.customerPrice,
-      gstAmount: (artwork.customerPrice * checkoutGstRate * 100).round() / 100,
-      deliveryCharge: checkoutDeliveryCharge,
+      // GST is inside customerPrice; totals.gstIncluded is the portion of it
+      // that is tax, recorded for the receipt and never added on top.
+      amount: totals.displayPrice,
+      gstAmount: totals.gstIncluded,
+      deliveryCharge: totals.deliveryCharge,
       // Paid on arrival: payment succeeded a line ago, so the order is never
       // observable in `pending`. The event stays in the history because the
       // buyer's status timeline should still show that it happened.
@@ -201,11 +201,11 @@ class MockCheckoutRepository implements CheckoutRepository {
           if (soldResale != null) {
             settleSellerForResale(listingId: soldResale.id, amount: order.amount);
           } else {
-            settleArtistForOrder(
-              artwork: artwork,
-              orderId: order.id,
-              orderAmount: order.amount,
-            );
+            // Delivery starts the 7-day clock; it does not release the
+            // money. releaseDueArtistSettlements() moves it when the clock
+            // runs out, on the next wallet read.
+            markSettlementsDelivered(order.id);
+            releaseDueArtistSettlements();
           }
         }
       }

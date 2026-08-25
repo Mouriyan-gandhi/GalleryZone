@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/order.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/price_breakdown.dart';
 
 /// Status label, glyph and colour for every `OrderStatus`, ported from
 /// `order-list.tsx`'s `STATUS_CONFIG`. The traffic-light hues are the one
@@ -247,46 +248,16 @@ class OrderPriceBreakdown extends StatelessWidget {
       children: [
         Text('Price breakdown', style: theme.textTheme.titleLarge),
         const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: theme.colorScheme.outline),
-          ),
-          child: Column(
-            children: [
-              _row(context, 'Artwork price', order.amount),
-              _row(context, 'GST', order.gstAmount),
-              _row(context, 'Delivery', order.deliveryCharge),
-              const Divider(height: 20),
-              _row(context, 'Total paid', order.total, emphasized: true),
-            ],
-          ),
+        // The same breakdown the buyer saw at checkout, so a receipt can
+        // never disagree with the screen that took their money.
+        PriceBreakdown(
+          displayPrice: order.amount,
+          gstIncluded: order.gstAmount,
+          deliveryCharge: order.deliveryCharge,
+          totalLabel: 'Total paid',
         ),
       ],
     );
   }
 
-  Widget _row(BuildContext context, String label, double amount, {bool emphasized = false}) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: emphasized
-                ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)
-                : theme.textTheme.bodySmall,
-          ),
-          PriceTag(
-            amount: amount,
-            style: emphasized ? theme.textTheme.titleMedium : theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -82,6 +82,9 @@ abstract class MouAcceptance with _$MouAcceptance {
   const factory MouAcceptance({
     required String version,
     required String acceptedAt,
+
+    /// Typed by the signer. Empty on records that predate the field.
+    @Default('') String signatureName,
   }) = _MouAcceptance;
 
   factory MouAcceptance.fromJson(Map<String, dynamic> json) =>
@@ -103,6 +106,11 @@ abstract class Settlement with _$Settlement {
     required SettlementStatus status,
     required String createdAt,
     String? processedAt,
+
+    /// When this money becomes withdrawable — 7 days after the piece was
+    /// DELIVERED, not after it sold. Null until delivery, because until then
+    /// there is no clock running.
+    String? releaseAfter,
   }) = _Settlement;
 
   factory Settlement.fromJson(Map<String, dynamic> json) => _$SettlementFromJson(json);
@@ -127,6 +135,12 @@ enum HoldingStatus {
   reserved,
   @JsonValue('sold_pending_settlement')
   soldPendingSettlement,
+
+  /// The piece did not sell and went back to GalleryZone. Kept rather than
+  /// deleted: the artwork's cycle month is counted from how many aggregators
+  /// have already had it, so this history is what decides the next
+  /// aggregator's price and advance.
+  returned,
 }
 
 enum AssignmentSource {
@@ -143,13 +157,41 @@ abstract class AggregatorHolding with _$AggregatorHolding {
   const factory AggregatorHolding({
     required String id,
     required String artworkId,
-    required int advancePercent, // 5 or 3, per the SAD's reservation schema
+
+    /// 5% in month one, 3% from month two onwards — see `core/pricing.dart`.
+    required int advancePercent,
     required double advanceAmount,
     required double displayPrice,
     required String assignedAt,
-    required String expiresAt, // assignedAt + 30 days
+    required String expiresAt,
     required HoldingStatus status,
     required AssignmentSource assignmentSource,
+
+    /// Paid with the advance before taking possession (MOU §7). The
+    /// money-flow sheet returns it only if the piece sells — an unsold piece
+    /// going back to GalleryZone refunds the advance alone.
+    @Default(0.0) double deliveryDeposit,
+
+    /// Which month of the artwork's five-month aggregator cycle this
+    /// placement is. A piece that doesn't sell moves to a DIFFERENT
+    /// aggregator each month, at a lower price and a different advance rate,
+    /// so the month is a property of the artwork's journey rather than of any
+    /// one aggregator. Seeded holdings predate the field; 1 is the default.
+    @Default(1) int cycleMonth,
+
+    /// Aggregator MOU §6: the aggregator gets ONE opportunity to set the
+    /// selling price. Stamped the first time they set it; after that the
+    /// price is locked.
+    String? displayPriceSetAt,
+
+    /// Set when the piece went back to GalleryZone unsold.
+    String? returnedAt,
+
+    /// True when this placement runs past the usual thirty days because what
+    /// would have been left of the artist's 180 days was too short to hand to
+    /// anyone else. The last aggregator keeps it rather than the piece making
+    /// one more journey for a fortnight.
+    @Default(false) bool windowExtended,
   }) = _AggregatorHolding;
 
   factory AggregatorHolding.fromJson(Map<String, dynamic> json) =>

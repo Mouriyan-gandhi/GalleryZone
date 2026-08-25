@@ -1,9 +1,13 @@
+import '../../core/format.dart';
+import '../../core/pricing.dart';
 import '../models/aggregator.dart';
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../repositories/aggregator_repository.dart';
 import '../storage/mock_db.dart';
+import 'mock_artist_repository.dart'
+    show artistPriceOf, creditArtistForSale;
 import 'mock_artwork_repository.dart' show seedArtworksCollection;
 import 'mock_utils.dart';
 import 'seed/aggregator_seed.dart';
@@ -120,16 +124,105 @@ class MockAggregatorRepository implements AggregatorRepository {
         (p) => p.toJson(),
       );
 
-  /// The commission a sale carries, from its holding's markup over the
-  /// artwork's floor. Returns 0 if either record has gone missing.
+  /// The commission a sale carries: MOU §8's 20% of the holding's markup over
+  /// the ARTIST's price. Returns 0 if either record has gone missing.
   double _commissionForSale(AggregatorSale sale) {
     final holding = _readHoldings().where((h) => h.id == sale.holdingId).firstOrNull;
     final artwork = _artworkById(sale.artworkId);
     if (holding == null || artwork == null) return 0;
     return aggregatorCommissionFor(
       displayPrice: holding.displayPrice,
-      customerPrice: artwork.customerPrice,
+      artistPrice: artistPriceOf(artwork),
     );
+  }
+
+  // --- The five-month cycle -------------------------------------------------
+  //
+  // A piece that doesn't sell is offered to a different aggregator each month,
+  // five times, each at a lower price and a different advance rate (see
+  // `core/pricing.dart`). The month is a property of the ARTWORK's journey,
+  // not of any one aggregator, so it is counted from how many aggregators have
+  // already had it — which is why returned holdings are kept rather than
+  // deleted.
+
+  /// Placements this artwork has already been through, in order.
+  List<AggregatorHolding> _pastHoldingsFor(String artworkId) => [
+        for (final holding in _readHoldings())
+          if (holding.artworkId == artworkId &&
+              holding.status == HoldingStatus.returned)
+            holding,
+      ]..sort((a, b) => a.assignedAt.compareTo(b.assignedAt));
+
+  /// Which month of the cycle the NEXT placement of this artwork would be.
+  int _cycleMonthFor(String artworkId) => _pastHoldingsFor(artworkId).length + 1;
+
+  /// When this artwork's 180-day listing started — the first time any
+  /// aggregator took it. Null means it has never been placed, so the clock has
+  /// not started.
+  DateTime? _cycleStartFor(String artworkId) {
+    final all = [
+      for (final holding in _readHoldings())
+        if (holding.artworkId == artworkId) holding,
+    ]..sort((a, b) => a.assignedAt.compareTo(b.assignedAt));
+    return all.isEmpty ? null : DateTime.parse(all.first.assignedAt);
+  }
+
+  /// Can this piece go to another aggregator, or is its listing done?
+  bool _isPlaceable(String artworkId, {DateTime? now}) =>
+      canPlaceWithAnotherAggregator(
+        cycleStartedAt: _cycleStartFor(artworkId),
+        placementsSoFar: _pastHoldingsFor(artworkId).length,
+        now: now,
+      );
+
+  /// This month's terms for one artwork.
+  AggregatorOffer _buildOffer(Artwork artwork) {
+    final month = _cycleMonthFor(artwork.id);
+    final artistPrice = artistPriceOf(artwork);
+    // GST-inclusive, exactly like Artwork.customerPrice — the aggregator's
+    // floor and the customer's price have to be the same kind of number, or
+    // the commission (which strips GST back out) is computed against the wrong
+    // base.
+    final offerPrice = withGst(aggregatorOfferPriceOf(artistPrice, month));
+    final past = _pastHoldingsFor(artwork.id);
+    final cycleStartedAt = _cycleStartFor(artwork.id);
+    final previousChangedPrice =
+        past.isNotEmpty && past.last.displayPriceSetAt != null;
+
+    final advance = aggregatorAdvanceForMonth(
+      month: month,
+      // Month 1 is charged on the display price, which at reservation time is
+      // the offer price — the aggregator has not set their own yet.
+      displayPrice: offerPrice,
+      artistPrice: artistPrice,
+      previousAggregatorChangedPrice: previousChangedPrice,
+    );
+
+    return AggregatorOffer(
+      artworkId: artwork.id,
+      month: month,
+      offerPrice: offerPrice,
+      marketplacePrice: artwork.customerPrice,
+      advance: advance.advance,
+      advanceRate: advance.rate,
+      advanceBase: advance.base,
+      advanceBasis: advance.basis,
+      deliveryCharge: advance.deliveryCharge,
+      payable: advance.payable,
+      previousAggregatorChangedPrice: previousChangedPrice,
+      canSetPrice: canSetDisplayPrice(month),
+      daysLeftInListing: cycleStartedAt == null
+          ? aggregatorListingDays
+          : daysLeftInListing(cycleStartedAt),
+    );
+  }
+
+  void _writeWallet(WalletSummary wallet) =>
+      _writeSingle(_walletKey, wallet, (w) => w.toJson());
+
+  void _pushTransactions(List<WalletTransaction> rows) {
+    if (rows.isEmpty) return;
+    _writeTransactions([...rows, ..._readTransactions()]);
   }
 
   @override
@@ -144,7 +237,7 @@ class MockAggregatorRepository implements AggregatorRepository {
           if (artwork == null) continue;
           commission += aggregatorCommissionFor(
             displayPrice: holding.displayPrice,
-            customerPrice: artwork.customerPrice,
+            artistPrice: artistPriceOf(artwork),
           );
         }
         return AggregatorDashboardSummary(
@@ -156,46 +249,193 @@ class MockAggregatorRepository implements AggregatorRepository {
       });
 
   @override
-  Future<List<Artwork>> listReservableInventory() => mockDelay(() {
-        final claimed = _readHoldings().map((h) => h.artworkId).toSet();
-        return _readArtworks()
+  Future<List<ReservableArtwork>> listReservableInventory() => mockDelay(() {
+        // A returned holding no longer claims its artwork — that is the whole
+        // point of the cycle: the piece goes back and the next aggregator can
+        // take it, at the next month's price.
+        final claimed = {
+          for (final holding in _readHoldings())
+            if (holding.status != HoldingStatus.returned) holding.artworkId,
+        };
+        return [
+          for (final artwork in _readArtworks())
             // Ask the predicate, not the literal: an aggregator-only piece is
             // reservable here even though it never appears in the marketplace
             // grid.
-            .where((a) =>
-                isAggregatorListed(a.listingType) &&
-                a.status == ArtworkStatus.marketplace &&
-                !claimed.contains(a.id))
-            .toList();
+            if (isAggregatorListed(artwork.listingType) &&
+                artwork.status == ArtworkStatus.marketplace &&
+                !claimed.contains(artwork.id) &&
+                // Five placements, or fewer if the 180 days run out first. A
+                // stub of under thirty days is never placed with a new
+                // aggregator — it goes to whoever already has the piece.
+                _isPlaceable(artwork.id))
+              ReservableArtwork(artwork: artwork, offer: _buildOffer(artwork)),
+        ];
       });
 
   @override
   Future<AggregatorHolding> reserve(String artworkId, {bool simulateConflict = false}) {
     if (simulateConflict) return mockError('Artwork no longer available');
 
+    // MOU first, inventory second: an unsigned aggregator has no agreement
+    // covering custody, pricing or settlement, so they cannot take possession
+    // of anyone's artwork. Enforced here rather than only in the UI.
+    if (_readProfile().mouAcceptance == null) {
+      return mockError(
+        'Sign your Aggregator MOU in My Profile before reserving artwork',
+      );
+    }
+
     final artwork = _artworkById(artworkId);
     final holdings = _readHoldings();
-    if (artwork == null || holdings.any((h) => h.artworkId == artworkId)) {
+    final alreadyClaimed = holdings.any(
+      (h) => h.artworkId == artworkId && h.status != HoldingStatus.returned,
+    );
+    if (artwork == null || alreadyClaimed) {
       return mockError('Artwork no longer available');
+    }
+    if (!_isPlaceable(artworkId)) {
+      return mockError(
+        'This piece has finished its listing period and is going back to the artist',
+      );
+    }
+
+    final offer = _buildOffer(artwork);
+
+    // The advance is not a fresh payment every time — it is LOCKED from the
+    // aggregator's wallet. Deposit once, and each reservation holds what it
+    // needs; only a shortfall has to be topped up. Enforced here so a stale
+    // screen cannot reserve past the balance.
+    final wallet = _readWallet();
+    final free = wallet.balance - wallet.lockedBalance;
+    if (free < offer.payable) {
+      final shortfall = offer.payable - free;
+      return mockError(
+        'Add ${formatInr(shortfall)} to your wallet to reserve this piece — '
+        '${formatInr(offer.payable)} needs to be held and only '
+        '${formatInr(free < 0 ? 0 : free)} is free.',
+      );
     }
 
     return mockDelay(() {
       final assignedAt = DateTime.now();
-      final percent = advancePercentFor(artwork.customerPrice);
+      // Thirty days, unless what would be left over afterwards is too short to
+      // place with anyone else — then this aggregator keeps it to the end of
+      // the artist's 180 days rather than the piece making one more pointless
+      // trip.
+      final window = placementWindow(
+        cycleStartedAt: _cycleStartFor(artworkId) ?? assignedAt,
+        assignedAt: assignedAt,
+      );
+
       final holding = AggregatorHolding(
         id: 'hold-${holdings.length + 1}-${assignedAt.microsecondsSinceEpoch}',
         artworkId: artworkId,
-        advancePercent: percent,
-        advanceAmount: advanceAmountFor(artwork.customerPrice, percent),
-        // Opens at the floor; the collection screen can raise it, never lower.
-        displayPrice: artwork.customerPrice,
+        advancePercent: advancePercentFor(offer.month),
+        advanceAmount: offer.advance,
+        // Held alongside the advance (MOU §7). Returned on a sale; forfeited
+        // if the piece goes back unsold.
+        deliveryDeposit: offer.deliveryCharge,
+        cycleMonth: offer.month,
+        // This month's offer price is the floor — the collection screen can
+        // raise it, never lower, and only in month one.
+        displayPrice: offer.offerPrice,
         assignedAt: assignedAt.toIso8601String(),
-        expiresAt: assignedAt.add(holdingWindow).toIso8601String(),
+        expiresAt: window.expiresAt.toIso8601String(),
+        windowExtended: window.extended,
         status: HoldingStatus.reserved,
         assignmentSource: AssignmentSource.selfReserved,
       );
+
+      _writeWallet(
+        wallet.copyWith(lockedBalance: wallet.lockedBalance + offer.payable),
+      );
+      _pushTransactions([
+        WalletTransaction(
+          id: 'wt-${assignedAt.microsecondsSinceEpoch}',
+          type: WalletTransactionType.adjustment,
+          label:
+              'Held for "${artwork.title}" — month ${offer.month} advance & delivery',
+          amount: -offer.payable,
+          date: assignedAt.toIso8601String().substring(0, 10),
+          status: WalletTransactionStatus.pending,
+        ),
+      ]);
       _writeHoldings([...holdings, holding]);
       return holding;
+    });
+  }
+
+  // The piece did not sell and goes back to GalleryZone. The money-flow sheet
+  // is explicit that only the advance comes back in this case — the delivery
+  // charge is settled only on a sale, so an unsold return costs the aggregator
+  // that leg. Frees the artwork to be reserved again, by the NEXT aggregator
+  // in the cycle.
+  @override
+  Future<HoldingRelease> releaseHolding(String holdingId) {
+    final holdings = _readHoldings();
+    final holding = holdings.where((h) => h.id == holdingId).firstOrNull;
+    if (holding == null) return mockError('Reservation not found');
+    if (holding.status != HoldingStatus.reserved) {
+      return mockError('This piece has already sold and cannot be returned');
+    }
+
+    return mockDelay(() {
+      final artwork = _artworkById(holding.artworkId);
+      final title = artwork?.title ?? 'Artwork';
+      final deliveryLost = holding.deliveryDeposit;
+      final held = holding.advanceAmount + deliveryLost;
+      final now = DateTime.now();
+      final date = now.toIso8601String().substring(0, 10);
+
+      // The advance and delivery were locked from the aggregator's own wallet,
+      // never taken from it, so nothing is "credited back" here — the hold is
+      // released. The delivery portion is the exception: the sheet settles it
+      // only on a sale, so an unsold return actually spends it.
+      final wallet = _readWallet();
+      _writeWallet(
+        wallet.copyWith(
+          lockedBalance: (wallet.lockedBalance - held).clamp(0, double.infinity),
+          balance: wallet.balance - deliveryLost,
+        ),
+      );
+      _pushTransactions([
+        WalletTransaction(
+          id: 'wt-${now.microsecondsSinceEpoch}',
+          type: WalletTransactionType.refund,
+          label: 'Advance released: "$title"',
+          amount: holding.advanceAmount,
+          date: date,
+          status: WalletTransactionStatus.completed,
+        ),
+        if (deliveryLost > 0)
+          WalletTransaction(
+            id: 'wt-${now.microsecondsSinceEpoch + 1}',
+            type: WalletTransactionType.adjustment,
+            label: 'Delivery charged — "$title" returned unsold',
+            amount: -deliveryLost,
+            date: date,
+            status: WalletTransactionStatus.completed,
+          ),
+      ]);
+
+      // Kept, not deleted: the next aggregator's price and advance are counted
+      // off how many placements this artwork has already been through.
+      _writeHoldings([
+        for (final h in holdings)
+          if (h.id == holdingId)
+            h.copyWith(
+              status: HoldingStatus.returned,
+              returnedAt: now.toIso8601String(),
+            )
+          else
+            h,
+      ]);
+
+      return HoldingRelease(
+        refunded: holding.advanceAmount,
+        deliveryLost: deliveryLost,
+      );
     });
   }
 
@@ -203,8 +443,11 @@ class MockAggregatorRepository implements AggregatorRepository {
   Future<List<AggregatorHoldingView>> listCollection() => mockDelay(() {
         final byId = {for (final artwork in _readArtworks()) artwork.id: artwork};
         return [
+          // Returned pieces are history for the cycle counter, not part of
+          // anyone's current collection.
           for (final holding in _readHoldings())
-            if (byId[holding.artworkId] != null)
+            if (holding.status != HoldingStatus.returned &&
+                byId[holding.artworkId] != null)
               AggregatorHoldingView(holding: holding, artwork: byId[holding.artworkId]!),
         ];
       });
@@ -215,15 +458,79 @@ class MockAggregatorRepository implements AggregatorRepository {
     final existing = holdings.where((h) => h.id == holdingId).firstOrNull;
     if (existing == null) return mockError('No holding "$holdingId"');
 
-    final artwork = _artworkById(existing.artworkId);
-    if (artwork != null && displayPrice < artwork.customerPrice) {
+    // Only the FIRST aggregator prices the piece. After that the price is
+    // GalleryZone's calculated figure, because from month two the aggregator
+    // is already getting a cheaper advance — they don't get both.
+    if (!canSetDisplayPrice(existing.cycleMonth)) {
+      return mockError(
+        'The selling price is set by GalleryZone for this piece — only the '
+        'first aggregator to display a work can price it',
+      );
+    }
+    // MOU §6: one opportunity only. Enforced here, not just by hiding the
+    // button, so a stale screen can't post a second price.
+    if (existing.displayPriceSetAt != null) {
+      return mockError(
+        'The selling price for this artwork has already been set and cannot '
+        'be changed (MOU §6)',
+      );
+    }
+    if (displayPrice < existing.displayPrice) {
       // Enforced here, not only in the form: the floor is a platform rule
       // (SAD §2.7), and a rule the UI alone upholds isn't a rule.
-      return mockError('Display price cannot go below the marketplace price');
+      return mockError('Display price cannot go below the offer price');
+    }
+
+    // Month one's advance is 5% of the DISPLAY price, so raising the price
+    // raises the advance. The difference is held from the wallet on the spot —
+    // "if the amount is on the higher side he needs to deposit the extra".
+    final artwork = _artworkById(existing.artworkId);
+    final newAdvance = artwork == null
+        ? existing.advanceAmount
+        : aggregatorAdvanceForMonth(
+            month: existing.cycleMonth,
+            displayPrice: displayPrice,
+            artistPrice: artistPriceOf(artwork),
+          ).advance;
+    final topUp = newAdvance - existing.advanceAmount;
+
+    if (topUp > 0) {
+      final wallet = _readWallet();
+      final free = wallet.balance - wallet.lockedBalance;
+      if (free < topUp) {
+        return mockError(
+          'Raising the price raises the advance. Add '
+          '${formatInr(topUp - free)} to your wallet first — '
+          '${formatInr(topUp)} more needs to be held.',
+        );
+      }
     }
 
     return mockDelay(() {
-      final updated = existing.copyWith(displayPrice: displayPrice);
+      final now = DateTime.now();
+      if (topUp > 0) {
+        final wallet = _readWallet();
+        _writeWallet(
+          wallet.copyWith(lockedBalance: wallet.lockedBalance + topUp),
+        );
+        _pushTransactions([
+          WalletTransaction(
+            id: 'wt-${now.microsecondsSinceEpoch}',
+            type: WalletTransactionType.adjustment,
+            label:
+                'Additional advance held — "${artwork?.title ?? 'Artwork'}" priced up',
+            amount: -topUp,
+            date: now.toIso8601String().substring(0, 10),
+            status: WalletTransactionStatus.pending,
+          ),
+        ]);
+      }
+
+      final updated = existing.copyWith(
+        displayPrice: displayPrice,
+        advanceAmount: newAdvance,
+        displayPriceSetAt: now.toIso8601String(),
+      );
       _writeHoldings([for (final h in holdings) h.id == holdingId ? updated : h]);
       return updated;
     });
@@ -262,40 +569,73 @@ class MockAggregatorRepository implements AggregatorRepository {
         deliveryMode: input.deliveryMode,
         soldAt: now.toIso8601String(),
         shipmentStatus: ShipmentStatus.preparing,
+        paymentRoute: input.paymentRoute,
+        // Cash taken at the counter is GalleryZone's money sitting in the
+        // aggregator's till until they transfer it.
+        remittedAt: null,
         courierRef: input.deliveryMode == DeliveryMode.courier
             ? 'CR-${stamp.toRadixString(36).toUpperCase()}'
             : null,
       );
       _writeSales([sale, ..._readSales()]);
 
-      // Commission accrues as *pending* now and only becomes withdrawable
-      // once the settlement is processed — the wallet never shows money the
-      // aggregator can't yet take out.
+      // A sale settles all three lines on the sheet — 7,500 advance + 2,500
+      // delivery + 10,000 commission = 20,000. But the first two were LOCKED
+      // from this aggregator's own wallet rather than taken from it, so they
+      // are released, not credited. Only the commission is new money, and it
+      // accrues as *pending* until the settlement is processed — the wallet
+      // never shows money the aggregator can't yet take out.
       final artwork = _artworkById(input.artworkId);
       if (artwork != null) {
         final commission = aggregatorCommissionFor(
           displayPrice: holding.displayPrice,
-          customerPrice: artwork.customerPrice,
+          artistPrice: artistPriceOf(artwork),
         );
-        if (commission > 0) {
-          final wallet = _readWallet();
-          _writeSingle(
-            _walletKey,
-            wallet.copyWith(pendingBalance: wallet.pendingBalance + commission),
-            (w) => w.toJson(),
-          );
-          _writeTransactions([
+        final held = holding.advanceAmount + holding.deliveryDeposit;
+        final date = now.toIso8601String().substring(0, 10);
+
+        final wallet = _readWallet();
+        _writeWallet(
+          wallet.copyWith(
+            lockedBalance: (wallet.lockedBalance - held).clamp(0, double.infinity),
+            pendingBalance: wallet.pendingBalance + commission,
+          ),
+        );
+
+        // The client's answer on the advance was "both" — it always comes back
+        // AND it is adjusted against what is owed. Both are true at once if it
+        // is settled as one statement rather than two movements: the advance
+        // is set off against the sale, and the aggregator ends up whole either
+        // way.
+        _pushTransactions([
+          if (held > 0)
             WalletTransaction(
               id: 'wt-$stamp',
+              type: WalletTransactionType.refund,
+              label: '"${artwork.title}" sold — ${formatInr(held)} '
+                  'advance & delivery set off against settlement',
+              amount: held,
+              date: date,
+              status: WalletTransactionStatus.completed,
+            ),
+          if (commission > 0)
+            WalletTransaction(
+              id: 'wt-${stamp + 1}',
               type: WalletTransactionType.commission,
               label: 'Commission: "${artwork.title}"',
               amount: commission,
-              date: now.toIso8601String().substring(0, 10),
+              date: date,
               status: WalletTransactionStatus.pending,
             ),
-            ..._readTransactions(),
-          ]);
-        }
+        ]);
+
+        // The artist's side of the same sale: their price less the delivery
+        // leg and 2% convenience (1,00,000 -> 95,500 on the sheet).
+        creditArtistForSale(
+          artwork: artwork,
+          orderId: sale.id,
+          channel: SaleChannel.aggregator,
+        );
       }
 
       return sale;
@@ -359,12 +699,38 @@ class MockAggregatorRepository implements AggregatorRepository {
   Future<List<WalletTransaction>> listWalletTransactions() => mockDelay(_readTransactions);
 
   @override
+  Future<WalletTransaction> addFunds(double amount) {
+    if (amount <= 0) return mockError('Enter an amount to add');
+    return mockDelay(() {
+      final wallet = _readWallet();
+      _writeWallet(wallet.copyWith(balance: wallet.balance + amount));
+      final transaction = WalletTransaction(
+        id: 'wt-${DateTime.now().microsecondsSinceEpoch}',
+        type: WalletTransactionType.adjustment,
+        label: 'Wallet top-up',
+        amount: amount,
+        date: DateTime.now().toIso8601String().substring(0, 10),
+        status: WalletTransactionStatus.completed,
+      );
+      _pushTransactions([transaction]);
+      return transaction;
+    });
+  }
+
+  @override
   Future<WalletTransaction> requestWithdrawal(double amount) {
     final wallet = _readWallet();
+    final free = wallet.balance - wallet.lockedBalance;
     if (amount < aggregatorMinimumWithdrawal) {
       return mockError('Minimum withdrawal is ₹1,000');
     }
-    if (amount > wallet.balance) return mockError('Exceeds your available balance');
+    // Money held against an active reservation is not yours to take out.
+    if (amount > free) {
+      return mockError(
+        'Only ${formatInr(free < 0 ? 0 : free)} is free — the rest is held '
+        'against artwork you have reserved',
+      );
+    }
 
     return mockDelay(() {
       _writeSingle(
@@ -542,6 +908,27 @@ class MockAggregatorRepository implements AggregatorRepository {
       final updated = _readProfile().copyWith(
         bankAccountMasked: '•••• •••• •••• $last4',
         ifsc: ifsc.trim().toUpperCase(),
+      );
+      _writeSingle(_profileKey, updated, (p) => p.toJson());
+      return updated;
+    });
+  }
+
+  @override
+  Future<AggregatorProfile> acceptMou({
+    required String signatureName,
+    required String version,
+  }) {
+    if (signatureName.trim().isEmpty) {
+      return mockError('Type your full name to sign');
+    }
+    return mockDelay(() {
+      final updated = _readProfile().copyWith(
+        mouAcceptance: MouAcceptance(
+          acceptedAt: DateTime.now().toIso8601String(),
+          signatureName: signatureName.trim(),
+          version: version,
+        ),
       );
       _writeSingle(_profileKey, updated, (p) => p.toJson());
       return updated;

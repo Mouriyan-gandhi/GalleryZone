@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/core/pricing.dart';
 import 'package:gallery_zone/data/mock/mock_aggregator_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
@@ -37,6 +38,10 @@ void main() {
     MockDb.resetForTesting();
     await MockDb.init();
     repository = MockAggregatorRepository();
+    // Reserving is gated on a signed MOU and a funded wallet — both are real
+    // rules, so every test that reserves has to satisfy them first.
+    await repository.acceptMou(signatureName: 'Meher Kapadia', version: 'v1');
+    await repository.addFunds(500000);
   });
 
   test('every seeded holding points at a real, aggregator-eligible artwork', () {
@@ -71,7 +76,8 @@ void main() {
     final claimed = seedHoldingsCollection().map((h) => h.artworkId).toSet();
 
     expect(reservable, isNotEmpty);
-    for (final artwork in reservable) {
+    for (final item in reservable) {
+      final artwork = item.artwork;
       expect(claimed.contains(artwork.id), isFalse);
       expect(artwork.status, ArtworkStatus.marketplace);
       // Aggregator-eligible, not specifically marketplaceAndAggregator: an
@@ -79,17 +85,27 @@ void main() {
       // appears in the online grid. Asserting the literal passed only while
       // no unclaimed aggregator-only fixture existed.
       expect(isAggregatorListed(artwork.listingType), isTrue);
+      // Nothing has been placed yet, so every piece is on month one.
+      expect(item.offer.month, 1);
+      expect(item.offer.canSetPrice, isTrue);
+      expect(item.offer.daysLeftInListing, aggregatorListingDays);
     }
   });
 
-  test('reserving opens at the floor price and cannot happen twice', () async {
-    final artwork = (await repository.listReservableInventory()).first;
+  test('reserving opens at the offer price and cannot happen twice', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final artwork = item.artwork;
     final holding = await repository.reserve(artwork.id);
 
-    expect(holding.displayPrice, artwork.customerPrice);
+    // Month one: the offer price is GalleryZone's own price, so it matches
+    // what the marketplace shows. From month two it drops below it.
+    expect(holding.displayPrice, item.offer.offerPrice);
+    expect(holding.cycleMonth, 1);
     expect(holding.status, HoldingStatus.reserved);
     expect(holding.assignmentSource, AssignmentSource.selfReserved);
-    expect(holding.advancePercent, advancePercentFor(artwork.customerPrice));
+    expect(holding.advancePercent, 5);
+    expect(holding.advanceAmount, aggregatorAdvanceOf(item.offer.offerPrice));
+    expect(holding.deliveryDeposit, deliveryCharge);
     expect(
       DateTime.parse(holding.expiresAt).difference(DateTime.parse(holding.assignedAt)),
       holdingWindow,
@@ -97,7 +113,7 @@ void main() {
 
     // Gone from the browse grid, present in the collection.
     final reservable = await repository.listReservableInventory();
-    expect(reservable.map((a) => a.id), isNot(contains(artwork.id)));
+    expect(reservable.map((a) => a.artwork.id), isNot(contains(artwork.id)));
     expect(
       (await repository.listCollection()).map((v) => v.artwork.id),
       contains(artwork.id),
@@ -106,11 +122,89 @@ void main() {
     await expectLater(repository.reserve(artwork.id), throwsA(isA<Exception>()));
   });
 
+  test('the advance and delivery are LOCKED from the wallet, not charged',
+      () async {
+    final item = (await repository.listReservableInventory()).first;
+    final before = await repository.getWallet();
+
+    await repository.reserve(item.artwork.id);
+
+    final after = await repository.getWallet();
+    expect(after.balance, before.balance, reason: 'no money left the wallet');
+    expect(after.lockedBalance, before.lockedBalance + item.offer.payable);
+  });
+
+  test('an unsigned aggregator cannot take possession of anyone\'s artwork',
+      () async {
+    // A fresh store: no MOU, no funds.
+    SharedPreferences.setMockInitialValues({});
+    MockDb.resetForTesting();
+    await MockDb.init();
+    final fresh = MockAggregatorRepository();
+    final item = (await fresh.listReservableInventory()).first;
+
+    await expectLater(fresh.reserve(item.artwork.id), throwsA(isA<Exception>()));
+
+    // Signed but broke: still refused, now for the money.
+    await fresh.acceptMou(signatureName: 'Meher Kapadia', version: 'v1');
+    await expectLater(fresh.reserve(item.artwork.id), throwsA(isA<Exception>()));
+
+    await fresh.addFunds(item.offer.payable);
+    final holding = await fresh.reserve(item.artwork.id);
+    expect(holding.status, HoldingStatus.reserved);
+  });
+
+  test('a piece nobody buys moves to the next aggregator, cheaper', () async {
+    final first = (await repository.listReservableInventory()).first;
+    final artworkId = first.artwork.id;
+    final holding = await repository.reserve(artworkId);
+
+    // It goes back unsold. The advance is released; the delivery leg is not —
+    // the sheet settles that only on a sale.
+    final release = await repository.releaseHolding(holding.id);
+    expect(release.refunded, holding.advanceAmount);
+    expect(release.deliveryLost, deliveryCharge);
+
+    final wallet = await repository.getWallet();
+    expect(wallet.lockedBalance, 0);
+    expect(wallet.balance, 500000 - deliveryCharge);
+
+    // Out of the collection, back in the grid — at month two's price, and now
+    // priced by GalleryZone rather than by the aggregator.
+    expect(
+      (await repository.listCollection()).map((v) => v.artwork.id),
+      isNot(contains(artworkId)),
+    );
+    final second = (await repository.listReservableInventory())
+        .firstWhere((i) => i.artwork.id == artworkId);
+    expect(second.offer.month, 2);
+    expect(second.offer.offerPrice, lessThan(first.offer.offerPrice));
+    expect(second.offer.canSetPrice, isFalse);
+
+    // Month two is charged on the artist's price, not the display price.
+    expect(second.offer.advanceBasis, AdvanceBasis.artistPrice);
+    // 3%, because the first aggregator never used their price change.
+    expect(second.offer.advanceRate, 0.03);
+  });
+
+  test('only the first aggregator of a cycle may price the piece', () async {
+    final first = (await repository.listReservableInventory()).first;
+    final holding = await repository.reserve(first.artwork.id);
+    await repository.releaseHolding(holding.id);
+
+    final second = await repository.reserve(first.artwork.id);
+    expect(second.cycleMonth, 2);
+    await expectLater(
+      repository.updateDisplayPrice(second.id, second.displayPrice + 5000),
+      throwsA(isA<Exception>()),
+    );
+  });
+
   test('the display price floor is enforced by the repository, not just the form',
       () async {
     final view = (await repository.listCollection())
         .firstWhere((v) => v.holding.status == HoldingStatus.reserved);
-    final floor = view.artwork.customerPrice;
+    final floor = view.holding.displayPrice;
 
     await expectLater(
       repository.updateDisplayPrice(view.holding.id, floor - 1),
@@ -119,30 +213,49 @@ void main() {
 
     final raised = await repository.updateDisplayPrice(view.holding.id, floor + 5000);
     expect(raised.displayPrice, floor + 5000);
+    expect(raised.displayPriceSetAt, isNotNull);
+
+    // MOU §6: one opportunity only, enforced here and not just by hiding the
+    // button.
+    await expectLater(
+      repository.updateDisplayPrice(view.holding.id, floor + 9000),
+      throwsA(isA<Exception>()),
+    );
   });
 
   test('a sale credits pending commission, and settling makes it withdrawable',
       () async {
     final view = (await repository.listCollection())
         .firstWhere((v) => v.holding.status == HoldingStatus.reserved);
-    final floor = view.artwork.customerPrice;
+    final floor = view.holding.displayPrice;
     await repository.updateDisplayPrice(view.holding.id, floor + 10000);
+    // MOU §8: 20% of the markup over the ARTIST's price, both before GST —
+    // not over GalleryZone's price to the aggregator, which is what the old
+    // formula compared against and paid far too little for.
     final expected = aggregatorCommissionFor(
       displayPrice: floor + 10000,
-      customerPrice: floor,
+      artistPrice: artistPriceOf(view.artwork),
     );
-    expect(expected, 2000); // 20% of the 10,000 markup.
+    expect(
+      expected,
+      (0.2 * (exGst(floor + 10000) - artistPriceOf(view.artwork))).round(),
+    );
 
     final sale = await repository.recordSale(_sale(view.artwork.id));
     expect(sale.shipmentStatus, ShipmentStatus.preparing);
     expect(sale.courierRef, isNotNull);
 
     // Pending, not available: the money isn't withdrawable until settled.
+    // The balance is the top-up this test's setUp put in, untouched — the
+    // advance was locked from it, never taken.
     var wallet = await repository.getWallet();
     expect(wallet.pendingBalance, expected);
-    expect(wallet.balance, 0);
+    expect(wallet.balance, 500000);
+    expect(wallet.lockedBalance, 0, reason: 'the sale released the hold');
+    // Pending commission is not part of what can be withdrawn: asking for the
+    // whole balance plus it is refused.
     await expectLater(
-      repository.requestWithdrawal(expected),
+      repository.requestWithdrawal(wallet.balance + expected),
       throwsA(isA<Exception>()),
     );
 
@@ -152,13 +265,17 @@ void main() {
 
     wallet = await repository.getWallet();
     expect(wallet.pendingBalance, 0);
-    expect(wallet.balance, expected);
+    expect(wallet.balance, 500000 + expected);
 
-    // One sale, one ledger line — the pending row became the settlement row.
+    // One sale, one commission line — the pending row became the settlement
+    // row rather than a second appearing beside it. The other rows are the
+    // top-up, the reserve hold, and the advance being set off on the sale.
     final transactions = await repository.listWalletTransactions();
-    expect(transactions, hasLength(1));
-    expect(transactions.single.type, WalletTransactionType.settlement);
-    expect(transactions.single.status, WalletTransactionStatus.completed);
+    final settlements = transactions
+        .where((t) => t.type == WalletTransactionType.settlement)
+        .toList();
+    expect(settlements, hasLength(1));
+    expect(settlements.single.status, WalletTransactionStatus.completed);
 
     await expectLater(
       repository.processSettlement(sale.id),
@@ -182,7 +299,7 @@ void main() {
   });
 
   test('reserving never mutates the shared artworks collection', () async {
-    final artwork = (await repository.listReservableInventory()).first;
+    final artwork = (await repository.listReservableInventory()).first.artwork;
     await repository.reserve(artwork.id);
     await repository.recordSale(_sale(artwork.id));
 
@@ -226,17 +343,50 @@ void main() {
     );
   });
 
-  test('a sale at the floor price earns nothing, and cannot be settled', () async {
-    // Not a bug: with no markup there is no share of a markup to take. The
-    // repository says so rather than inventing a figure.
+  test('an aggregator who never raises the price still earns the markup share',
+      () async {
+    // GalleryZone's price to the aggregator already sits above the artist's,
+    // so 20% of THAT gap is real money even with no uplift of their own. The
+    // old code compared against GalleryZone's price and paid ₹0 here.
     final view = (await repository.listCollection()).firstWhere(
-      (v) =>
-          v.holding.status == HoldingStatus.reserved &&
-          v.holding.displayPrice == v.artwork.customerPrice,
-      orElse: () => throw StateError('no floor-priced holding in the fixtures'),
+      (v) => v.holding.status == HoldingStatus.reserved,
     );
+    final artistPrice = artistPriceOf(view.artwork);
     final sale = await repository.recordSale(_sale(view.artwork.id));
 
+    final expected =
+        (0.2 * (exGst(view.holding.displayPrice) - artistPrice)).round();
+    expect(expected, greaterThan(0));
+    expect((await repository.getWallet()).pendingBalance, expected);
+
+    final settlement = await repository.processSettlement(sale.id);
+    expect(settlement.aggregatorCommission, expected);
+  });
+
+  test('a sale below the artist price earns nothing, and cannot be settled',
+      () async {
+    // Not a bug: with no markup there is no share of a markup to take. The
+    // repository says so rather than inventing a negative figure.
+    final view = (await repository.listCollection()).firstWhere(
+      (v) => v.holding.status == HoldingStatus.reserved,
+    );
+    // Reach past updateDisplayPrice, which will not price below the offer —
+    // this is about what the commission does with such a number, not how one
+    // could be entered.
+    MockDb.setCollection(
+      'holdings',
+      [
+        for (final h in MockDb.getCollection('holdings', () => <AggregatorHolding>[],
+            AggregatorHolding.fromJson, (h) => h.toJson()))
+          if (h.id == view.holding.id)
+            h.copyWith(displayPrice: withGst(artistPriceOf(view.artwork) - 1000))
+          else
+            h,
+      ],
+      (h) => h.toJson(),
+    );
+
+    final sale = await repository.recordSale(_sale(view.artwork.id));
     expect((await repository.getWallet()).pendingBalance, 0);
     await expectLater(
       repository.processSettlement(sale.id),

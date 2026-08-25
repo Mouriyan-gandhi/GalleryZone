@@ -860,7 +860,8 @@ as bool,
 /// @nodoc
 mixin _$MouAcceptance {
 
- String get version; String get acceptedAt;
+ String get version; String get acceptedAt;/// Typed by the signer. Empty on records that predate the field.
+ String get signatureName;
 /// Create a copy of MouAcceptance
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -873,16 +874,16 @@ $MouAcceptanceCopyWith<MouAcceptance> get copyWith => _$MouAcceptanceCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.signatureName, signatureName) || other.signatureName == signatureName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,acceptedAt);
+int get hashCode => Object.hash(runtimeType,version,acceptedAt,signatureName);
 
 @override
 String toString() {
-  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt)';
+  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt, signatureName: $signatureName)';
 }
 
 
@@ -893,7 +894,7 @@ abstract mixin class $MouAcceptanceCopyWith<$Res>  {
   factory $MouAcceptanceCopyWith(MouAcceptance value, $Res Function(MouAcceptance) _then) = _$MouAcceptanceCopyWithImpl;
 @useResult
 $Res call({
- String version, String acceptedAt
+ String version, String acceptedAt, String signatureName
 });
 
 
@@ -910,10 +911,11 @@ class _$MouAcceptanceCopyWithImpl<$Res>
 
 /// Create a copy of MouAcceptance
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? acceptedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? acceptedAt = null,Object? signatureName = null,}) {
   return _then(MouAcceptance(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String,signatureName: null == signatureName ? _self.signatureName : signatureName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -999,10 +1001,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String version,  String acceptedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String version,  String acceptedAt,  String signatureName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MouAcceptance() when $default != null:
-return $default(_that.version,_that.acceptedAt);case _:
+return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
   return orElse();
 
 }
@@ -1020,10 +1022,10 @@ return $default(_that.version,_that.acceptedAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String version,  String acceptedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String version,  String acceptedAt,  String signatureName)  $default,) {final _that = this;
 switch (_that) {
 case _MouAcceptance():
-return $default(_that.version,_that.acceptedAt);case _:
+return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1040,10 +1042,10 @@ return $default(_that.version,_that.acceptedAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String version,  String acceptedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String version,  String acceptedAt,  String signatureName)?  $default,) {final _that = this;
 switch (_that) {
 case _MouAcceptance() when $default != null:
-return $default(_that.version,_that.acceptedAt);case _:
+return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
   return null;
 
 }
@@ -1055,11 +1057,13 @@ return $default(_that.version,_that.acceptedAt);case _:
 @JsonSerializable()
 
 class _MouAcceptance implements MouAcceptance {
-  const _MouAcceptance({required this.version, required this.acceptedAt});
+  const _MouAcceptance({required this.version, required this.acceptedAt, this.signatureName = ''});
   factory _MouAcceptance.fromJson(Map<String, dynamic> json) => _$MouAcceptanceFromJson(json);
 
 @override final  String version;
 @override final  String acceptedAt;
+/// Typed by the signer. Empty on records that predate the field.
+@override@JsonKey() final  String signatureName;
 
 /// Create a copy of MouAcceptance
 /// with the given fields replaced by the non-null parameter values.
@@ -1074,16 +1078,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.signatureName, signatureName) || other.signatureName == signatureName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,acceptedAt);
+int get hashCode => Object.hash(runtimeType,version,acceptedAt,signatureName);
 
 @override
 String toString() {
-  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt)';
+  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt, signatureName: $signatureName)';
 }
 
 
@@ -1094,7 +1098,7 @@ abstract mixin class _$MouAcceptanceCopyWith<$Res> implements $MouAcceptanceCopy
   factory _$MouAcceptanceCopyWith(_MouAcceptance value, $Res Function(_MouAcceptance) _then) = __$MouAcceptanceCopyWithImpl;
 @override @useResult
 $Res call({
- String version, String acceptedAt
+ String version, String acceptedAt, String signatureName
 });
 
 
@@ -1111,10 +1115,11 @@ class __$MouAcceptanceCopyWithImpl<$Res>
 
 /// Create a copy of MouAcceptance
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? acceptedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? acceptedAt = null,Object? signatureName = null,}) {
   return _then(_MouAcceptance(
 version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
+as String,signatureName: null == signatureName ? _self.signatureName : signatureName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -1126,7 +1131,10 @@ as String,
 /// @nodoc
 mixin _$Settlement {
 
- String get id; String get orderId; String get artworkTitle; String get artistName; double get artistAmount; double get aggregatorCommission; double get platformRevenue; SettlementStatus get status; String get createdAt; String? get processedAt;
+ String get id; String get orderId; String get artworkTitle; String get artistName; double get artistAmount; double get aggregatorCommission; double get platformRevenue; SettlementStatus get status; String get createdAt; String? get processedAt;/// When this money becomes withdrawable — 7 days after the piece was
+/// DELIVERED, not after it sold. Null until delivery, because until then
+/// there is no clock running.
+ String? get releaseAfter;
 /// Create a copy of Settlement
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1139,16 +1147,16 @@ $SettlementCopyWith<Settlement> get copyWith => _$SettlementCopyWithImpl<Settlem
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Settlement&&(identical(other.id, id) || other.id == id)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.artistAmount, artistAmount) || other.artistAmount == artistAmount)&&(identical(other.aggregatorCommission, aggregatorCommission) || other.aggregatorCommission == aggregatorCommission)&&(identical(other.platformRevenue, platformRevenue) || other.platformRevenue == platformRevenue)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.processedAt, processedAt) || other.processedAt == processedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Settlement&&(identical(other.id, id) || other.id == id)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.artistAmount, artistAmount) || other.artistAmount == artistAmount)&&(identical(other.aggregatorCommission, aggregatorCommission) || other.aggregatorCommission == aggregatorCommission)&&(identical(other.platformRevenue, platformRevenue) || other.platformRevenue == platformRevenue)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.processedAt, processedAt) || other.processedAt == processedAt)&&(identical(other.releaseAfter, releaseAfter) || other.releaseAfter == releaseAfter));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,orderId,artworkTitle,artistName,artistAmount,aggregatorCommission,platformRevenue,status,createdAt,processedAt);
+int get hashCode => Object.hash(runtimeType,id,orderId,artworkTitle,artistName,artistAmount,aggregatorCommission,platformRevenue,status,createdAt,processedAt,releaseAfter);
 
 @override
 String toString() {
-  return 'Settlement(id: $id, orderId: $orderId, artworkTitle: $artworkTitle, artistName: $artistName, artistAmount: $artistAmount, aggregatorCommission: $aggregatorCommission, platformRevenue: $platformRevenue, status: $status, createdAt: $createdAt, processedAt: $processedAt)';
+  return 'Settlement(id: $id, orderId: $orderId, artworkTitle: $artworkTitle, artistName: $artistName, artistAmount: $artistAmount, aggregatorCommission: $aggregatorCommission, platformRevenue: $platformRevenue, status: $status, createdAt: $createdAt, processedAt: $processedAt, releaseAfter: $releaseAfter)';
 }
 
 
@@ -1159,7 +1167,7 @@ abstract mixin class $SettlementCopyWith<$Res>  {
   factory $SettlementCopyWith(Settlement value, $Res Function(Settlement) _then) = _$SettlementCopyWithImpl;
 @useResult
 $Res call({
- String id, String orderId, String artworkTitle, String artistName, double artistAmount, double aggregatorCommission, double platformRevenue, SettlementStatus status, String createdAt, String? processedAt
+ String id, String orderId, String artworkTitle, String artistName, double artistAmount, double aggregatorCommission, double platformRevenue, SettlementStatus status, String createdAt, String? processedAt, String? releaseAfter
 });
 
 
@@ -1176,7 +1184,7 @@ class _$SettlementCopyWithImpl<$Res>
 
 /// Create a copy of Settlement
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? orderId = null,Object? artworkTitle = null,Object? artistName = null,Object? artistAmount = null,Object? aggregatorCommission = null,Object? platformRevenue = null,Object? status = null,Object? createdAt = null,Object? processedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? orderId = null,Object? artworkTitle = null,Object? artistName = null,Object? artistAmount = null,Object? aggregatorCommission = null,Object? platformRevenue = null,Object? status = null,Object? createdAt = null,Object? processedAt = freezed,Object? releaseAfter = freezed,}) {
   return _then(Settlement(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
@@ -1188,6 +1196,7 @@ as double,platformRevenue: null == platformRevenue ? _self.platformRevenue : pla
 as double,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as SettlementStatus,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,processedAt: freezed == processedAt ? _self.processedAt : processedAt // ignore: cast_nullable_to_non_nullable
+as String?,releaseAfter: freezed == releaseAfter ? _self.releaseAfter : releaseAfter // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1273,10 +1282,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt,  String? releaseAfter)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Settlement() when $default != null:
-return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt);case _:
+return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt,_that.releaseAfter);case _:
   return orElse();
 
 }
@@ -1294,10 +1303,10 @@ return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt,  String? releaseAfter)  $default,) {final _that = this;
 switch (_that) {
 case _Settlement():
-return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt);case _:
+return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt,_that.releaseAfter);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1314,10 +1323,10 @@ return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String orderId,  String artworkTitle,  String artistName,  double artistAmount,  double aggregatorCommission,  double platformRevenue,  SettlementStatus status,  String createdAt,  String? processedAt,  String? releaseAfter)?  $default,) {final _that = this;
 switch (_that) {
 case _Settlement() when $default != null:
-return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt);case _:
+return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that.artistAmount,_that.aggregatorCommission,_that.platformRevenue,_that.status,_that.createdAt,_that.processedAt,_that.releaseAfter);case _:
   return null;
 
 }
@@ -1329,7 +1338,7 @@ return $default(_that.id,_that.orderId,_that.artworkTitle,_that.artistName,_that
 @JsonSerializable()
 
 class _Settlement implements Settlement {
-  const _Settlement({required this.id, required this.orderId, required this.artworkTitle, required this.artistName, required this.artistAmount, required this.aggregatorCommission, required this.platformRevenue, required this.status, required this.createdAt, this.processedAt});
+  const _Settlement({required this.id, required this.orderId, required this.artworkTitle, required this.artistName, required this.artistAmount, required this.aggregatorCommission, required this.platformRevenue, required this.status, required this.createdAt, this.processedAt, this.releaseAfter});
   factory _Settlement.fromJson(Map<String, dynamic> json) => _$SettlementFromJson(json);
 
 @override final  String id;
@@ -1342,6 +1351,10 @@ class _Settlement implements Settlement {
 @override final  SettlementStatus status;
 @override final  String createdAt;
 @override final  String? processedAt;
+/// When this money becomes withdrawable — 7 days after the piece was
+/// DELIVERED, not after it sold. Null until delivery, because until then
+/// there is no clock running.
+@override final  String? releaseAfter;
 
 /// Create a copy of Settlement
 /// with the given fields replaced by the non-null parameter values.
@@ -1356,16 +1369,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Settlement&&(identical(other.id, id) || other.id == id)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.artistAmount, artistAmount) || other.artistAmount == artistAmount)&&(identical(other.aggregatorCommission, aggregatorCommission) || other.aggregatorCommission == aggregatorCommission)&&(identical(other.platformRevenue, platformRevenue) || other.platformRevenue == platformRevenue)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.processedAt, processedAt) || other.processedAt == processedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Settlement&&(identical(other.id, id) || other.id == id)&&(identical(other.orderId, orderId) || other.orderId == orderId)&&(identical(other.artworkTitle, artworkTitle) || other.artworkTitle == artworkTitle)&&(identical(other.artistName, artistName) || other.artistName == artistName)&&(identical(other.artistAmount, artistAmount) || other.artistAmount == artistAmount)&&(identical(other.aggregatorCommission, aggregatorCommission) || other.aggregatorCommission == aggregatorCommission)&&(identical(other.platformRevenue, platformRevenue) || other.platformRevenue == platformRevenue)&&(identical(other.status, status) || other.status == status)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.processedAt, processedAt) || other.processedAt == processedAt)&&(identical(other.releaseAfter, releaseAfter) || other.releaseAfter == releaseAfter));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,orderId,artworkTitle,artistName,artistAmount,aggregatorCommission,platformRevenue,status,createdAt,processedAt);
+int get hashCode => Object.hash(runtimeType,id,orderId,artworkTitle,artistName,artistAmount,aggregatorCommission,platformRevenue,status,createdAt,processedAt,releaseAfter);
 
 @override
 String toString() {
-  return 'Settlement(id: $id, orderId: $orderId, artworkTitle: $artworkTitle, artistName: $artistName, artistAmount: $artistAmount, aggregatorCommission: $aggregatorCommission, platformRevenue: $platformRevenue, status: $status, createdAt: $createdAt, processedAt: $processedAt)';
+  return 'Settlement(id: $id, orderId: $orderId, artworkTitle: $artworkTitle, artistName: $artistName, artistAmount: $artistAmount, aggregatorCommission: $aggregatorCommission, platformRevenue: $platformRevenue, status: $status, createdAt: $createdAt, processedAt: $processedAt, releaseAfter: $releaseAfter)';
 }
 
 
@@ -1376,7 +1389,7 @@ abstract mixin class _$SettlementCopyWith<$Res> implements $SettlementCopyWith<$
   factory _$SettlementCopyWith(_Settlement value, $Res Function(_Settlement) _then) = __$SettlementCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String orderId, String artworkTitle, String artistName, double artistAmount, double aggregatorCommission, double platformRevenue, SettlementStatus status, String createdAt, String? processedAt
+ String id, String orderId, String artworkTitle, String artistName, double artistAmount, double aggregatorCommission, double platformRevenue, SettlementStatus status, String createdAt, String? processedAt, String? releaseAfter
 });
 
 
@@ -1393,7 +1406,7 @@ class __$SettlementCopyWithImpl<$Res>
 
 /// Create a copy of Settlement
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? orderId = null,Object? artworkTitle = null,Object? artistName = null,Object? artistAmount = null,Object? aggregatorCommission = null,Object? platformRevenue = null,Object? status = null,Object? createdAt = null,Object? processedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? orderId = null,Object? artworkTitle = null,Object? artistName = null,Object? artistAmount = null,Object? aggregatorCommission = null,Object? platformRevenue = null,Object? status = null,Object? createdAt = null,Object? processedAt = freezed,Object? releaseAfter = freezed,}) {
   return _then(_Settlement(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,orderId: null == orderId ? _self.orderId : orderId // ignore: cast_nullable_to_non_nullable
@@ -1405,6 +1418,7 @@ as double,platformRevenue: null == platformRevenue ? _self.platformRevenue : pla
 as double,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as SettlementStatus,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as String,processedAt: freezed == processedAt ? _self.processedAt : processedAt // ignore: cast_nullable_to_non_nullable
+as String?,releaseAfter: freezed == releaseAfter ? _self.releaseAfter : releaseAfter // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -1697,7 +1711,24 @@ as String,
 /// @nodoc
 mixin _$AggregatorHolding {
 
- String get id; String get artworkId; int get advancePercent; double get advanceAmount; double get displayPrice; String get assignedAt; String get expiresAt; HoldingStatus get status; AssignmentSource get assignmentSource;
+ String get id; String get artworkId;/// 5% in month one, 3% from month two onwards — see `core/pricing.dart`.
+ int get advancePercent; double get advanceAmount; double get displayPrice; String get assignedAt; String get expiresAt; HoldingStatus get status; AssignmentSource get assignmentSource;/// Paid with the advance before taking possession (MOU §7). The
+/// money-flow sheet returns it only if the piece sells — an unsold piece
+/// going back to GalleryZone refunds the advance alone.
+ double get deliveryDeposit;/// Which month of the artwork's five-month aggregator cycle this
+/// placement is. A piece that doesn't sell moves to a DIFFERENT
+/// aggregator each month, at a lower price and a different advance rate,
+/// so the month is a property of the artwork's journey rather than of any
+/// one aggregator. Seeded holdings predate the field; 1 is the default.
+ int get cycleMonth;/// Aggregator MOU §6: the aggregator gets ONE opportunity to set the
+/// selling price. Stamped the first time they set it; after that the
+/// price is locked.
+ String? get displayPriceSetAt;/// Set when the piece went back to GalleryZone unsold.
+ String? get returnedAt;/// True when this placement runs past the usual thirty days because what
+/// would have been left of the artist's 180 days was too short to hand to
+/// anyone else. The last aggregator keeps it rather than the piece making
+/// one more journey for a fortnight.
+ bool get windowExtended;
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1710,16 +1741,16 @@ $AggregatorHoldingCopyWith<AggregatorHolding> get copyWith => _$AggregatorHoldin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource);
+int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended);
 
 @override
 String toString() {
-  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource)';
+  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended)';
 }
 
 
@@ -1730,7 +1761,7 @@ abstract mixin class $AggregatorHoldingCopyWith<$Res>  {
   factory $AggregatorHoldingCopyWith(AggregatorHolding value, $Res Function(AggregatorHolding) _then) = _$AggregatorHoldingCopyWithImpl;
 @useResult
 $Res call({
- String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource
+ String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended
 });
 
 
@@ -1747,7 +1778,7 @@ class _$AggregatorHoldingCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,}) {
   return _then(AggregatorHolding(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -1758,7 +1789,12 @@ as double,assignedAt: null == assignedAt ? _self.assignedAt : assignedAt // igno
 as String,expiresAt: null == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as HoldingStatus,assignmentSource: null == assignmentSource ? _self.assignmentSource : assignmentSource // ignore: cast_nullable_to_non_nullable
-as AssignmentSource,
+as AssignmentSource,deliveryDeposit: null == deliveryDeposit ? _self.deliveryDeposit : deliveryDeposit // ignore: cast_nullable_to_non_nullable
+as double,cycleMonth: null == cycleMonth ? _self.cycleMonth : cycleMonth // ignore: cast_nullable_to_non_nullable
+as int,displayPriceSetAt: freezed == displayPriceSetAt ? _self.displayPriceSetAt : displayPriceSetAt // ignore: cast_nullable_to_non_nullable
+as String?,returnedAt: freezed == returnedAt ? _self.returnedAt : returnedAt // ignore: cast_nullable_to_non_nullable
+as String?,windowExtended: null == windowExtended ? _self.windowExtended : windowExtended // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -1843,10 +1879,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AggregatorHolding() when $default != null:
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
   return orElse();
 
 }
@@ -1864,10 +1900,10 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorHolding():
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1884,10 +1920,10 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)?  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorHolding() when $default != null:
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
   return null;
 
 }
@@ -1899,11 +1935,12 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 @JsonSerializable()
 
 class _AggregatorHolding implements AggregatorHolding {
-  const _AggregatorHolding({required this.id, required this.artworkId, required this.advancePercent, required this.advanceAmount, required this.displayPrice, required this.assignedAt, required this.expiresAt, required this.status, required this.assignmentSource});
+  const _AggregatorHolding({required this.id, required this.artworkId, required this.advancePercent, required this.advanceAmount, required this.displayPrice, required this.assignedAt, required this.expiresAt, required this.status, required this.assignmentSource, this.deliveryDeposit = 0.0, this.cycleMonth = 1, this.displayPriceSetAt, this.returnedAt, this.windowExtended = false});
   factory _AggregatorHolding.fromJson(Map<String, dynamic> json) => _$AggregatorHoldingFromJson(json);
 
 @override final  String id;
 @override final  String artworkId;
+/// 5% in month one, 3% from month two onwards — see `core/pricing.dart`.
 @override final  int advancePercent;
 @override final  double advanceAmount;
 @override final  double displayPrice;
@@ -1911,6 +1948,27 @@ class _AggregatorHolding implements AggregatorHolding {
 @override final  String expiresAt;
 @override final  HoldingStatus status;
 @override final  AssignmentSource assignmentSource;
+/// Paid with the advance before taking possession (MOU §7). The
+/// money-flow sheet returns it only if the piece sells — an unsold piece
+/// going back to GalleryZone refunds the advance alone.
+@override@JsonKey() final  double deliveryDeposit;
+/// Which month of the artwork's five-month aggregator cycle this
+/// placement is. A piece that doesn't sell moves to a DIFFERENT
+/// aggregator each month, at a lower price and a different advance rate,
+/// so the month is a property of the artwork's journey rather than of any
+/// one aggregator. Seeded holdings predate the field; 1 is the default.
+@override@JsonKey() final  int cycleMonth;
+/// Aggregator MOU §6: the aggregator gets ONE opportunity to set the
+/// selling price. Stamped the first time they set it; after that the
+/// price is locked.
+@override final  String? displayPriceSetAt;
+/// Set when the piece went back to GalleryZone unsold.
+@override final  String? returnedAt;
+/// True when this placement runs past the usual thirty days because what
+/// would have been left of the artist's 180 days was too short to hand to
+/// anyone else. The last aggregator keeps it rather than the piece making
+/// one more journey for a fortnight.
+@override@JsonKey() final  bool windowExtended;
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
@@ -1925,16 +1983,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource);
+int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended);
 
 @override
 String toString() {
-  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource)';
+  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended)';
 }
 
 
@@ -1945,7 +2003,7 @@ abstract mixin class _$AggregatorHoldingCopyWith<$Res> implements $AggregatorHol
   factory _$AggregatorHoldingCopyWith(_AggregatorHolding value, $Res Function(_AggregatorHolding) _then) = __$AggregatorHoldingCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource
+ String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended
 });
 
 
@@ -1962,7 +2020,7 @@ class __$AggregatorHoldingCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,}) {
   return _then(_AggregatorHolding(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -1973,7 +2031,12 @@ as double,assignedAt: null == assignedAt ? _self.assignedAt : assignedAt // igno
 as String,expiresAt: null == expiresAt ? _self.expiresAt : expiresAt // ignore: cast_nullable_to_non_nullable
 as String,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as HoldingStatus,assignmentSource: null == assignmentSource ? _self.assignmentSource : assignmentSource // ignore: cast_nullable_to_non_nullable
-as AssignmentSource,
+as AssignmentSource,deliveryDeposit: null == deliveryDeposit ? _self.deliveryDeposit : deliveryDeposit // ignore: cast_nullable_to_non_nullable
+as double,cycleMonth: null == cycleMonth ? _self.cycleMonth : cycleMonth // ignore: cast_nullable_to_non_nullable
+as int,displayPriceSetAt: freezed == displayPriceSetAt ? _self.displayPriceSetAt : displayPriceSetAt // ignore: cast_nullable_to_non_nullable
+as String?,returnedAt: freezed == returnedAt ? _self.returnedAt : returnedAt // ignore: cast_nullable_to_non_nullable
+as String?,windowExtended: null == windowExtended ? _self.windowExtended : windowExtended // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

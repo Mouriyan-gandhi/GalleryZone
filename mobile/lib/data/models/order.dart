@@ -49,7 +49,12 @@ abstract class Order with _$Order {
     required String id,
     required String artworkId,
     required String addressId,
-    required double amount, // artwork's customerPrice at time of purchase
+    /// The artwork's customerPrice at time of purchase. GST is already
+    /// inside this figure — see [gstAmount].
+    required double amount,
+
+    /// The GST portion of [amount], recorded so a past receipt can show the
+    /// tax component. Never added to [total]; it is already in [amount].
     required double gstAmount,
     required double deliveryCharge,
     required OrderStatus status,
@@ -64,5 +69,7 @@ abstract class Order with _$Order {
 
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
-  double get total => amount + gstAmount + deliveryCharge;
+  /// GST is inside [amount], so adding [gstAmount] here would charge the
+  /// buyer for it twice — which is exactly what this used to do.
+  double get total => amount + deliveryCharge;
 }

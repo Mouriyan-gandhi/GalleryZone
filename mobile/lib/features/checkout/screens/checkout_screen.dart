@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
+import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/mock/mock_checkout_repository.dart';
 import '../../../data/models/artwork.dart';
@@ -13,6 +14,7 @@ import '../../../features/auth/providers/auth_providers.dart';
 import '../../account/providers/account_providers.dart';
 import '../../marketplace/providers/marketplace_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/price_breakdown.dart';
 import '../providers/checkout_providers.dart';
 
 /// Port of `app/checkout/page.tsx` + `features/checkout/*`. Three steps on
@@ -486,8 +488,7 @@ class _ReviewStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final gst = (artwork.customerPrice * checkoutGstRate * 100).round() / 100;
-    final total = artwork.customerPrice + gst + checkoutDeliveryCharge;
+    final totals = checkoutTotal(artwork.customerPrice);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -526,17 +527,13 @@ class _ReviewStep extends StatelessWidget {
         const SizedBox(height: 20),
         const Divider(),
         const SizedBox(height: 12),
-        _line(context, 'Artwork', artwork.customerPrice),
-        _line(context, 'GST (${(checkoutGstRate * 100).round()}%)', gst),
-        _line(context, 'Delivery', checkoutDeliveryCharge),
-        // Both are ₹0 for now and shown anyway: a fee that appears at the
-        // payment step having never been mentioned is the thing buyers hate.
-        _freeOrAmount(context, 'Platform fee', checkoutPlatformFee),
-        _freeOrAmount(context, 'Convenience fee', checkoutConvenienceFee),
-        const SizedBox(height: 8),
-        const Divider(),
-        const SizedBox(height: 8),
-        _line(context, 'Total', total, bold: true),
+        PriceBreakdown(
+          displayPrice: totals.displayPrice,
+          gstIncluded: totals.gstIncluded,
+          deliveryCharge: totals.deliveryCharge,
+          convenienceFee: totals.convenienceFee,
+          platformFee: checkoutPlatformFee,
+        ),
         const SizedBox(height: 20),
         Text('Delivering to', style: theme.textTheme.labelMedium),
         const SizedBox(height: 6),
@@ -561,49 +558,6 @@ class _ReviewStep extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _line(BuildContext context, String label, double amount, {bool bold = false}) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: bold
-                ? theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)
-                : theme.textTheme.bodySmall,
-          ),
-          PriceTag(
-            amount: amount,
-            style: bold ? theme.textTheme.titleMedium : theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// A zero fee reads better as "Free" than as ₹0.
-  Widget _freeOrAmount(BuildContext context, String label, double amount) {
-    final theme = Theme.of(context);
-    if (amount > 0) return _line(context, label, amount);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: theme.textTheme.bodySmall),
-          Text(
-            'Free',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.tertiary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -741,10 +695,7 @@ class _PaymentStepState extends State<_PaymentStep> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final total =
-        widget.artwork.customerPrice +
-        (widget.artwork.customerPrice * checkoutGstRate * 100).round() / 100 +
-        checkoutDeliveryCharge;
+    final total = checkoutTotal(widget.artwork.customerPrice).total;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

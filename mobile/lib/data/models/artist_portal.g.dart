@@ -90,12 +90,14 @@ _MouAcceptance _$MouAcceptanceFromJson(Map<String, dynamic> json) =>
     _MouAcceptance(
       version: json['version'] as String,
       acceptedAt: json['acceptedAt'] as String,
+      signatureName: json['signatureName'] as String? ?? '',
     );
 
 Map<String, dynamic> _$MouAcceptanceToJson(_MouAcceptance instance) =>
     <String, dynamic>{
       'version': instance.version,
       'acceptedAt': instance.acceptedAt,
+      'signatureName': instance.signatureName,
     };
 
 _Settlement _$SettlementFromJson(Map<String, dynamic> json) => _Settlement(
@@ -109,6 +111,7 @@ _Settlement _$SettlementFromJson(Map<String, dynamic> json) => _Settlement(
   status: $enumDecode(_$SettlementStatusEnumMap, json['status']),
   createdAt: json['createdAt'] as String,
   processedAt: json['processedAt'] as String?,
+  releaseAfter: json['releaseAfter'] as String?,
 );
 
 Map<String, dynamic> _$SettlementToJson(_Settlement instance) =>
@@ -123,6 +126,7 @@ Map<String, dynamic> _$SettlementToJson(_Settlement instance) =>
       'status': _$SettlementStatusEnumMap[instance.status]!,
       'createdAt': instance.createdAt,
       'processedAt': instance.processedAt,
+      'releaseAfter': instance.releaseAfter,
     };
 
 const _$SettlementStatusEnumMap = {
@@ -167,6 +171,11 @@ _AggregatorHolding _$AggregatorHoldingFromJson(Map<String, dynamic> json) =>
         _$AssignmentSourceEnumMap,
         json['assignmentSource'],
       ),
+      deliveryDeposit: (json['deliveryDeposit'] as num?)?.toDouble() ?? 0.0,
+      cycleMonth: (json['cycleMonth'] as num?)?.toInt() ?? 1,
+      displayPriceSetAt: json['displayPriceSetAt'] as String?,
+      returnedAt: json['returnedAt'] as String?,
+      windowExtended: json['windowExtended'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$AggregatorHoldingToJson(_AggregatorHolding instance) =>
@@ -180,11 +189,17 @@ Map<String, dynamic> _$AggregatorHoldingToJson(_AggregatorHolding instance) =>
       'expiresAt': instance.expiresAt,
       'status': _$HoldingStatusEnumMap[instance.status]!,
       'assignmentSource': _$AssignmentSourceEnumMap[instance.assignmentSource]!,
+      'deliveryDeposit': instance.deliveryDeposit,
+      'cycleMonth': instance.cycleMonth,
+      'displayPriceSetAt': instance.displayPriceSetAt,
+      'returnedAt': instance.returnedAt,
+      'windowExtended': instance.windowExtended,
     };
 
 const _$HoldingStatusEnumMap = {
   HoldingStatus.reserved: 'reserved',
   HoldingStatus.soldPendingSettlement: 'sold_pending_settlement',
+  HoldingStatus.returned: 'returned',
 };
 
 const _$AssignmentSourceEnumMap = {
