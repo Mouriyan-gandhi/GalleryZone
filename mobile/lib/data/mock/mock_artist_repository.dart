@@ -520,7 +520,7 @@ class MockArtistRepository implements ArtistRepository {
         verifiedArtist: true,
         category: input.category,
         medium: input.medium,
-        customerPrice: (input.artistPrice * customerMarkupMultiplier).round().toDouble(),
+        customerPrice: displayPriceOf(input.artistPrice),
         thumbnailUrl: input.images.isEmpty ? '' : input.images.first.url,
         // Aggregator display puts the physical piece in someone else's
         // custody, so insurance stops being a choice the moment that channel
@@ -589,7 +589,7 @@ class MockArtistRepository implements ArtistRepository {
         medium: patch.medium,
         dimensions: patch.dimensions,
         yearCreated: patch.yearCreated,
-        customerPrice: (patch.artistPrice * customerMarkupMultiplier).round().toDouble(),
+        customerPrice: displayPriceOf(patch.artistPrice),
         listingType: patch.listingType,
         insured: patch.insuranceOpted || isAggregatorListed(patch.listingType),
         nfcTagId: patch.nfcTagId,

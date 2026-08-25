@@ -1,3 +1,4 @@
+import '../../../core/pricing.dart';
 import '../../models/artist_portal.dart';
 import '../../models/artwork.dart';
 import '../../models/customer.dart';
@@ -17,6 +18,10 @@ const currentArtistName = 'Devika Rao';
 /// Artist→customer markup. The artist names their own price; the customer
 /// price is derived, and the artist's figure never leaves artist-scoped
 /// screens (SAD §8.7).
+// Kept only so seeded fixtures keep the prices they were written with.
+// Everything live goes through `displayPriceOf` in `core/pricing.dart`, which
+// also puts GST inside the listed price — this bare 1.3 does not.
+@Deprecated('Use displayPriceOf from core/pricing.dart')
 const customerMarkupMultiplier = 1.3;
 
 const _seeds = <({
@@ -132,7 +137,7 @@ List<Artwork> _buildAll() => [
           verifiedArtist: true,
           category: seed.category,
           medium: seed.medium,
-          customerPrice: (seed.artistPrice * customerMarkupMultiplier).round().toDouble(),
+          customerPrice: displayPriceOf(seed.artistPrice),
           thumbnailUrl: seed.image,
           insured: seed.artistPrice > 20000,
           status: seed.status,
@@ -251,6 +256,11 @@ List<ActivityEntry> seedArtistActivity() => const [
     ];
 
 ArtistProfileDetails seedArtistProfile() => const ArtistProfileDetails(
+      pickupLine1: '14, Gangaur Ghat Marg',
+      pickupLine2: 'Behind Bagore Ki Haveli',
+      pickupCity: 'Udaipur',
+      pickupState: 'Rajasthan',
+      pickupPincode: '313001',
       fullName: currentArtistName,
       email: 'devika.rao@example.com',
       phone: '+91 98765 43210',

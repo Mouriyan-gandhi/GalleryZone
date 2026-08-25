@@ -12,6 +12,9 @@ _CustomerProfile _$CustomerProfileFromJson(Map<String, dynamic> json) =>
       email: json['email'] as String,
       phone: json['phone'] as String,
       gstin: json['gstin'] as String?,
+      bankAccountName: json['bankAccountName'] as String? ?? '',
+      bankAccountNumber: json['bankAccountNumber'] as String? ?? '',
+      bankIfsc: json['bankIfsc'] as String? ?? '',
     );
 
 Map<String, dynamic> _$CustomerProfileToJson(_CustomerProfile instance) =>
@@ -20,6 +23,9 @@ Map<String, dynamic> _$CustomerProfileToJson(_CustomerProfile instance) =>
       'email': instance.email,
       'phone': instance.phone,
       'gstin': instance.gstin,
+      'bankAccountName': instance.bankAccountName,
+      'bankAccountNumber': instance.bankAccountNumber,
+      'bankIfsc': instance.bankIfsc,
     };
 
 _WalletSummary _$WalletSummaryFromJson(Map<String, dynamic> json) =>

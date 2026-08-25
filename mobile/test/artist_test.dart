@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/core/format.dart';
+import 'package:gallery_zone/core/pricing.dart';
 import 'package:gallery_zone/data/models/auth.dart';
 import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
-import 'package:gallery_zone/data/mock/seed/artist_seed.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/repositories/artist_repository.dart';
@@ -66,16 +67,17 @@ void main() {
     final monsoon = portal.firstWhere((entry) => entry.artwork.id == 'aw-1');
 
     expect(monsoon.artistPrice, 28000);
-    // The customer price is the marked-up figure, and `Artwork` itself has no
-    // field that could leak the artist's number.
-    expect(monsoon.artwork.customerPrice, 28000 * 1.3);
+    // The customer price is the whole ladder — 30% margin, then GST inside —
+    // and `Artwork` itself has no field that could leak the artist's number.
+    expect(monsoon.artwork.customerPrice, displayPriceOf(28000));
+    expect(monsoon.artwork.customerPrice, 38220);
   });
 
   group('submitting an artwork', () {
     test('lands in the review queue, not the marketplace', () async {
       final artwork = await repository.submitArtwork(_input());
       expect(artwork.status, ArtworkStatus.pendingApproval);
-      expect(artwork.customerPrice, 20000 * customerMarkupMultiplier);
+      expect(artwork.customerPrice, displayPriceOf(20000));
       expect(artwork.coaCertificateNumber, startsWith('GZ-COA-'));
 
       final browsable = await MockArtworkRepository().list(const ArtworkFilters());
@@ -171,7 +173,7 @@ void main() {
 
     expect(find.text('Monsoon Reverie'), findsOneWidget);
     expect(find.text('₹28,000'), findsOneWidget); // artist price
-    expect(find.text('₹36,400'), findsOneWidget); // listed price
+    expect(find.text(formatInr(displayPriceOf(28000))), findsOneWidget);
 
     // Each row now carries its channel and edit-window footer, so only the
     // first row or two fit a phone-sized viewport — scroll to a row rather

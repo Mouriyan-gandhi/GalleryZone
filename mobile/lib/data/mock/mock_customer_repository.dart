@@ -1,3 +1,4 @@
+import '../../core/format.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../models/order.dart';
@@ -10,6 +11,11 @@ import 'seed/customer_seed.dart';
 
 const _profileKey = 'customerProfile';
 const _addressesKey = 'addresses';
+/// This balance is refund credit and resale proceeds — the collector's own
+/// money, so they can take it out. Lower floor than the artist and aggregator
+/// wallets, which hold earnings rather than returned payments.
+const minimumCustomerWithdrawal = 500.0;
+
 const _walletKey = 'customerWallet';
 const _walletTransactionsKey = 'customerWalletTransactions';
 const _resaleKey = 'customerResaleListings';
@@ -240,6 +246,62 @@ class MockCustomerRepository implements CustomerRepository {
           (t) => t.toJson(),
         ),
       );
+
+  @override
+  Future<WalletTransaction> requestWithdrawal(double amount) {
+    final profile = _readSingle(
+      _profileKey,
+      seedCustomerProfile,
+      CustomerProfile.fromJson,
+      (p) => p.toJson(),
+    );
+    // Refused here, not just by hiding the button, so a stale screen cannot
+    // ask for money with no account to send it to.
+    if (!profile.hasBankDetails) {
+      return mockError(
+        'Add your bank details before withdrawing — we need somewhere to send it',
+      );
+    }
+
+    final wallet = _readCustomerWallet();
+    if (amount < minimumCustomerWithdrawal) {
+      return mockError('Minimum withdrawal is ${formatInr(minimumCustomerWithdrawal)}');
+    }
+    if (amount > wallet.balance) return mockError('Exceeds your balance');
+
+    return mockDelay(() {
+      _writeSingle(
+        _walletKey,
+        wallet.copyWith(balance: wallet.balance - amount),
+        (w) => w.toJson(),
+      );
+      final account = profile.bankAccountNumber.trim();
+      final now = DateTime.now();
+      final transaction = WalletTransaction(
+        id: 'wt-${now.microsecondsSinceEpoch}',
+        type: WalletTransactionType.withdrawal,
+        label: 'Withdrawal to bank '
+            '${account.substring(account.length < 4 ? 0 : account.length - 4)}',
+        amount: -amount,
+        date: now.toIso8601String().substring(0, 10),
+        status: WalletTransactionStatus.pending,
+      );
+      MockDb.setCollection(
+        _walletTransactionsKey,
+        [
+          transaction,
+          ...MockDb.getCollection(
+            _walletTransactionsKey,
+            seedCustomerWalletTransactions,
+            WalletTransaction.fromJson,
+            (t) => t.toJson(),
+          ),
+        ],
+        (t) => t.toJson(),
+      );
+      return transaction;
+    });
+  }
 
   @override
   Future<List<CollectionItem>> listCollection() => mockDelay(() {

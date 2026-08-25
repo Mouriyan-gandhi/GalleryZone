@@ -316,6 +316,9 @@ class ArtistMessagesScreen extends ConsumerWidget {
 /// business deliberately does not want a GST portal integration.
 final _gstinPattern = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$');
 
+/// Indian pincodes never start with 0.
+final _pincodePattern = RegExp(r'^[1-9][0-9]{5}$');
+
 /// Named `Kyc`, not `Profile`, to stay distinct from the *public* artist
 /// profile a collector browses.
 class ArtistKycScreen extends ConsumerStatefulWidget {
@@ -336,12 +339,30 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
   final _instagram = TextEditingController();
   final _website = TextEditingController();
   final _gstin = TextEditingController();
+  final _pickupLine1 = TextEditingController();
+  final _pickupLine2 = TextEditingController();
+  final _pickupCity = TextEditingController();
+  final _pickupState = TextEditingController();
+  final _pickupPincode = TextEditingController();
   bool _isSeeded = false;
   bool _isSaving = false;
 
   @override
   void dispose() {
-    for (final controller in [_fullName, _email, _phone, _bio, _instagram, _website, _gstin]) {
+    for (final controller in [
+      _fullName,
+      _email,
+      _phone,
+      _bio,
+      _instagram,
+      _website,
+      _gstin,
+      _pickupLine1,
+      _pickupLine2,
+      _pickupCity,
+      _pickupState,
+      _pickupPincode,
+    ]) {
       controller.dispose();
     }
     super.dispose();
@@ -362,6 +383,11 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
               instagram: _instagram.text.trim(),
               website: _website.text.trim(),
               gstin: _gstin.text.trim().isEmpty ? null : _gstin.text.trim().toUpperCase(),
+              pickupLine1: _pickupLine1.text.trim(),
+              pickupLine2: _pickupLine2.text.trim(),
+              pickupCity: _pickupCity.text.trim(),
+              pickupState: _pickupState.text.trim(),
+              pickupPincode: _pickupPincode.text.trim(),
             ),
           );
       ref.invalidate(artistProfileDetailsProvider);
@@ -390,6 +416,11 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
       _instagram.text = loaded.instagram;
       _website.text = loaded.website;
       _gstin.text = loaded.gstin ?? '';
+      _pickupLine1.text = loaded.pickupLine1;
+      _pickupLine2.text = loaded.pickupLine2;
+      _pickupCity.text = loaded.pickupCity;
+      _pickupState.text = loaded.pickupState;
+      _pickupPincode.text = loaded.pickupPincode;
     }
 
     return Scaffold(
@@ -463,6 +494,81 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                             helperText:
                                 'Checked for format only — we never call the '
                                 'GST portal. Leave it blank if you are not registered.',
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text('Pickup address', style: theme.textTheme.titleLarge),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Where your work is collected from. Private — buyers '
+                          'never see it.',
+                          style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                        ),
+                        if (!loaded.hasPickupAddress) ...[
+                          const SizedBox(height: 10),
+                          PortalCard(
+                            gold: true,
+                            child: Text(
+                              'Add this before your first sale. Delivery is '
+                              "priced on the distance between your address and "
+                              "the buyer's, so without it we can't quote a "
+                              'shipping cost for your work.',
+                              style: theme.textTheme.labelMedium
+                                  ?.copyWith(height: 1.5),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _pickupLine1,
+                          decoration: const InputDecoration(
+                            labelText: 'Address line 1',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _pickupLine2,
+                          decoration: const InputDecoration(
+                            labelText: 'Address line 2 (optional)',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _pickupCity,
+                                decoration:
+                                    const InputDecoration(labelText: 'City'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _pickupState,
+                                decoration:
+                                    const InputDecoration(labelText: 'State'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _pickupPincode,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          validator: (value) {
+                            final entered = (value ?? '').trim();
+                            if (entered.isEmpty) return null;
+                            return _pincodePattern.hasMatch(entered)
+                                ? null
+                                : 'Enter a valid 6-digit pincode';
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Pincode',
+                            helperText:
+                                'This is what a courier prices the distance from.',
                           ),
                         ),
                         const SizedBox(height: 20),

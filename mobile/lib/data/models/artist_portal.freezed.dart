@@ -293,7 +293,11 @@ mixin _$ArtistProfileDetails {
 
  String get fullName; String get email; String get phone; String get bio; String get instagram; String get website; String get bankAccountMasked; String get ifsc; AadhaarStatus get aadhaarStatus; String get aadhaarMasked;/// Optional. Validated for shape only when one is entered — there is no
 /// GST portal integration, which the business deliberately does not want.
- String? get gstin;
+ String? get gstin;/// Where the courier collects. Private, and the one thing without which a
+/// delivery cannot be quoted at all: shipping is priced on the distance
+/// between two pincodes, and this is the origin for both the leg to an
+/// aggregator and the leg to a buyer.
+ String get pickupLine1; String get pickupLine2; String get pickupCity; String get pickupState; String get pickupPincode;
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -306,16 +310,16 @@ $ArtistProfileDetailsCopyWith<ArtistProfileDetails> get copyWith => _$ArtistProf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin);
+int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
 }
 
 
@@ -326,7 +330,7 @@ abstract mixin class $ArtistProfileDetailsCopyWith<$Res>  {
   factory $ArtistProfileDetailsCopyWith(ArtistProfileDetails value, $Res Function(ArtistProfileDetails) _then) = _$ArtistProfileDetailsCopyWithImpl;
 @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
 });
 
 
@@ -343,7 +347,7 @@ class _$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
   return _then(ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -356,7 +360,12 @@ as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
 as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
 as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
+as String,pickupLine2: null == pickupLine2 ? _self.pickupLine2 : pickupLine2 // ignore: cast_nullable_to_non_nullable
+as String,pickupCity: null == pickupCity ? _self.pickupCity : pickupCity // ignore: cast_nullable_to_non_nullable
+as String,pickupState: null == pickupState ? _self.pickupState : pickupState // ignore: cast_nullable_to_non_nullable
+as String,pickupPincode: null == pickupPincode ? _self.pickupPincode : pickupPincode // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 
@@ -441,10 +450,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   return orElse();
 
 }
@@ -462,10 +471,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails():
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -482,10 +491,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   return null;
 
 }
@@ -496,8 +505,8 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// @nodoc
 @JsonSerializable()
 
-class _ArtistProfileDetails implements ArtistProfileDetails {
-  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked, this.gstin});
+class _ArtistProfileDetails extends ArtistProfileDetails {
+  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked, this.gstin, this.pickupLine1 = '', this.pickupLine2 = '', this.pickupCity = '', this.pickupState = '', this.pickupPincode = ''}): super._();
   factory _ArtistProfileDetails.fromJson(Map<String, dynamic> json) => _$ArtistProfileDetailsFromJson(json);
 
 @override final  String fullName;
@@ -513,6 +522,15 @@ class _ArtistProfileDetails implements ArtistProfileDetails {
 /// Optional. Validated for shape only when one is entered — there is no
 /// GST portal integration, which the business deliberately does not want.
 @override final  String? gstin;
+/// Where the courier collects. Private, and the one thing without which a
+/// delivery cannot be quoted at all: shipping is priced on the distance
+/// between two pincodes, and this is the origin for both the leg to an
+/// aggregator and the leg to a buyer.
+@override@JsonKey() final  String pickupLine1;
+@override@JsonKey() final  String pickupLine2;
+@override@JsonKey() final  String pickupCity;
+@override@JsonKey() final  String pickupState;
+@override@JsonKey() final  String pickupPincode;
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
@@ -527,16 +545,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin);
+int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
 }
 
 
@@ -547,7 +565,7 @@ abstract mixin class _$ArtistProfileDetailsCopyWith<$Res> implements $ArtistProf
   factory _$ArtistProfileDetailsCopyWith(_ArtistProfileDetails value, $Res Function(_ArtistProfileDetails) _then) = __$ArtistProfileDetailsCopyWithImpl;
 @override @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
 });
 
 
@@ -564,7 +582,7 @@ class __$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
   return _then(_ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -577,7 +595,12 @@ as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
 as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
 as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
+as String,pickupLine2: null == pickupLine2 ? _self.pickupLine2 : pickupLine2 // ignore: cast_nullable_to_non_nullable
+as String,pickupCity: null == pickupCity ? _self.pickupCity : pickupCity // ignore: cast_nullable_to_non_nullable
+as String,pickupState: null == pickupState ? _self.pickupState : pickupState // ignore: cast_nullable_to_non_nullable
+as String,pickupPincode: null == pickupPincode ? _self.pickupPincode : pickupPincode // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

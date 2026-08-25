@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
+import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/repositories/artist_repository.dart';
@@ -260,7 +261,10 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final customerPrice = _artistPrice * 1.3;
+    // The whole ladder, so the artist can see where every rupee of the
+    // difference between their rate and the listed price goes.
+    final basePrice = basePriceOf(_artistPrice);
+    final customerPrice = displayPriceOf(_artistPrice);
 
     if (_isEdit && _editing == null) {
       return Scaffold(
@@ -578,22 +582,47 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     },
                     decoration: const InputDecoration(
                       labelText: 'Your price (₹)',
-                      helperText: 'Only you ever see this figure.',
+                      helperText: 'Only you ever see this figure. You are paid '
+                          'within $artistPayoutDaysAfterDelivery days of the artwork '
+                          'being delivered.',
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PortalCard(
-                    gold: true,
-                    child: Column(
-                      children: [
-                        PortalDetailRow(
-                          label: 'Listed price buyers see (incl. 30% markup)',
-                          value: formatInr(customerPrice),
-                          gold: true,
-                        ),
-                      ],
+                  // The whole ladder, not just the top of it: the artist sees
+                  // every component of the listed price, so the number buyers
+                  // see is never a mystery.
+                  if (_artistPrice > 0)
+                    PortalCard(
+                      gold: true,
+                      child: Column(
+                        children: [
+                          PortalDetailRow(
+                            label: 'You receive',
+                            value: formatInr(_artistPrice),
+                          ),
+                          PortalDetailRow(
+                            label: 'Listing fee',
+                            value: listingFeeOf(_artistPrice) == 0
+                                ? 'Free'
+                                : formatInr(listingFeeOf(_artistPrice)),
+                          ),
+                          PortalDetailRow(
+                            label: 'GalleryZone margin',
+                            value: formatInr(basePrice - _artistPrice),
+                          ),
+                          PortalDetailRow(
+                            label: 'GST (${(gstRate * 100).round()}%)',
+                            value: formatInr(customerPrice - basePrice),
+                          ),
+                          const Divider(height: 16),
+                          PortalDetailRow(
+                            label: 'Listed price buyers see',
+                            value: formatInr(customerPrice),
+                            gold: true,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 24),
                   const SizedBox(height: 12),
                   TextFormField(

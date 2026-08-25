@@ -19,7 +19,23 @@ abstract class CustomerProfile with _$CustomerProfile {
     /// Optional, and never blocks anything — a collector who wants GST
     /// invoices for a business or office collection can add one.
     String? gstin,
+
+    /// Where a refund or resale payout is sent. This balance is the
+    /// collector's own money, not store credit: a refund on a ₹1,36,500
+    /// painting that can only be spent back on the same site is not a refund.
+    /// Optional, because most buyers only ever pay in and never need it.
+    @Default('') String bankAccountName,
+    @Default('') String bankAccountNumber,
+    @Default('') String bankIfsc,
   }) = _CustomerProfile;
+
+  const CustomerProfile._();
+
+  /// Enough to send money to.
+  bool get hasBankDetails =>
+      bankAccountName.trim().isNotEmpty &&
+      bankAccountNumber.trim().isNotEmpty &&
+      bankIfsc.trim().isNotEmpty;
 
   factory CustomerProfile.fromJson(Map<String, dynamic> json) =>
       _$CustomerProfileFromJson(json);

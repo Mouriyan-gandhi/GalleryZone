@@ -44,6 +44,13 @@ abstract class CustomerRepository {
   });
   Future<ResaleListing> withdrawResaleListing(String id);
 
+  /// Takes money out of the wallet and into the collector's own bank.
+  ///
+  /// Refused without bank details — enforced in the repository, not just by
+  /// hiding the button, so a stale screen cannot ask for money with nowhere
+  /// to send it.
+  Future<WalletTransaction> requestWithdrawal(double amount);
+
   Future<List<SupportTicket>> listSupportTickets();
   Future<SupportTicket> submitSupportTicket({
     required String subject,

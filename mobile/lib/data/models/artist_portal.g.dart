@@ -46,6 +46,11 @@ _ArtistProfileDetails _$ArtistProfileDetailsFromJson(
   aadhaarStatus: $enumDecode(_$AadhaarStatusEnumMap, json['aadhaarStatus']),
   aadhaarMasked: json['aadhaarMasked'] as String,
   gstin: json['gstin'] as String?,
+  pickupLine1: json['pickupLine1'] as String? ?? '',
+  pickupLine2: json['pickupLine2'] as String? ?? '',
+  pickupCity: json['pickupCity'] as String? ?? '',
+  pickupState: json['pickupState'] as String? ?? '',
+  pickupPincode: json['pickupPincode'] as String? ?? '',
 );
 
 Map<String, dynamic> _$ArtistProfileDetailsToJson(
@@ -62,6 +67,11 @@ Map<String, dynamic> _$ArtistProfileDetailsToJson(
   'aadhaarStatus': _$AadhaarStatusEnumMap[instance.aadhaarStatus]!,
   'aadhaarMasked': instance.aadhaarMasked,
   'gstin': instance.gstin,
+  'pickupLine1': instance.pickupLine1,
+  'pickupLine2': instance.pickupLine2,
+  'pickupCity': instance.pickupCity,
+  'pickupState': instance.pickupState,
+  'pickupPincode': instance.pickupPincode,
 };
 
 const _$AadhaarStatusEnumMap = {

@@ -4,10 +4,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
+import '../../../core/pricing.dart';
+import '../../../data/models/artist_portal.dart';
 import '../../../data/mock/mock_artist_repository.dart' show minimumWithdrawal;
 import '../../../data/models/customer.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../../data/mock/mock_artist_repository.dart'
+    show simulateDeliveryAndRelease;
 import '../../shell/portal_widgets.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
@@ -64,6 +68,14 @@ class ArtistWalletScreen extends ConsumerWidget {
                         label: 'Locked',
                         value: formatInr(wallet?.lockedBalance ?? 0),
                       ),
+                      const SizedBox(height: 6),
+                      Text(
+                        // The timing rule, where the number it explains is.
+                        'A sale is paid $artistPayoutDaysAfterDelivery days after the '
+                        'piece is DELIVERED, not when it sells. Until then it '
+                        'sits in pending.',
+                        style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+                      ),
                       const SizedBox(height: 12),
                       SizedBox(
                         height: 44,
@@ -85,7 +97,9 @@ class ArtistWalletScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                const _PendingSettlements(),
+                const SizedBox(height: 8),
                 Text('Transaction history', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
                 if (transactions == null)
@@ -208,6 +222,94 @@ class ArtistWalletScreen extends ConsumerWidget {
         SnackBar(content: Text(authErrorMessage(error))),
       );
     }
+  }
+}
+
+/// What is waiting on the 7-day clock, and when each piece of it lands.
+///
+/// The "mark delivered" button is a demo shortcut, and says so: there is no
+/// courier here, so nothing would ever mark a delivery long enough ago for
+/// the seven days to have elapsed, and the release could never be seen.
+class _PendingSettlements extends ConsumerWidget {
+  const _PendingSettlements();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final settlements = ref.watch(artistSettlementsProvider).value ?? const [];
+    final pending = [
+      for (final settlement in settlements)
+        if (settlement.status == SettlementStatus.pending) settlement,
+    ];
+    if (pending.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('On the way', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 8),
+        for (final settlement in pending)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: PortalCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          settlement.artworkTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      PriceTag(
+                        amount: settlement.artistAmount,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    settlement.releaseAfter == null
+                        ? 'Waiting on delivery. The '
+                            '$artistPayoutDaysAfterDelivery-day clock starts when the '
+                            'piece arrives.'
+                        : 'Available from '
+                            '${formatLongDate(settlement.releaseAfter!)}.',
+                    style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+                  ),
+                  if (settlement.releaseAfter == null) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 36,
+                      child: OutlinedButton(
+                        onPressed: () => _simulate(context, ref, settlement.id),
+                        child: const Text('Simulate delivery (demo)'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _simulate(BuildContext context, WidgetRef ref, String settlementId) {
+    // Backdates the delivery far enough that the seven days have already run,
+    // then releases — otherwise this button would appear to do nothing.
+    simulateDeliveryAndRelease(settlementId);
+    ref.invalidate(artistWalletProvider);
+    ref.invalidate(artistWalletTransactionsProvider);
+    ref.invalidate(artistSettlementsProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Delivered and released to your balance')),
+    );
   }
 }
 

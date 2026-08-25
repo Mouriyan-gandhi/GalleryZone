@@ -56,7 +56,28 @@ abstract class ArtistProfileDetails with _$ArtistProfileDetails {
     /// Optional. Validated for shape only when one is entered — there is no
     /// GST portal integration, which the business deliberately does not want.
     String? gstin,
+
+    /// Where the courier collects. Private, and the one thing without which a
+    /// delivery cannot be quoted at all: shipping is priced on the distance
+    /// between two pincodes, and this is the origin for both the leg to an
+    /// aggregator and the leg to a buyer.
+    @Default('') String pickupLine1,
+    @Default('') String pickupLine2,
+    @Default('') String pickupCity,
+    @Default('') String pickupState,
+    @Default('') String pickupPincode,
   }) = _ArtistProfileDetails;
+
+  const ArtistProfileDetails._();
+
+  /// Enough to quote a delivery from. The pincode is the part that actually
+  /// matters to a courier's rate card, so it is required alongside the lines
+  /// a driver needs to find the door.
+  bool get hasPickupAddress =>
+      pickupLine1.trim().isNotEmpty &&
+      pickupCity.trim().isNotEmpty &&
+      pickupState.trim().isNotEmpty &&
+      pickupPincode.trim().length == 6;
 
   factory ArtistProfileDetails.fromJson(Map<String, dynamic> json) =>
       _$ArtistProfileDetailsFromJson(json);
