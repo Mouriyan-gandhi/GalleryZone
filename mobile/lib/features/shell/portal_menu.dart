@@ -3,10 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../data/mock/seed/aggregator_seed.dart' show currentAggregatorName;
+import '../../data/mock/seed/artist_seed.dart' show currentArtistName;
+import '../../data/models/auth.dart';
+import '../account/providers/account_providers.dart';
 import '../auth/providers/auth_providers.dart';
+import '../auth/role_options.dart';
 import '../auth/screens/login_screen.dart';
 import '../legal/screens/faq_screen.dart';
 import '../marketing/screens/about_screen.dart';
+import 'portal_widgets.dart';
 
 /// One row of a portal's menu. Same four fields the three dashboards each
 /// carried privately as a "Manage" list — they live here now because the
@@ -270,6 +276,50 @@ final aggregatorMenu = <PortalMenuSection>[
     items: _helpSection('/aggregator/dashboard/support'),
   ),
 ];
+
+/// Which menu a role gets, and what the drawer header calls it. Held here so
+/// the shells and the dashboards cannot disagree about it.
+({String roleLabel, PortalMenuGroups groups, String homeRoute}) portalMenuFor(Role role) =>
+    switch (role) {
+      Role.customer => (
+          roleLabel: 'Collector',
+          groups: customerMenu,
+          homeRoute: Role.customer.home,
+        ),
+      Role.artist => (
+          roleLabel: 'Artist',
+          groups: artistMenu,
+          homeRoute: Role.artist.home,
+        ),
+      Role.aggregator => (
+          roleLabel: 'Aggregator',
+          groups: aggregatorMenu,
+          homeRoute: Role.aggregator.home,
+        ),
+    };
+
+/// The name shown on the avatar and at the top of the menu.
+///
+/// Artist and aggregator are fixtures — there is no real session, so there is
+/// nothing else to read. The collector's name is the one field of the three a
+/// user can actually edit, so it comes from the profile they saved rather
+/// than from the seed it started as.
+final portalDisplayNameProvider = Provider<String>((ref) {
+  return switch (ref.watch(sessionProvider)) {
+    Role.artist => currentArtistName,
+    Role.aggregator => currentAggregatorName,
+    Role.customer => ref.watch(customerProfileProvider).value?.name ?? 'Collector',
+    null => 'GalleryZone',
+  };
+});
+
+/// The last item in every portal's bottom bar and rail. It is not a branch:
+/// selecting it opens the menu over whatever screen you were on, which is why
+/// each shell handles it separately from `goBranch`.
+const profileDestination = ShellDestination(
+  icon: LucideIcons.circleUserRound,
+  label: 'Profile',
+);
 
 /// Initials for the avatar. Two words give two letters, one gives one — no
 /// third letter, which is what turns a monogram back into a word.

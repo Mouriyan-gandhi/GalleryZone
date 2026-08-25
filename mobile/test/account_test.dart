@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/data/models/auth.dart';
+import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/core/adaptive.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_customer_repository.dart';
@@ -210,9 +212,17 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+          // The shell's Profile drawer reads the session, and the session
+          // provider refuses to guess a role.
+          overrides: [initialRoleProvider.overrideWithValue(Role.customer)],
+          child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
         ),
       );
+      // The drawer's header reads the collector's name, and every mock
+      // repository call sleeps 600ms — settle first, then let that land, or
+      // the timer outlives the test.
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
     }
 

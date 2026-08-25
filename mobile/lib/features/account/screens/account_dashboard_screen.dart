@@ -7,6 +7,7 @@ import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../marketplace/providers/marketplace_providers.dart';
+import '../../../data/models/auth.dart';
 import '../../shell/portal_menu.dart';
 import '../providers/account_providers.dart';
 import '../widgets/order_widgets.dart';
@@ -43,17 +44,21 @@ class AccountDashboardScreen extends ConsumerWidget {
     // The profile arrives a frame late; the avatar and the drawer header
     // both need a name before it does, so they share one fallback.
     final name = profile?.name ?? 'Collector';
+    final menu = portalMenuFor(Role.customer);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Account'),
         actions: [PortalAvatarButton(name: name)],
       ),
+      // The shell carries this same drawer for its Profile tab; the copy here
+      // is what the avatar above can reach, since this Scaffold sits inside
+      // the shell's.
       endDrawer: PortalMenuDrawer(
         name: name,
-        roleLabel: 'Collector',
-        groups: customerMenu,
-        homeRoute: AccountDashboardScreen.path,
+        roleLabel: menu.roleLabel,
+        groups: menu.groups,
+        homeRoute: menu.homeRoute,
       ),
       body: RefreshIndicator(
         onRefresh: () async {

@@ -8,6 +8,7 @@ import '../../../core/format.dart';
 import '../../../data/mock/seed/aggregator_seed.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
+import '../../../data/models/auth.dart';
 import '../../shell/portal_menu.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
@@ -29,17 +30,21 @@ class AggregatorDashboardScreen extends ConsumerWidget {
     final unread = (ref.watch(aggregatorMessagesProvider).value ?? const [])
         .where((message) => message.unread)
         .length;
+    final menu = portalMenuFor(Role.aggregator);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [PortalAvatarButton(name: currentAggregatorName, badgeCount: unread)],
       ),
+      // The shell carries this same drawer for its Profile tab; the copy here
+      // is what the avatar above can reach, since this Scaffold sits inside
+      // the shell's.
       endDrawer: PortalMenuDrawer(
         name: currentAggregatorName,
-        roleLabel: 'Aggregator',
-        groups: aggregatorMenu,
-        homeRoute: AggregatorDashboardScreen.path,
+        roleLabel: menu.roleLabel,
+        groups: menu.groups,
+        homeRoute: menu.homeRoute,
       ),
       body: RefreshIndicator(
         onRefresh: () async {

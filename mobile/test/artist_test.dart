@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/data/models/auth.dart';
+import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
@@ -212,7 +214,10 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+          // The shell's Profile drawer reads the session, and the session
+          // provider refuses to guess a role.
+          overrides: [initialRoleProvider.overrideWithValue(Role.artist)],
+          child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
         ),
       );
       await tester.pumpAndSettle();
@@ -221,6 +226,14 @@ void main() {
     await pumpAt(const Size(400, 900));
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
+
+    // Profile is the last destination and is not a branch: it opens the
+    // portal menu over whichever tab you were on.
+    expect(find.text('Profile'), findsOneWidget);
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('ACCOUNT'), findsOneWidget);
+    expect(find.text('Sign out'), findsOneWidget);
 
     await pumpAt(const Size(1000, 900));
     expect(find.byType(NavigationRail), findsOneWidget);

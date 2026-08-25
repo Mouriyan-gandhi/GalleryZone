@@ -9,6 +9,7 @@ import '../../../data/models/artist_portal.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 import '../widgets/rating_widgets.dart';
+import '../../../data/models/auth.dart';
 import '../../shell/portal_menu.dart';
 
 /// Port of `app/dashboard/page.tsx` — KPI cards, verification ladder,
@@ -26,17 +27,21 @@ class ArtistDashboardScreen extends ConsumerWidget {
     final unread = (ref.watch(artistMessagesProvider).value ?? const [])
         .where((message) => message.unread)
         .length;
+    final menu = portalMenuFor(Role.artist);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
         actions: [PortalAvatarButton(name: currentArtistName, badgeCount: unread)],
       ),
+      // The shell carries this same drawer for its Profile tab; the copy here
+      // is what the avatar above can reach, since this Scaffold sits inside
+      // the shell's.
       endDrawer: PortalMenuDrawer(
         name: currentArtistName,
-        roleLabel: 'Artist',
-        groups: artistMenu,
-        homeRoute: ArtistDashboardScreen.path,
+        roleLabel: menu.roleLabel,
+        groups: menu.groups,
+        homeRoute: menu.homeRoute,
       ),
       body: RefreshIndicator(
         onRefresh: () async {
