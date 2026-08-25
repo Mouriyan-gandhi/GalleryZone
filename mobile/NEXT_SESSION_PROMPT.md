@@ -127,13 +127,68 @@ tap-and-screenshot loops cost a lot of session for little signal.
 ## What's actually built (code)
 
 **All eight phases are built**, plus follow-an-artist, account deletion, the
-August meeting's Batch A, the `e1b65fc` feature set, and the demo chain that
-makes the app work end to end. `flutter analyze` is clean, `flutter test` is
-102 green, the debug APK builds, and `flutter build appbundle --release`
-succeeds with R8 on. Phase 6 was verified on `gz_pixel` (all four aggregator
+August meeting's Batch A, the `e1b65fc` feature set, the client's money model
+(see below), and the demo chain that makes the app work end to end.
+`flutter analyze` is clean, `flutter test` is 186 green, and the debug APK
+builds. Phase 6 was verified on `gz_pixel` (all four aggregator
 tabs screenshotted); Phases 7 and 8 are **not** runtime-verified — see their
 sections. What remains is not a phase: the open decisions below, the unwired
 artist settlement, and deep links.
+
+**The money model (2026-08-25) — read this before touching a rupee figure**
+
+`lib/core/pricing.dart` is a direct port of `frontend-web/lib/pricing.ts`:
+same constants, same function names, same rounding. It is the single source
+of every rupee figure in the app, and `test/pricing_test.dart` replays the
+client's own worked example against it. **Nothing else may compute a price.**
+If you find arithmetic on a price outside that file, it is a bug.
+
+The rules it holds, all confirmed by the client on 25 Aug 2026:
+
+- **GST (5%, HSN 9701) sits INSIDE the displayed price.** 1,00,000 artist
+  price -> 1,30,000 with GalleryZone's 30% margin -> 1,36,500 listed.
+  Checkout adds delivery and nothing else. `Order.total` is
+  `amount + deliveryCharge`; `Order.gstAmount` is the tax *contained in*
+  `amount`, recorded for the receipt. Adding it charges the buyer twice,
+  which is exactly what this code used to do.
+- **GST is on the goods and nothing else.** Not delivery, not commission, not
+  the artist's settlement.
+- **The artist is paid 7 days after DELIVERY**, not on sale. A sale credits
+  `pendingBalance` and opens a pending `Settlement`; delivery stamps
+  `releaseAfter`; the money moves on the next wallet read
+  (`releaseDueArtistSettlements`). Nothing runs on a timer, deliberately.
+- **Marketplace sales pay the artist in full.** Only aggregator sales deduct
+  the placement delivery leg and 2% convenience (1,00,000 -> 95,500).
+- **The aggregator advance is LOCKED from their wallet, not charged.** 5% of
+  the display price in month one, 3% of the artist price after, always with
+  the delivery charge alongside. A sale releases the hold and credits only
+  commission. An unsold return releases the advance but *spends* the delivery
+  leg — the sheet settles that only on a sale.
+- **The five-month cycle.** A piece that doesn't sell goes to a different
+  aggregator each month, up to five, at 0/2/4/6/8% off the artist's price —
+  out of GalleryZone's margin, never the artist's, and the marketplace price
+  never moves. The sixth month is the transit buffer. The whole listing runs
+  180 days; a leftover of under thirty days is not placed with anyone new,
+  it stays with whoever has the piece (`windowExtended`).
+- **Only the first aggregator prices a piece, once** (MOU §6 plus the cycle).
+  From month two the price is GalleryZone's, because the advance is cheaper
+  instead — the client called it "a double down offer".
+- **Commission is 20% of the markup over the ARTIST's price**, both compared
+  before GST. Comparing against `artwork.customerPrice` pays 4,000 where the
+  client's sheet pays 10,000. `artistPriceOf()` recovers the artist price for
+  fixtures that don't store one.
+- **Reserving needs a signed MOU and free wallet balance.** Both enforced in
+  the repository, not just the UI.
+- **The aggregator collects on GalleryZone's behalf.** Cash at the counter
+  means they owe the WHOLE sale price, settled separately from their
+  commission — never netted off. `listRemittancesDue()` / `markRemitted()`,
+  surfaced as "Owed to GalleryZone" above the settlements table.
+- **Delivery is priced on billable weight x distance zone**
+  (`estimateDelivery`), reproducing Shiprocket's model as the seam their rate
+  API drops into. `DELIVERY_CHARGE` is the fallback only.
+
+Placeholders still waiting on the client: `lib/core/payee.dart` (bank account
+and UPI ID — the QR deliberately does not render until `payeeUpiId` is real).
 
 **Foundation (Phase 0)**
 - `lib/core/theme/app_theme.dart` — brand theme, light+dark, tokens ported
@@ -588,12 +643,9 @@ picks from these rather than following a sequence:
 1. **Answer the open decisions below.** Three of the four now gate real work
    rather than hypothetical work: payment blocks a real checkout, the payout
    formula blocks the settlement, the domain blocks deep links.
-2. **Wire the sale → artist-wallet settlement.** Placing an order still marks
-   the artwork sold and credits nobody. The aggregator portal built exactly
-   the mechanic to copy — pending credit on the sale, a manual settlement step
-   moves it to the withdrawable balance, one ledger row rewritten rather than
-   two appearing. Only the payout formula is missing; ship it provisional
-   behind the same notice if that stays undecided.
+2. ~~Wire the sale → artist-wallet settlement.~~ **Done 2026-08-25.** A sale
+   credits pending; delivery starts the 7-day clock; the wallet read releases
+   it. See the money model section.
 3. **Deep links**, once the domain is settled: an `intent-filter` with
    `autoVerify="true"` plus an `assetlinks.json` on the domain. Every route
    already works in-app, so this is configuration, not screens — but a real
@@ -608,17 +660,30 @@ three and the cleanest. Skills used for the adaptive shells, worth reloading:
 `flutter-adaptive-ui` (madteacher/mad-agents-skills) and
 `flutter-build-responsive-layout` (flutter/agent-plugins).
 
+## Gotchas worth not rediscovering
+
+- **A price computed outside `core/pricing.dart` is a bug.** The app once
+  listed artwork at `artistPrice * 1.3` while the website listed the same
+  piece at `x1.3 x1.05` — the same artwork was 5% cheaper depending on which
+  client the artist used. One file, or this comes back.
+- **Adding a field to a freezed model that a seed writes**: give it a
+  `@Default`. `MockDb.getCollection` catches a `fromJson` failure and
+  *reseeds*, silently discarding what the user had saved. A default field
+  deserializes; a new required one wipes their data.
+- **The aggregator demo needs two things before it does anything**: sign the
+  MOU (Account → Aggregator MOU) and add money to the wallet. Both are real
+  rules now, not oversights. `aggregator_test.dart`'s `setUp` does both.
+- **`flutter test` needs the seeds to agree with the rules.** The seeded
+  aggregator wallet starts at ₹0, so any test that reserves must call
+  `addFunds` first.
+
 ## Open decisions — still unresolved, don't guess
 
 1. Payment gateway (recommend Razorpay, not decided).
-2. Aggregator commission/settlement formula — genuine 3-way conflict between
-   mocked code, a business requirement, and the SAD's schema. See plan file
-   for detail. Phase 6 shipped against the web's formula (20% of the
-   aggregator's markup over the customer price) with a provisional notice on
-   every screen that shows the number. When this is decided, the only code
-   that changes is `aggregatorCommissionFor()` in
-   `aggregator_repository.dart` and the notice widget — deliberately one
-   function, not a formula sprinkled through the screens.
+2. ~~Aggregator commission/settlement formula~~ — **settled 2026-08-25 by the
+   client's money-flow sheets.** MOU §8's 20% x (selling price - ARTIST
+   price), both before GST. The "provisional" notice is gone; see the money
+   model section above.
 3. ~~Public marketing pages (Phase 7)~~ — **decided 2026-08-20: link out to
    galleryzone.in.** Shipped. Reopen only if the marketing team wants the
    pages readable offline.
