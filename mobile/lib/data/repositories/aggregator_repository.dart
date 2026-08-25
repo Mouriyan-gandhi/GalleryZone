@@ -201,6 +201,14 @@ abstract class AggregatorRepository {
 
   Future<List<Settlement>> listSettlements();
 
+  /// Sales where the aggregator took cash and still owes GalleryZone the
+  /// WHOLE sale price. Their commission is settled separately — they never
+  /// net it off at the counter.
+  Future<List<AggregatorSale>> listRemittancesDue();
+
+  /// Records that the cash from [saleId] has been transferred to GalleryZone.
+  Future<AggregatorSale> markRemitted(String saleId);
+
   /// Manual "simulate settlement": moves this sale's pending commission into
   /// the available balance and writes a settlement row. No background timer
   /// — nothing in this app should move money without someone pressing it.

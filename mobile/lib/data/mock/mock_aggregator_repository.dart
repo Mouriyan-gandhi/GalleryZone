@@ -756,6 +756,39 @@ class MockAggregatorRepository implements AggregatorRepository {
   Future<List<Settlement>> listSettlements() => mockDelay(_readSettlements);
 
   @override
+  Future<List<AggregatorSale>> listRemittancesDue() => mockDelay(() => [
+        for (final sale in _readSales())
+          if (sale.paymentRoute == PaymentRoute.cashAtPremises &&
+              sale.remittedAt == null)
+            sale,
+      ]);
+
+  @override
+  Future<AggregatorSale> markRemitted(String saleId) {
+    final sales = _readSales();
+    final sale = sales.where((s) => s.id == saleId).firstOrNull;
+    if (sale == null) return mockError('Sale not found');
+    if (sale.remittedAt != null) return mockError('Already marked as transferred');
+
+    return mockDelay(() {
+      final now = DateTime.now();
+      final updated = sale.copyWith(remittedAt: now.toIso8601String());
+      _writeSales([for (final s in sales) s.id == saleId ? updated : s]);
+      _pushTransactions([
+        WalletTransaction(
+          id: 'wt-${now.microsecondsSinceEpoch}',
+          type: WalletTransactionType.adjustment,
+          label: 'Transferred to GalleryZone — sale ${sale.id}',
+          amount: -sale.soldPrice,
+          date: now.toIso8601String().substring(0, 10),
+          status: WalletTransactionStatus.completed,
+        ),
+      ]);
+      return updated;
+    });
+  }
+
+  @override
   Future<Settlement> processSettlement(String saleId) {
     final sale = _readSales().where((s) => s.id == saleId).firstOrNull;
     if (sale == null) return mockError('Sale not found');

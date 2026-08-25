@@ -31,6 +31,14 @@ final aggregatorSalesProvider = FutureProvider.autoDispose<List<AggregatorSale>>
   return ref.watch(aggregatorRepositoryProvider).listSales();
 });
 
+/// Cash the aggregator is holding on GalleryZone's behalf and has not yet
+/// transferred. An obligation, not an entitlement — kept apart from the
+/// settlements list for exactly that reason.
+final aggregatorRemittancesDueProvider =
+    FutureProvider.autoDispose<List<AggregatorSale>>((ref) {
+  return ref.watch(aggregatorRepositoryProvider).listRemittancesDue();
+});
+
 final aggregatorCustomersProvider =
     FutureProvider.autoDispose<List<AggregatorCustomer>>((ref) {
   return ref.watch(aggregatorRepositoryProvider).listCustomers();
@@ -91,6 +99,7 @@ void invalidateAggregatorSaleFlow(WidgetRef ref) {
   ref.invalidate(aggregatorInventoryProvider);
   ref.invalidate(aggregatorCollectionProvider);
   ref.invalidate(aggregatorSalesProvider);
+  ref.invalidate(aggregatorRemittancesDueProvider);
   ref.invalidate(aggregatorCustomersProvider);
   ref.invalidate(aggregatorWalletProvider);
   ref.invalidate(aggregatorWalletTransactionsProvider);

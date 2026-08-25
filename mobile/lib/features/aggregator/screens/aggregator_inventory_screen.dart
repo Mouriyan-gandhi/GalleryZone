@@ -23,7 +23,6 @@ class AggregatorBrowseScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final inventory = ref.watch(aggregatorInventoryProvider);
 
     return Scaffold(
@@ -50,16 +49,7 @@ class AggregatorBrowseScreen extends ConsumerWidget {
                 },
                 child: CustomScrollView(
                   slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                        child: Text(
-                          'Reserving holds the advance and the delivery charge from your wallet, '
-                          'and holds the piece for 30 days.',
-                          style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-                        ),
-                      ),
-                    ),
+                    const SliverToBoxAdapter(child: _ReserveReadiness()),
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                       sliver: SliverGrid(
@@ -375,6 +365,114 @@ class _MoneyRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// What has to be true before anything on this screen can be reserved, said
+/// up front rather than as an error after the tap.
+///
+/// Two real gates, both enforced in the repository: a signed MOU (an unsigned
+/// aggregator has no agreement covering custody) and enough free wallet
+/// balance to hold the advance and delivery against.
+class _ReserveReadiness extends ConsumerWidget {
+  const _ReserveReadiness();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final profile = ref.watch(aggregatorProfileProvider).value;
+    final wallet = ref.watch(aggregatorWalletProvider).value;
+    final signed = profile?.mouAcceptance != null;
+    final free = wallet == null ? 0.0 : wallet.balance - wallet.lockedBalance;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Reserving holds the advance and the delivery charge from your '
+            'wallet, and opens a 30-day display window.',
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+          ),
+          if (!signed) ...[
+            const SizedBox(height: 10),
+            _Gate(
+              icon: LucideIcons.fileSignature,
+              message: 'Sign your Aggregator MOU before reserving artwork.',
+              action: 'Read and sign',
+              onPressed: () => context.push('/aggregator/dashboard/mou'),
+            ),
+          ],
+          if (signed && free <= 0) ...[
+            const SizedBox(height: 10),
+            _Gate(
+              icon: LucideIcons.wallet,
+              message: 'Your wallet has nothing free to hold an advance '
+                  'against. Add money to start reserving.',
+              action: 'Add money',
+              onPressed: () => context.push('/aggregator/wallet'),
+            ),
+          ] else if (signed) ...[
+            const SizedBox(height: 6),
+            Text(
+              '${formatInr(free)} free in your wallet.',
+              style: theme.textTheme.labelSmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Gate extends StatelessWidget {
+  const _Gate({
+    required this.icon,
+    required this.message,
+    required this.action,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String message;
+  final String action;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      gold: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message,
+                  style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: onPressed,
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(action),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -25,6 +25,7 @@ import '../../features/aggregator/screens/aggregator_collection_screen.dart';
 import '../../features/aggregator/screens/aggregator_dashboard_screen.dart';
 import '../../features/aggregator/screens/aggregator_finance_screens.dart';
 import '../../features/aggregator/screens/aggregator_inventory_screen.dart';
+import '../../features/aggregator/screens/aggregator_mou_screen.dart';
 import '../../features/aggregator/screens/aggregator_operations_screens.dart';
 import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
@@ -412,6 +413,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'profile',
                     builder: (context, state) => const AggregatorProfileScreen(),
+                  ),
+                  GoRoute(
+                    path: 'mou',
+                    builder: (context, state) => const AggregatorMouScreen(),
                   ),
                   GoRoute(
                     path: 'settings',

@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../shell/portal_widgets.dart';
+import '../../shell/mou_clause_view.dart';
 import '../mou_data.dart';
 import '../providers/artist_providers.dart';
 
@@ -65,7 +66,7 @@ class MouScreen extends ConsumerWidget {
                 ],
                 const SizedBox(height: 8),
                 for (final clause in mouClauses) ...[
-                  _Clause(clause: clause),
+                  MouClauseView(clause: clause),
                   const SizedBox(height: 18),
                 ],
                 const SizedBox(height: 4),
@@ -86,68 +87,6 @@ class MouScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _Clause extends StatelessWidget {
-  const _Clause({required this.clause});
-
-  final MouClause clause;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${clause.number}. ${clause.title}',
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: theme.colorScheme.tertiary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        for (final paragraph in clause.paragraphs) ...[
-          Text(paragraph, style: theme.textTheme.bodySmall?.copyWith(height: 1.6)),
-          const SizedBox(height: 8),
-        ],
-        if (clause.points != null)
-          for (final point in clause.points!)
-            Padding(
-              padding: const EdgeInsets.only(left: 4, bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Icon(
-                      LucideIcons.dot,
-                      size: 12,
-                      color: theme.colorScheme.tertiary,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      point,
-                      style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        if (clause.closing != null)
-          for (final paragraph in clause.closing!)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                paragraph,
-                style: theme.textTheme.bodySmall?.copyWith(height: 1.6),
-              ),
-            ),
-      ],
     );
   }
 }

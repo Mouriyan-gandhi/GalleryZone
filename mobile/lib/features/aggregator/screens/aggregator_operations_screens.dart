@@ -84,7 +84,7 @@ class AggregatorOrdersScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const ProvisionalCommissionNotice(),
+                        const WalletMechanicsNotice(),
                         const SizedBox(height: 12),
                         for (final row in list)
                           Padding(

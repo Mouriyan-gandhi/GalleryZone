@@ -8,6 +8,7 @@ import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/payee_details.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
 import '../widgets/aggregator_widgets.dart';
@@ -44,7 +45,10 @@ class AggregatorSettlementsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const ProvisionalCommissionNotice(),
+                      // The obligation goes above the entitlements. Mixing
+                      // the two is how people end up netting off.
+                      const _OwedToGalleryZone(),
+                      const WalletMechanicsNotice(),
                       const SizedBox(height: 16),
                       if (awaiting.isNotEmpty) ...[
                         Text('Awaiting settlement', style: theme.textTheme.titleLarge),
@@ -190,5 +194,120 @@ class _SettlementCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Cash the aggregator took at the counter belongs to GalleryZone, and the
+/// WHOLE sale price is owed — not the sale less commission. Their commission
+/// is settled separately, in the table below this card.
+class _OwedToGalleryZone extends ConsumerWidget {
+  const _OwedToGalleryZone();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final due = ref.watch(aggregatorRemittancesDueProvider).value ?? const [];
+    if (due.isEmpty) return const SizedBox.shrink();
+
+    final total = due.fold(0.0, (sum, sale) => sum + sale.soldPrice);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: PortalCard(
+        gold: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Owed to GalleryZone',
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Cash you collected on GalleryZone's behalf. Transfer "
+                        'the full amount — your commission is settled '
+                        'separately, below.',
+                        style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                PriceTag(amount: total, style: theme.textTheme.titleLarge),
+              ],
+            ),
+            const SizedBox(height: 12),
+            for (final sale in due)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sale.buyerName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            'Sold ${formatShortDate(sale.soldAt)}',
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    PriceTag(amount: sale.soldPrice, style: theme.textTheme.bodySmall),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      onPressed: () => _markRemitted(context, ref, sale),
+                      style: OutlinedButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: const Text('Transferred'),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
+            PayeeDetails(
+              amount: total,
+              note: 'GZ remittance — ${due.length} sale'
+                  '${due.length > 1 ? 's' : ''}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markRemitted(
+    BuildContext context,
+    WidgetRef ref,
+    AggregatorSale sale,
+  ) async {
+    try {
+      await ref.read(aggregatorRepositoryProvider).markRemitted(sale.id);
+      invalidateAggregatorSaleFlow(ref);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Marked as transferred')),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+    }
   }
 }

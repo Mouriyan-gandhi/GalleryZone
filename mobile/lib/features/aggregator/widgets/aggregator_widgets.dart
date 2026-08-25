@@ -163,8 +163,14 @@ class ExpiryCountdown extends StatelessWidget {
 /// The standing caveat on every commission figure in this portal. The split
 /// is an open product decision, so the number is shown, sourced, and
 /// labelled rather than quietly presented as final.
-class ProvisionalCommissionNotice extends StatelessWidget {
-  const ProvisionalCommissionNotice({super.key});
+/// How the wallet actually works, said once where the balance is.
+///
+/// This replaced a notice calling the commission "provisional" and computing
+/// it off the marketplace price. It is neither any more: MOU §8's 20% of the
+/// markup over the artist's price is settled, and the sheet is explicit that
+/// the advance is held rather than spent.
+class WalletMechanicsNotice extends StatelessWidget {
+  const WalletMechanicsNotice({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -177,9 +183,12 @@ class ProvisionalCommissionNotice extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Commission figures are provisional. The final split is still '
-              'being agreed, so these use 20% of your markup over the '
-              'marketplace price.',
+              'Reserving a piece HOLDS its advance and delivery from your '
+              'balance rather than charging you. The hold is released when the '
+              'piece sells; if it goes back unsold the advance is released but '
+              'the delivery leg is spent. Commission is 20% of your markup '
+              "over the artist's price, and becomes withdrawable once the "
+              'settlement is processed.',
               style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
             ),
           ),

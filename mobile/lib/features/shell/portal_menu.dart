@@ -207,6 +207,12 @@ final aggregatorMenu = <PortalMenuSection>[
         route: '/aggregator/dashboard/profile',
       ),
       PortalMenuItem(
+        icon: LucideIcons.fileSignature,
+        label: 'Aggregator MOU',
+        subtitle: 'Sign before reserving artwork',
+        route: '/aggregator/dashboard/mou',
+      ),
+      PortalMenuItem(
         icon: LucideIcons.mail,
         label: 'Messages',
         subtitle: 'Notices from GalleryZone',

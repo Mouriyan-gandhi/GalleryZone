@@ -14,6 +14,7 @@ import '../../../features/auth/providers/auth_providers.dart';
 import '../../account/providers/account_providers.dart';
 import '../../marketplace/providers/marketplace_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/payee_details.dart';
 import '../../shell/price_breakdown.dart';
 import '../providers/checkout_providers.dart';
 
@@ -707,6 +708,14 @@ class _PaymentStepState extends State<_PaymentStep> {
             Text('Amount due ', style: theme.textTheme.bodySmall),
             PriceTag(amount: total, style: theme.textTheme.titleMedium),
           ],
+        ),
+        const SizedBox(height: 16),
+        // Shown alongside the simulated gateway because the money genuinely
+        // goes here — including when a buyer is standing in a partner gallery
+        // and an aggregator is taking the payment on GalleryZone's behalf.
+        PayeeDetails(
+          amount: total,
+          note: '${widget.artwork.title} — ${widget.artwork.id}',
         ),
         const SizedBox(height: 16),
         RadioGroup<PaymentMethod>(

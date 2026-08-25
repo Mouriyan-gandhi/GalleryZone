@@ -4,12 +4,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
+import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/repositories/aggregator_repository.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../shell/payee_details.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
 import '../widgets/aggregator_widgets.dart';
@@ -86,6 +88,12 @@ class _HoldingCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final holding = view.holding;
     final sold = holding.status == HoldingStatus.soldPendingSettlement;
+    // MOU §6, and the cycle: only the first aggregator to display a work may
+    // price it, and only once. From month two the price is GalleryZone's,
+    // because the advance is cheaper instead.
+    final canPrice = !sold &&
+        canSetDisplayPrice(holding.cycleMonth) &&
+        holding.displayPriceSetAt == null;
 
     return PortalCard(
       child: Column(
@@ -124,7 +132,7 @@ class _HoldingCard extends ConsumerWidget {
           // Display price is a button, not a row: it's the one figure on this
           // card the aggregator owns and edits.
           InkWell(
-            onTap: sold ? null : () => _openPriceSheet(context, ref, view),
+            onTap: canPrice ? () => _openPriceSheet(context, ref, view) : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -139,7 +147,7 @@ class _HoldingCard extends ConsumerWidget {
                       color: theme.colorScheme.tertiary,
                     ),
                   ),
-                  if (!sold) ...[
+                  if (canPrice) ...[
                     const SizedBox(width: 6),
                     Icon(LucideIcons.pencil, size: 12, color: theme.colorScheme.outline),
                   ],
@@ -147,9 +155,24 @@ class _HoldingCard extends ConsumerWidget {
               ),
             ),
           ),
+          if (!sold && !canPrice)
+            Text(
+              holding.displayPriceSetAt != null
+                  ? 'You have used your one price change (MOU §6).'
+                  : 'GalleryZone sets the price from month two onwards.',
+              style: theme.textTheme.labelSmall,
+            ),
           PortalDetailRow(
-            label: 'Advance paid (${holding.advancePercent}%)',
+            label: 'Advance held (${holding.advancePercent}%)',
             value: formatInr(holding.advanceAmount),
+          ),
+          PortalDetailRow(
+            label: 'Delivery held',
+            value: formatInr(holding.deliveryDeposit),
+          ),
+          PortalDetailRow(
+            label: 'Cycle',
+            value: 'Month ${holding.cycleMonth} of $aggregatorCycleMonths',
           ),
           PortalDetailRow(
             label: 'Assigned',
@@ -160,6 +183,19 @@ class _HoldingCard extends ConsumerWidget {
           if (!sold) ...[
             const SizedBox(height: 8),
             ExpiryCountdown(expiresAt: holding.expiresAt),
+            if (holding.windowExtended)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  // The client's own case: a stub of under thirty days is not
+                  // worth shipping to anyone else, so whoever has the piece
+                  // keeps it to the end of the artist's 180 days.
+                  'Extended — too little of this piece\'s listing was left to '
+                  'place it elsewhere, so it stays with you until the listing '
+                  'ends.',
+                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                ),
+              ),
           ],
           const SizedBox(height: 12),
           SizedBox(
@@ -172,6 +208,17 @@ class _HoldingCard extends ConsumerWidget {
                     child: const Text('Record sale'),
                   ),
           ),
+          if (!sold) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 40,
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => _confirmReturn(context, ref, view),
+                child: const Text('Return unsold'),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -183,7 +230,10 @@ Future<void> _openPriceSheet(
   WidgetRef ref,
   AggregatorHoldingView view,
 ) async {
-  final floor = view.artwork.customerPrice;
+  // The floor is what GalleryZone offered THIS aggregator, which from month
+  // two sits below the marketplace price. Using the marketplace price here
+  // would refuse a perfectly legal raise.
+  final floor = view.holding.displayPrice;
   final controller =
       TextEditingController(text: view.holding.displayPrice.toStringAsFixed(0));
   final formKey = GlobalKey<FormState>();
@@ -207,8 +257,10 @@ Future<void> _openPriceSheet(
             Text('Edit display price', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 6),
             Text(
-              '"${view.artwork.title}" — you may raise the display price above the '
-              'marketplace price, never below it.',
+              '"${view.artwork.title}" — you may raise the selling price above '
+              'what GalleryZone offered you, never below it. MOU §6 gives you '
+              'one opportunity, and raising the price raises the advance held '
+              'from your wallet.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5),
             ),
             const SizedBox(height: 16),
@@ -218,7 +270,7 @@ Future<void> _openPriceSheet(
               autovalidateMode: AutovalidateMode.onUserInteraction,
               decoration: InputDecoration(
                 labelText: 'Display price (₹)',
-                helperText: 'Floor: ${formatInr(floor)} (the marketplace price)',
+                helperText: "Floor: ${formatInr(floor)} (GalleryZone's price to you)",
               ),
               validator: (value) {
                 final parsed = double.tryParse((value ?? '').trim());
@@ -253,6 +305,62 @@ Future<void> _openPriceSheet(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Display price updated')));
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+  }
+}
+
+/// The piece did not sell and goes back to GalleryZone.
+///
+/// Confirmed rather than done on tap, because the delivery leg is genuinely
+/// spent here — the money-flow sheet settles it only on a sale — and that is
+/// not something to discover afterwards.
+Future<void> _confirmReturn(
+  BuildContext context,
+  WidgetRef ref,
+  AggregatorHoldingView view,
+) async {
+  final holding = view.holding;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Return this piece unsold?'),
+      content: Text(
+        '"${view.artwork.title}" goes back to GalleryZone and can be placed with '
+        'another aggregator.\n\n'
+        'Your ${formatInr(holding.advanceAmount)} advance is released. The '
+        '${formatInr(holding.deliveryDeposit)} delivery charge is not — that is '
+        'settled only on a sale.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Keep it'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Return unsold'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  try {
+    final release =
+        await ref.read(aggregatorRepositoryProvider).releaseHolding(holding.id);
+    invalidateAggregatorSaleFlow(ref);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${formatInr(release.refunded)} released · '
+          '${formatInr(release.deliveryLost)} delivery charged',
+        ),
+      ),
+    );
   } catch (error) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
@@ -311,6 +419,7 @@ class _RecordSaleSheetState extends State<_RecordSaleSheet> {
   final _state = TextEditingController();
   final _pincode = TextEditingController();
   DeliveryMode _mode = DeliveryMode.courier;
+  PaymentRoute _route = PaymentRoute.directToGalleryZone;
 
   @override
   void dispose() {
@@ -348,6 +457,7 @@ class _RecordSaleSheetState extends State<_RecordSaleSheet> {
           pincode: _pincode.text.trim(),
         ),
         deliveryMode: _mode,
+        paymentRoute: _route,
       ),
     );
   }
@@ -462,6 +572,50 @@ class _RecordSaleSheetState extends State<_RecordSaleSheet> {
                 selected: {_mode},
                 onSelectionChanged: (selection) =>
                     setState(() => _mode = selection.first),
+              ),
+              const SizedBox(height: 20),
+              // You collect on GalleryZone's behalf, never for yourself. Which
+              // of the two routes the money took decides what you owe
+              // afterwards, so it is recorded with the sale rather than sorted
+              // out later.
+              Text(
+                'How did the buyer pay?',
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              RadioGroup<PaymentRoute>(
+                groupValue: _route,
+                onChanged: (value) => setState(() => _route = value!),
+                child: Column(
+                  children: [
+                    for (final route in PaymentRoute.values)
+                      RadioListTile<PaymentRoute>(
+                        contentPadding: EdgeInsets.zero,
+                        value: route,
+                        title: Text(
+                          paymentRouteLabel[route]!,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        subtitle: Text(
+                          route == PaymentRoute.directToGalleryZone
+                              ? 'Transfer or UPI into the GalleryZone account.'
+                              : 'You hold GalleryZone\'s money until you '
+                                  'transfer the full sale price.',
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Shown for both routes: if the buyer is paying directly these
+              // are the details they need, and if they are paying cash these
+              // are the details the aggregator will remit to.
+              PayeeDetails(
+                amount: double.tryParse(_soldPrice.text.trim()) ??
+                    widget.view.holding.displayPrice,
+                note: '${widget.view.artwork.title} — ${widget.view.artwork.id}',
               ),
               const SizedBox(height: 16),
               FilledButton(onPressed: _submit, child: const Text('Record sale')),

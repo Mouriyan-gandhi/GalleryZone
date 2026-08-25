@@ -101,7 +101,7 @@ class AggregatorDashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 20),
                   const _CommissionExplainer(),
                   const SizedBox(height: 10),
-                  const ProvisionalCommissionNotice(),
+                  const WalletMechanicsNotice(),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
