@@ -17,20 +17,36 @@ import '../widgets/artist_widgets.dart';
 import '../widgets/deactivation_tile.dart';
 
 /// Port of `app/dashboard/settlements/page.tsx` — one record per sale,
-/// showing exactly how the money split.
-class ArtistSettlementsScreen extends ConsumerWidget {
+/// showing exactly how the money split. Thin Scaffold wrapper around
+/// [ArtistSettlementsTab], which is also embedded directly as the "Payouts"
+/// tab of [ArtistSalesScreen] — one body, two entry points (the More menu's
+/// own Settlements row, and the Sales screen), so they can't drift apart.
+class ArtistSettlementsScreen extends StatelessWidget {
   const ArtistSettlementsScreen({super.key});
 
   static const path = '/dashboard/settlements';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settlements')),
+      body: const ArtistSettlementsTab(),
+    );
+  }
+}
+
+/// Port of `app/dashboard/settlements/page.tsx`'s list — no Scaffold/AppBar
+/// of its own, so it can sit inside either [ArtistSettlementsScreen] or a
+/// tab of [ArtistSalesScreen].
+class ArtistSettlementsTab extends ConsumerWidget {
+  const ArtistSettlementsTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final settlements = ref.watch(artistSettlementsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settlements')),
-      body: settlements.when(
+    return settlements.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
           icon: LucideIcons.triangleAlert,
@@ -124,7 +140,6 @@ class ArtistSettlementsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-      ),
     );
   }
 }

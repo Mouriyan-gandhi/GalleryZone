@@ -5,15 +5,19 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/models/auth.dart';
-import '../../shell/portal_menu.dart';
 import '../../shell/portal_widgets.dart';
 
+/// Five real destinations, each its own branch — no drawer-opening special
+/// case. "More" is a full screen (see `CustomerMoreScreen`), not a
+/// slide-out drawer, so everything the web keeps in its sidebar (Wallet,
+/// Addresses, Resell, Support, FAQs, About) has a direct tab rather than
+/// living behind the avatar.
 const shellDestinations = <ShellDestination>[
   ShellDestination(icon: LucideIcons.layoutGrid, label: 'Account'),
   ShellDestination(icon: LucideIcons.shoppingBag, label: 'Orders'),
   ShellDestination(icon: LucideIcons.frame, label: 'Collection'),
   ShellDestination(icon: LucideIcons.heart, label: 'Saved'),
+  ShellDestination(icon: LucideIcons.menu, label: 'More'),
 ];
 
 /// The customer's root shell. Branch state (scroll position, selected tab)
@@ -40,47 +44,30 @@ class CustomerShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = WindowSize.of(context);
-    final menu = portalMenuFor(Role.customer);
-    final drawer = PortalMenuDrawer(
-      name: ref.watch(portalDisplayNameProvider),
-      roleLabel: menu.roleLabel,
-      groups: menu.groups,
-    );
 
     if (size.isCompact) {
       return Scaffold(
-        endDrawer: drawer,
         body: navigationShell,
-        // The Builder is what puts `Scaffold.of` below this Scaffold, so the
-        // Profile destination can open the drawer this one owns.
-        bottomNavigationBar: Builder(
-          builder: (context) => NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => index == shellDestinations.length
-                ? Scaffold.of(context).openEndDrawer()
-                : _goBranch(index),
-            destinations: [
-              for (final destination in [...shellDestinations, profileDestination])
-                NavigationDestination(
-                  icon: Icon(destination.icon),
-                  label: destination.label,
-                ),
-            ],
-          ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: _goBranch,
+          destinations: [
+            for (final destination in shellDestinations)
+              NavigationDestination(
+                icon: Icon(destination.icon),
+                label: destination.label,
+              ),
+          ],
         ),
       );
     }
 
     return Scaffold(
-      endDrawer: drawer,
-      body: Builder(
-        builder: (context) => Row(
+      body: Row(
         children: [
           NavigationRail(
             selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => index == shellDestinations.length
-                ? Scaffold.of(context).openEndDrawer()
-                : _goBranch(index),
+            onDestinationSelected: _goBranch,
             extended: size.isExpanded,
             labelType: size.isExpanded ? null : NavigationRailLabelType.all,
             leading: Padding(
@@ -94,7 +81,7 @@ class CustomerShell extends ConsumerWidget {
               ),
             ),
             destinations: [
-              for (final destination in [...shellDestinations, profileDestination])
+              for (final destination in shellDestinations)
                 NavigationRailDestination(
                   icon: Icon(destination.icon),
                   label: Text(destination.label),
@@ -104,7 +91,6 @@ class CustomerShell extends ConsumerWidget {
           const VerticalDivider(width: 1),
           Expanded(child: navigationShell),
         ],
-        ),
       ),
     );
   }

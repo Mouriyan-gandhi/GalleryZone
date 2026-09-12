@@ -11,6 +11,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/verify_email_screen.dart';
 import '../../features/account/screens/account_dashboard_screen.dart';
+import '../../features/account/screens/account_more_screen.dart';
 import '../../features/account/screens/account_settings_screen.dart';
 import '../../features/account/screens/addresses_screen.dart';
 import '../../features/account/screens/collection_screen.dart';
@@ -33,8 +34,8 @@ import '../../features/artist/screens/artist_account_screens.dart';
 import '../../features/artist/screens/artist_artworks_screen.dart';
 import '../../features/artist/screens/artist_catalog_screens.dart';
 import '../../features/artist/screens/artist_dashboard_screen.dart';
-import '../../features/artist/screens/artist_orders_screen.dart';
-import '../../features/artist/screens/artist_wallet_screen.dart';
+import '../../features/artist/screens/artist_more_screen.dart';
+import '../../features/artist/screens/artist_sales_screen.dart';
 import '../../features/artist/screens/artwork_upload_screen.dart';
 import '../../features/artist/screens/artist_network_screen.dart';
 import '../../features/artist/screens/mou_screen.dart';
@@ -203,7 +204,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             PassportScreen(artworkId: state.pathParameters['artworkId']!),
       ),
-      // The customer's real shell: four branches, each with its own
+      // The customer's real shell: five branches, each with its own
       // navigator, so switching tabs (or resizing between the bottom bar and
       // the rail) keeps each branch's scroll position and stack.
       StatefulShellRoute.indexedStack(
@@ -270,6 +271,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: WishlistScreen.path,
                 builder: (context, state) => const WishlistScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: CustomerMoreScreen.path,
+                builder: (context, state) => const CustomerMoreScreen(),
               ),
             ],
           ),
@@ -359,16 +368,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ArtistOrdersScreen.path,
-                builder: (context, state) => const ArtistOrdersScreen(),
+                path: ArtistSalesScreen.path,
+                builder: (context, state) => const ArtistSalesScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: ArtistWalletScreen.path,
-                builder: (context, state) => const ArtistWalletScreen(),
+                path: ArtistMoreScreen.path,
+                builder: (context, state) => const ArtistMoreScreen(),
               ),
             ],
           ),

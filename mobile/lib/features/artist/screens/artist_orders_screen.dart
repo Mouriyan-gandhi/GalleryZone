@@ -13,11 +13,10 @@ import '../widgets/artist_widgets.dart';
 
 /// Port of `features/dashboard/orders-table.tsx` — orders for this artist's
 /// pieces, each showing what she actually receives rather than what the
-/// buyer paid.
-class ArtistOrdersScreen extends ConsumerWidget {
-  const ArtistOrdersScreen({super.key});
-
-  static const path = '/dashboard/orders';
+/// buyer paid. The "Sales" tab of [ArtistSalesScreen] — no Scaffold/AppBar
+/// of its own, since it never appears outside that tabbed screen.
+class ArtistOrdersTab extends ConsumerWidget {
+  const ArtistOrdersTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,9 +24,7 @@ class ArtistOrdersScreen extends ConsumerWidget {
     final orders = ref.watch(artistOrdersProvider);
     final artworks = ref.watch(artworksByIdProvider).value ?? const {};
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: orders.when(
+    return orders.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => const EmptyState(
           icon: LucideIcons.packageSearch,
@@ -105,7 +102,6 @@ class ArtistOrdersScreen extends ConsumerWidget {
                   },
                 ),
               ),
-      ),
     );
   }
 }

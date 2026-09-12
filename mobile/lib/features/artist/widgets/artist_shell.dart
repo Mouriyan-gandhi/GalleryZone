@@ -5,19 +5,18 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../data/models/auth.dart';
-import '../../shell/portal_menu.dart';
 import '../../shell/portal_widgets.dart';
 
-/// Four primary destinations, shared by both navigation surfaces. The web's
-/// fifteen-item grouped sidebar collapses here: everything else (analytics,
-/// COA/NFC, gallery spaces, portfolio, profile, settings, settlements,
-/// support, verification) is reached from the dashboard's "Manage" list.
+/// Four real destinations, each its own branch — no drawer-opening special
+/// case. "Sales" merges what used to be separate Orders/Wallet tabs
+/// (Overview/Sales/Payouts inside one screen); "More" is a full screen now,
+/// not a slide-out drawer, so everything the web keeps in its sidebar has a
+/// direct tab rather than living behind the avatar.
 const artistDestinations = <ShellDestination>[
   ShellDestination(icon: LucideIcons.layoutGrid, label: 'Dashboard'),
-  ShellDestination(icon: LucideIcons.frame, label: 'Artworks'),
-  ShellDestination(icon: LucideIcons.shoppingBag, label: 'Orders'),
-  ShellDestination(icon: LucideIcons.wallet, label: 'Wallet'),
+  ShellDestination(icon: LucideIcons.frame, label: 'My Art'),
+  ShellDestination(icon: LucideIcons.wallet, label: 'Sales'),
+  ShellDestination(icon: LucideIcons.menu, label: 'More'),
 ];
 
 /// Same adaptive structure as `CustomerShell` — bottom bar under 600, rail
@@ -40,47 +39,30 @@ class ArtistShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = WindowSize.of(context);
-    final menu = portalMenuFor(Role.artist);
-    final drawer = PortalMenuDrawer(
-      name: ref.watch(portalDisplayNameProvider),
-      roleLabel: menu.roleLabel,
-      groups: menu.groups,
-    );
 
     if (size.isCompact) {
       return Scaffold(
-        endDrawer: drawer,
         body: navigationShell,
-        // The Builder is what puts `Scaffold.of` below this Scaffold, so the
-        // Profile destination can open the drawer this one owns.
-        bottomNavigationBar: Builder(
-          builder: (context) => NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => index == artistDestinations.length
-                ? Scaffold.of(context).openEndDrawer()
-                : _goBranch(index),
-            destinations: [
-              for (final destination in [...artistDestinations, profileDestination])
-                NavigationDestination(
-                  icon: Icon(destination.icon),
-                  label: destination.label,
-                ),
-            ],
-          ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: _goBranch,
+          destinations: [
+            for (final destination in artistDestinations)
+              NavigationDestination(
+                icon: Icon(destination.icon),
+                label: destination.label,
+              ),
+          ],
         ),
       );
     }
 
     return Scaffold(
-      endDrawer: drawer,
-      body: Builder(
-        builder: (context) => Row(
+      body: Row(
         children: [
           NavigationRail(
             selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: (index) => index == artistDestinations.length
-                ? Scaffold.of(context).openEndDrawer()
-                : _goBranch(index),
+            onDestinationSelected: _goBranch,
             extended: size.isExpanded,
             labelType: size.isExpanded ? null : NavigationRailLabelType.all,
             leading: Padding(
@@ -94,7 +76,7 @@ class ArtistShell extends ConsumerWidget {
               ),
             ),
             destinations: [
-              for (final destination in [...artistDestinations, profileDestination])
+              for (final destination in artistDestinations)
                 NavigationRailDestination(
                   icon: Icon(destination.icon),
                   label: Text(destination.label),
@@ -104,7 +86,6 @@ class ArtistShell extends ConsumerWidget {
           const VerticalDivider(width: 1),
           Expanded(child: navigationShell),
         ],
-        ),
       ),
     );
   }

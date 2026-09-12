@@ -6,14 +6,21 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../data/mock/seed/artist_seed.dart';
 import '../../../data/models/artist_portal.dart';
+import '../../../data/models/artwork.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 import '../widgets/rating_widgets.dart';
-import '../../../data/models/auth.dart';
-import '../../shell/portal_menu.dart';
 
-/// Port of `app/dashboard/page.tsx` — KPI cards, verification ladder,
-/// activity feed, and the entry points the web keeps in its sidebar.
+const _soldFamily = {
+  ArtworkStatus.sold,
+  ArtworkStatus.settlementComplete,
+  ArtworkStatus.delivered,
+  ArtworkStatus.completed,
+  ArtworkStatus.soldExternally,
+};
+
+/// Port of `app/dashboard/page.tsx` — status tiles, a promo to submit new
+/// work, verification ladder, and the activity feed.
 class ArtistDashboardScreen extends ConsumerWidget {
   const ArtistDashboardScreen({super.key});
 
@@ -22,31 +29,25 @@ class ArtistDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final artworks = ref.watch(artistArtworksProvider).value;
     final kpis = ref.watch(artistKpisProvider).value ?? const [];
     final activity = ref.watch(artistActivityProvider).value ?? const [];
-    final unread = (ref.watch(artistMessagesProvider).value ?? const [])
-        .where((message) => message.unread)
-        .length;
-    final menu = portalMenuFor(Role.artist);
+
+    final totalEarnings = kpis
+        .where((kpi) => kpi.label == 'Total revenue')
+        .map((kpi) => kpi.value)
+        .firstOrNull;
+    final inReview =
+        artworks?.where((a) => a.artwork.status == ArtworkStatus.pendingApproval).length;
+    final sold = artworks?.where((a) => _soldFamily.contains(a.artwork.status)).length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [PortalAvatarButton(name: currentArtistName, badgeCount: unread)],
-      ),
-      // The shell carries this same drawer for its Profile tab; the copy here
-      // is what the avatar above can reach, since this Scaffold sits inside
-      // the shell's.
-      endDrawer: PortalMenuDrawer(
-        name: currentArtistName,
-        roleLabel: menu.roleLabel,
-        groups: menu.groups,
-        homeRoute: menu.homeRoute,
-      ),
+      appBar: AppBar(title: const Text('Dashboard')),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(artistKpisProvider);
           ref.invalidate(artistActivityProvider);
+          ref.invalidate(artistArtworksProvider);
           await ref.read(artistKpisProvider.future);
         },
         child: ListView(
@@ -59,10 +60,10 @@ class ArtistDashboardScreen extends ConsumerWidget {
                   Text('Welcome back, ${currentArtistName.split(' ').first}',
                       style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 4),
-                  Text('Your work, sales and payouts at a glance.',
+                  Text("Here's what's happening with your art.",
                       style: theme.textTheme.bodySmall),
                   const SizedBox(height: 20),
-                  if (kpis.isEmpty)
+                  if (artworks == null)
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
@@ -70,15 +71,94 @@ class ArtistDashboardScreen extends ConsumerWidget {
                       ),
                     )
                   else
-                    // One column on a phone, three across when there's room.
+                    // 2x2 on a phone, four across when there's room.
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: WindowSize.of(context).isCompact ? 1 : 3,
+                      crossAxisCount: WindowSize.of(context).isCompact ? 2 : 4,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: WindowSize.of(context).isCompact ? 3.4 : 1.7,
-                      children: [for (final kpi in kpis) _KpiCard(kpi: kpi)],
+                      childAspectRatio: WindowSize.of(context).isCompact ? 1.5 : 1.7,
+                      children: [
+                        _KpiCard(
+                          kpi: ArtistKpi(
+                            label: 'Artworks',
+                            value: '${artworks.length}',
+                            delta: 'Active',
+                            positive: true,
+                          ),
+                        ),
+                        _KpiCard(
+                          kpi: ArtistKpi(
+                            label: 'In review',
+                            value: '${inReview ?? 0}',
+                            delta: 'With GalleryZone',
+                            positive: (inReview ?? 0) == 0,
+                          ),
+                        ),
+                        _KpiCard(
+                          kpi: ArtistKpi(
+                            label: 'Sold',
+                            value: '${sold ?? 0}',
+                            delta: 'All time',
+                            positive: true,
+                          ),
+                        ),
+                        _KpiCard(
+                          kpi: ArtistKpi(
+                            label: 'Total earnings',
+                            value: totalEarnings ?? '—',
+                            delta: 'All time',
+                            positive: true,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 20),
+                  PortalCard(
+                    gold: true,
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.imagePlus, size: 22, color: theme.colorScheme.tertiary),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Share your new work', style: theme.textTheme.titleSmall),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Reach collectors, galleries and aggregators.',
+                                style: theme.textTheme.labelSmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () => context.push('/dashboard/artworks/upload'),
+                          child: const Text('Upload'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Recent activity', style: theme.textTheme.titleLarge),
+                      TextButton(
+                        onPressed: () => context.push('/dashboard/artworks'),
+                        child: const Text('View all'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  for (final entry in activity.take(5))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _ActivityRow(entry: entry),
                     ),
                   const SizedBox(height: 20),
                   PortalCard(
@@ -134,23 +214,6 @@ class ArtistDashboardScreen extends ConsumerWidget {
                   const RatingCard(),
                   const SizedBox(height: 20),
                   const CommunityTeaser(),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Recent activity', style: theme.textTheme.titleLarge),
-                      TextButton(
-                        onPressed: () => context.push('/dashboard/artworks/upload'),
-                        child: const Text('Submit artwork'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  for (final entry in activity.take(5))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ActivityRow(entry: entry),
-                    ),
                 ],
               ),
             ),

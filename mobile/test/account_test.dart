@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gallery_zone/data/models/auth.dart';
-import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/core/adaptive.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_customer_repository.dart';
@@ -212,9 +210,6 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          // The shell's Profile drawer reads the session, and the session
-          // provider refuses to guess a role.
-          overrides: [initialRoleProvider.overrideWithValue(Role.customer)],
           child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
         ),
       );

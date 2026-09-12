@@ -18,11 +18,11 @@ import '../widgets/artist_widgets.dart';
 
 /// Port of `features/dashboard/wallet-overview.tsx`. Unlike the collector's
 /// wallet, this balance is earnings — so it has a withdrawal path, with the
-/// ₹1,000 floor the service enforces.
-class ArtistWalletScreen extends ConsumerWidget {
-  const ArtistWalletScreen({super.key});
-
-  static const path = '/dashboard/wallet';
+/// ₹1,000 floor the service enforces. The "Overview" tab of
+/// [ArtistSalesScreen] — no Scaffold/AppBar of its own, since it never
+/// appears outside that tabbed screen.
+class ArtistWalletTab extends ConsumerWidget {
+  const ArtistWalletTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,9 +30,7 @@ class ArtistWalletScreen extends ConsumerWidget {
     final wallet = ref.watch(artistWalletProvider).value;
     final transactions = ref.watch(artistWalletTransactionsProvider).value;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Wallet')),
-      body: ListView(
+    return ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           ContentWidth(
@@ -141,8 +139,7 @@ class ArtistWalletScreen extends ConsumerWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Future<void> _openWithdrawSheet(

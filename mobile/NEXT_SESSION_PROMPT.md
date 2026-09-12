@@ -600,6 +600,66 @@ was created at `pending` and never moved again, and a sale credited nobody.
   collection written by one side and read by the other — the same arrangement
   as `artworks` and `holdings`.
 
+## Artist portal mobile redesign (2026-09-12)
+
+A phone mockup (Dashboard/My Artworks/Upload/Opportunities/Sales &
+Earnings/Messages/Profile/More, 5-tab nav) was handed over as a build
+target. After confirming scope with the user, this landed:
+
+- **Bottom nav is now 4 tabs**: Dashboard / My Art / Sales / More
+  (`lib/features/artist/widgets/artist_shell.dart`). Was Dashboard /
+  Artworks / Orders / Wallet + a "Profile" pseudo-tab that opened an
+  `endDrawer`. That drawer pattern is retired for the artist portal only —
+  customer/aggregator shells still use it, untouched.
+- **"Sales" merges Orders + Wallet + Settlements** into one screen with
+  Overview/Sales/Payouts tabs (`artist_sales_screen.dart`), each tab reusing
+  the *same* provider-backed body as before, just extracted into
+  Scaffold-less tab widgets (`ArtistWalletTab`, `ArtistOrdersTab`,
+  `ArtistSettlementsTab`). `/dashboard/settlements` still exists standalone
+  too (More menu links to it) — same `ArtistSettlementsTab` body, two entry
+  points, so they can't drift.
+- **"More" is a real full-screen tab now** (`artist_more_screen.dart`), not
+  a slide-out `Drawer` — same `artistMenu` data
+  (`features/shell/portal_menu.dart`) the drawer used to render, just laid
+  out as a page with a header (avatar, name, role, email).
+- **Dashboard** (`artist_dashboard_screen.dart`) gained a 2x2 real-data stat
+  grid (artwork count / in-review count / sold count / the existing "Total
+  revenue" fixture relabeled "Total earnings") and a "Share your new work"
+  promo card above Recent Activity. Verification ladder, RatingCard and
+  CommunityTeaser are unchanged, just pushed below the new content rather
+  than deleted.
+- **My Artworks** (`artist_artworks_screen.dart`) gained All/Published/In
+  Review/Draft filter chips (a `Wrap`, not a horizontal `ScrollView` — see
+  the comment there about why) and a search field, both real client-side
+  filtering over the existing list, no new data.
+- `test/artist_test.dart`'s nav-surface-swap test was rewritten for the new
+  4-real-branches shell (no more drawer-content assertions), and its
+  scroll-to-row calls needed an explicit `scrollable:` finder once the
+  search `TextField` added a second `Scrollable` to the tree
+  (`find.descendant(of: find.byType(ListView), matching:
+  find.byType(Scrollable))`) — `flutter analyze` clean, all 186 tests still
+  green.
+
+**Deliberately NOT done, by explicit user choice or judgment call — don't
+redo blindly:**
+- **"Opportunities"** (browse exhibitions/galleries/aggregator listings) —
+  confirmed with the user this exists nowhere in `frontend-web` either; it
+  would be inventing a feature outside this app's "port the website" scope.
+  User chose to skip it. If it's wanted later, it needs its own data model
+  and mock repository methods first, same as any other real feature — don't
+  just add a nav tab pointing at nothing.
+- **Upload Artwork as a Details/Media/Pricing/Review wizard** — the mockup
+  shows one, but `artwork_upload_screen.dart` is a large, already-correct
+  single-scroll form (photos, details, sales channel, pricing, NFC/
+  insurance, conditional physical-piece fields, CoA notice) with real
+  validation this session could not visually verify after restructuring (no
+  device/emulator run — see "no agent device testing" policy). Left as-is
+  rather than risk a blind, hard-to-verify rewrite of working, validated
+  form logic.
+- Pixel-parity on every screen's AppBar chrome (the mockup's
+  hamburger+bell+avatar row) was not chased — out of scope for what was
+  approved, and the bottom nav now covers what that chrome pointed at.
+
 ## What's NOT built yet
 
 - **A real payment gateway.** The sheet is a mock and says so.

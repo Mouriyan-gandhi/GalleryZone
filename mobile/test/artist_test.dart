@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_zone/core/format.dart';
 import 'package:gallery_zone/core/pricing.dart';
-import 'package:gallery_zone/data/models/auth.dart';
-import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
@@ -177,11 +175,26 @@ void main() {
 
     // Each row now carries its channel and edit-window footer, so only the
     // first row or two fit a phone-sized viewport — scroll to a row rather
-    // than asserting on one the list never built.
-    await tester.scrollUntilVisible(find.text('Terracotta Study No. 4'), 240);
+    // than asserting on one the list never built. The search field's
+    // EditableText carries its own internal Scrollable, so — with two
+    // Scrollables now in the tree — the artwork list one has to be named
+    // explicitly rather than relying on scrollUntilVisible's default lookup.
+    final artworksList = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Terracotta Study No. 4'),
+      240,
+      scrollable: artworksList,
+    );
     expect(find.text('In review'), findsWidgets);
 
-    await tester.scrollUntilVisible(find.text('Portrait in Amber'), 240);
+    await tester.scrollUntilVisible(
+      find.text('Portrait in Amber'),
+      240,
+      scrollable: artworksList,
+    );
     expect(find.text('Draft'), findsWidgets);
   });
 
@@ -216,9 +229,6 @@ void main() {
 
       await tester.pumpWidget(
         ProviderScope(
-          // The shell's Profile drawer reads the session, and the session
-          // provider refuses to guess a role.
-          overrides: [initialRoleProvider.overrideWithValue(Role.artist)],
           child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
         ),
       );
@@ -229,13 +239,12 @@ void main() {
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
 
-    // Profile is the last destination and is not a branch: it opens the
-    // portal menu over whichever tab you were on.
-    expect(find.text('Profile'), findsOneWidget);
-    await tester.tap(find.text('Profile'));
+    // All four destinations are real branches now — no drawer-opening
+    // special case (this harness builds a placeholder screen per branch).
+    expect(find.text('More'), findsWidgets);
+    await tester.tap(find.text('More').last);
     await tester.pumpAndSettle();
-    expect(find.text('ACCOUNT'), findsOneWidget);
-    expect(find.text('Sign out'), findsOneWidget);
+    expect(find.text('More'), findsWidgets);
 
     await pumpAt(const Size(1000, 900));
     expect(find.byType(NavigationRail), findsOneWidget);

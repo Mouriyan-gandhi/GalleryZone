@@ -12,17 +12,53 @@ import '../../marketplace/widgets/artwork_card.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 
+enum _ArtworkFilter { all, published, inReview, draft }
+
+extension on _ArtworkFilter {
+  String get label => switch (this) {
+        _ArtworkFilter.all => 'All',
+        _ArtworkFilter.published => 'Published',
+        _ArtworkFilter.inReview => 'In Review',
+        _ArtworkFilter.draft => 'Draft',
+      };
+
+  bool matches(ArtworkStatus status) => switch (this) {
+        _ArtworkFilter.all => true,
+        _ArtworkFilter.inReview => status == ArtworkStatus.pendingApproval,
+        _ArtworkFilter.draft => status == ArtworkStatus.draft,
+        // Anything past draft/review is "published" in some form — live,
+        // reserved, with an aggregator, sold, or further along than that.
+        _ArtworkFilter.published =>
+          status != ArtworkStatus.draft && status != ArtworkStatus.pendingApproval,
+      };
+}
+
 /// Port of `features/dashboard/artworks-board.tsx` — the management board,
 /// the only screen in the app that shows drafts and in-review submissions,
 /// and the only one that shows the artist's own asking price beside the
 /// customer price.
-class ArtistArtworksScreen extends ConsumerWidget {
+class ArtistArtworksScreen extends ConsumerStatefulWidget {
   const ArtistArtworksScreen({super.key});
 
   static const path = '/dashboard/artworks';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ArtistArtworksScreen> createState() => _ArtistArtworksScreenState();
+}
+
+class _ArtistArtworksScreenState extends ConsumerState<ArtistArtworksScreen> {
+  _ArtworkFilter _filter = _ArtworkFilter.all;
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final artworks = ref.watch(artistArtworksProvider);
 
     return Scaffold(
@@ -51,17 +87,108 @@ class ArtistArtworksScreen extends ConsumerWidget {
                   child: const Text('Submit artwork'),
                 ),
               )
-            : RefreshIndicator(
-                onRefresh: () => ref.refresh(artistArtworksProvider.future),
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                  itemCount: list.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) =>
-                      ContentWidth(child: ArtistArtworkRow(entry: list[index])),
-                ),
+            : _FilteredArtworksList(
+                list: list,
+                filter: _filter,
+                onFilterChanged: (value) => setState(() => _filter = value),
+                searchController: _searchController,
+                query: _query,
+                onQueryChanged: (value) => setState(() => _query = value),
               ),
       ),
+    );
+  }
+}
+
+class _FilteredArtworksList extends ConsumerWidget {
+  const _FilteredArtworksList({
+    required this.list,
+    required this.filter,
+    required this.onFilterChanged,
+    required this.searchController,
+    required this.query,
+    required this.onQueryChanged,
+  });
+
+  final List<ArtistArtwork> list;
+  final _ArtworkFilter filter;
+  final ValueChanged<_ArtworkFilter> onFilterChanged;
+  final TextEditingController searchController;
+  final String query;
+  final ValueChanged<String> onQueryChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final normalizedQuery = query.trim().toLowerCase();
+    final filtered = [
+      for (final entry in list)
+        if (filter.matches(entry.artwork.status) &&
+            (normalizedQuery.isEmpty ||
+                entry.artwork.title.toLowerCase().contains(normalizedQuery)))
+          entry,
+    ];
+
+    return Column(
+      children: [
+        ContentWidth(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: searchController,
+                  onChanged: onQueryChanged,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(LucideIcons.search, size: 18),
+                    hintText: 'Search your artworks…',
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Wrap, not a horizontal ScrollView — a second Scrollable in
+                // the tree breaks tester.scrollUntilVisible's default lookup
+                // (it expects exactly one), and wrapping reads fine at every
+                // phone width anyway.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final option in _ArtworkFilter.values)
+                      ChoiceChip(
+                        label: Text(
+                          option == _ArtworkFilter.all
+                              ? '${option.label} (${list.length})'
+                              : option.label,
+                        ),
+                        selected: filter == option,
+                        onSelected: (_) => onFilterChanged(option),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? const EmptyState(
+                  icon: LucideIcons.searchX,
+                  title: 'No matching artworks',
+                  description: 'Try a different filter or search term.',
+                )
+              : RefreshIndicator(
+                  onRefresh: () => ref.refresh(artistArtworksProvider.future),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    itemCount: filtered.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) =>
+                        ContentWidth(child: ArtistArtworkRow(entry: filtered[index])),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
