@@ -30,7 +30,9 @@ import {
 // are publishing their earnings — and the second is the one that loses trust.
 
 function joinedLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IN", {
+  const date = new Date(iso);
+  if (!iso || Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
     month: "long",
     year: "numeric",
   });
@@ -119,7 +121,7 @@ export function ArtistProfileSummary({ location }: { location?: string }) {
         </p>
       </summary>
 
-      <div className="mt-5 grid gap-6 sm:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             What collectors see

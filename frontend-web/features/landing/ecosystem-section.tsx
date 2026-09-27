@@ -13,7 +13,7 @@ export function EcosystemSection() {
   const persona = ECOSYSTEM_PERSONAS[activeIndex];
 
   return (
-    <section className="relative overflow-hidden py-28 md:py-36">
+    <section className="relative overflow-hidden py-16 sm:py-28 md:py-36">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
           className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between"
@@ -82,7 +82,7 @@ export function EcosystemSection() {
                 key={p.key}
                 type="button"
                 onClick={() => setActiveIndex(i)}
-                className={`flex items-center justify-center text-center rounded-full px-2 py-2.5 text-[10px] sm:text-xs font-medium transition-colors ${
+                className={`flex items-center justify-center text-center rounded-full px-2 py-2.5 text-xs font-medium transition-colors ${
                   i === activeIndex
                     ? "bg-gold/15 text-gold-bright border border-gold/40 shadow-[0_0_15px_rgba(200,154,74,0.1)]"
                     : "bg-card border border-border text-muted-foreground hover:bg-card/60"

@@ -163,7 +163,7 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
       <div className="space-y-4">
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="relative aspect-[4/3] w-full bg-muted">

@@ -127,12 +127,12 @@ export function AdminKpiGrid() {
   if (isPending || !kpis) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-[104px] rounded-xl" />
           ))}
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Skeleton key={i} className="h-[92px] rounded-xl" />
           ))}
@@ -143,19 +143,19 @@ export function AdminKpiGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {MONEY_TILES.map((tile) => (
           <StatCard key={tile.key} tile={tile} kpis={kpis} emphasis />
         ))}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {COUNT_TILES.map((tile) => (
           <StatCard key={tile.key} tile={tile} kpis={kpis} />
         ))}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {QUEUE_TILES.map((tile) => {
           const count = tile.count(kpis);
           return <QueueCard key={tile.key} tile={tile} count={count} />;

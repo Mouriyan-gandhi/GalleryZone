@@ -36,7 +36,7 @@ export default function AggregatorInventoryPage() {
             <input
               type="text"
               placeholder="Search artworks, artists, or styles..."
-              className="w-full rounded-lg border border-border bg-muted/30 py-2.5 pl-9 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all"
+              className="w-full rounded-lg border border-border bg-muted/30 py-2.5 pl-9 pr-4 text-base outline-none placeholder:text-muted-foreground focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all sm:text-sm"
             />
           </div>
           <button className="flex shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted">

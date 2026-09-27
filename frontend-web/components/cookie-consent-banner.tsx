@@ -42,13 +42,14 @@ export function CookieConsentBanner() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           role="region"
           aria-label="Cookie notice"
-          className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 sm:px-6"
+          className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-6 sm:pb-4"
         >
-          <div className="mx-auto flex max-w-3xl flex-col items-start gap-3 rounded-xl border border-border/60 bg-card/95 p-4 shadow-lg ring-1 ring-foreground/10 backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:p-5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
+          {/* Compact on phones: the full-size card covered ~40% of a 360px screen. */}
+          <div className="mx-auto flex max-w-3xl flex-col items-start gap-3 rounded-xl border border-border/60 bg-card/95 p-3 shadow-lg ring-1 ring-foreground/10 backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:p-5">
+            <span className="hidden size-9 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold/10 sm:flex">
               <Cookie className="size-4 text-gold-bright" strokeWidth={1.75} />
             </span>
-            <p className="flex-1 text-sm leading-relaxed text-muted-foreground">
+            <p className="flex-1 text-sm leading-snug text-muted-foreground sm:leading-relaxed">
               We use essential cookies to keep GalleryZone secure, and
               functional storage to remember things like your theme and
               wishlist. See our{" "}

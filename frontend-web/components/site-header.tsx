@@ -149,48 +149,52 @@ export function SiteHeader() {
                 </NavigationMenuItem>
               ))}
 
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>Sell With Us</NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <div className="grid w-[420px] gap-1 p-2">
-                    {SELL_WITH_US.map((option) => (
-                      <NavigationMenuLink
-                        key={option.href}
-                        render={
-                          <Link
-                            href={option.href}
-                            className="items-start gap-3"
+              {/* Pitches registering as an artist/aggregator — not useful
+                  once someone is already signed in, whatever their role. */}
+              {!sessionRole && (
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>Sell With Us</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <div className="grid w-[420px] gap-1 p-2">
+                      {SELL_WITH_US.map((option) => (
+                        <NavigationMenuLink
+                          key={option.href}
+                          render={
+                            <Link
+                              href={option.href}
+                              className="items-start gap-3"
+                            />
+                          }
+                        >
+                          <option.icon
+                            className="mt-0.5 size-4 text-gold-bright"
+                            strokeWidth={1.75}
                           />
+                          <span className="flex flex-col gap-0.5">
+                            <span className="font-medium">{option.title}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {option.description}
+                            </span>
+                          </span>
+                        </NavigationMenuLink>
+                      ))}
+                      <NavigationMenuLink
+                        render={
+                          <Link href="/about#how-it-works" className="gap-2" />
                         }
                       >
-                        <option.icon
-                          className="mt-0.5 size-4 text-gold-bright"
+                        <ShieldCheck
+                          className="size-4 text-gold-bright"
                           strokeWidth={1.75}
                         />
-                        <span className="flex flex-col gap-0.5">
-                          <span className="font-medium">{option.title}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {option.description}
-                          </span>
+                        <span className="font-medium">
+                          How Price Privacy &amp; Verification Work
                         </span>
                       </NavigationMenuLink>
-                    ))}
-                    <NavigationMenuLink
-                      render={
-                        <Link href="/about#how-it-works" className="gap-2" />
-                      }
-                    >
-                      <ShieldCheck
-                        className="size-4 text-gold-bright"
-                        strokeWidth={1.75}
-                      />
-                      <span className="font-medium">
-                        How Price Privacy &amp; Verification Work
-                      </span>
-                    </NavigationMenuLink>
-                  </div>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+                    </div>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              )}
             </NavigationMenuList>
           </NavigationMenu>
 
@@ -268,9 +272,11 @@ export function SiteHeader() {
                 </button>
               </div>
             ) : (
+              // Phones already have Sign In in the bottom nav; here it only
+              // crowded the row (wrapping at 360px, overflowing at 320px).
               <Link
                 href="/login"
-                className="text-sm font-medium text-foreground/85 transition-colors hover:text-foreground"
+                className="hidden whitespace-nowrap text-sm font-medium text-foreground/85 transition-colors hover:text-foreground sm:inline"
               >
                 Sign In
               </Link>
@@ -415,27 +421,32 @@ export function SiteHeader() {
               )}
             </nav>
 
-            <div className="mt-6 border-t border-border/60 pt-6">
-              <p className="px-3 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
-                Sell With Us
-              </p>
-              <nav className="mt-2 flex flex-col gap-1">
-                {SELL_WITH_US.map((option) => (
-                  <Link
-                    key={option.title}
-                    href={option.href}
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground/90 transition-colors hover:bg-muted"
-                  >
-                    <option.icon
-                      className="size-4 shrink-0 text-gold-bright"
-                      strokeWidth={1.75}
-                    />
-                    {option.title}
-                  </Link>
-                ))}
-              </nav>
-            </div>
+            {/* Only pitches registering as an artist/aggregator — meaningless
+                (and the links go to /register while already authenticated)
+                once someone is signed in, whatever their role. */}
+            {!sessionRole && (
+              <div className="mt-6 border-t border-border/60 pt-6">
+                <p className="px-3 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
+                  Sell With Us
+                </p>
+                <nav className="mt-2 flex flex-col gap-1">
+                  {SELL_WITH_US.map((option) => (
+                    <Link
+                      key={option.title}
+                      href={option.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground/90 transition-colors hover:bg-muted"
+                    >
+                      <option.icon
+                        className="size-4 shrink-0 text-gold-bright"
+                        strokeWidth={1.75}
+                      />
+                      {option.title}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            )}
 
             <div className="mt-auto flex items-center justify-between border-t border-border/60 pt-6">
               <span className="text-xs text-muted-foreground">Theme</span>

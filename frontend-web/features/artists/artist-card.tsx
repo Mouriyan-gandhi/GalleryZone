@@ -44,8 +44,10 @@ export function ArtistCard({ artist }: ArtistCardProps) {
         <VerifiedBadge verification={artist.verification} size="sm" />
       </div>
 
+      {/* Bios usually open with the artist's own name, so a two-line excerpt
+          just repeated the heading; the headline is the profile's one-liner. */}
       <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-        {bioExcerpt(artist.bio)}
+        {artist.headline || bioExcerpt(artist.bio)}
       </p>
     </Link>
   );

@@ -7,7 +7,7 @@ import { FAQ_ITEMS } from "./faq-data";
 
 export function FaqSection() {
   return (
-    <section className="relative overflow-hidden py-20 md:py-28">
+    <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
           <div className="lg:self-start">

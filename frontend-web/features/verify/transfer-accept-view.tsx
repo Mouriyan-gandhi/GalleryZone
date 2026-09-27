@@ -1,23 +1,59 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { readSessionRole, subscribeToSession } from "@/lib/session";
+import { useMounted } from "@/hooks/useMounted";
 import { ShieldCheck, CircleAlert, ArrowRight, ScanLine } from "lucide-react";
 import { useTransfer, useAcceptTransferMutation } from "@/hooks/useOwnershipTransfers";
 import { useArtwork } from "@/hooks/useArtwork";
 import { transferKind } from "@/types/artwork";
 
-// What the incoming owner sees when they open the transfer link. Deliberately
-// public: the person accepting may not have a GalleryZone account yet, and the
-// page shows nothing confidential — a title, who is handing it over, and the
-// button that moves the record.
+// What the incoming owner sees when they open the transfer link. The route is
+// public (the recipient may not have an account yet), but the API only reveals
+// the transfer to a signed-in account, so signed-out visitors are asked to sign
+// in first. The page shows nothing confidential — a title, who is handing it
+// over, and the button that moves the record.
 export function TransferAcceptView({ transferId }: { transferId: string }) {
-  const { data: transfer, isLoading } = useTransfer(transferId);
+  // The API only shows a transfer to a signed-in account, so a signed-out
+  // recipient used to wait out the retries and then read "isn't valid".
+  const mounted = useMounted();
+  const sessionRole = useSyncExternalStore(subscribeToSession, readSessionRole, () => null);
+  const signedOut = mounted && !sessionRole;
+  const { data: transfer, isLoading } = useTransfer(signedOut ? "" : transferId);
   // The link is the only thing the recipient gets, so this page carries what
   // they need to recognise the piece: the image, the tag on it, and a way
   // through to the full passport.
   const { data: artwork } = useArtwork(transfer?.artworkId ?? "");
   const acceptMutation = useAcceptTransferMutation();
+
+  if (signedOut) {
+    const next = encodeURIComponent(`/transfer/${transferId}`);
+    return (
+      <Panel
+        tone="warn"
+        title="Sign in to accept this transfer"
+        body="Use the email address the transfer was sent to. New to GalleryZone? Create an account with that email first."
+        action={
+          <div className="flex w-full flex-col gap-3 sm:flex-row">
+            <Link
+              href={`/login?next=${next}`}
+              className="inline-flex flex-1 items-center justify-center rounded-md bg-gold-bright px-5 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register?role=customer"
+              className="inline-flex flex-1 items-center justify-center rounded-md border border-border px-5 py-3 text-sm font-medium text-foreground/85 transition-colors hover:border-gold/40 hover:text-gold-bright"
+            >
+              Create an account
+            </Link>
+          </div>
+        }
+      />
+    );
+  }
 
   if (isLoading) {
     return (

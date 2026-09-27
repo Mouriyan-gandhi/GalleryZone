@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -217,6 +217,19 @@ export function AdminDataTable<T>({
   const start = (currentPage - 1) * pageSize;
   const pageRows = sorted.slice(start, start + pageSize);
 
+  // One click rule for the table row and the phone card. The click is a mouse
+  // convenience on top of a real link/button, and bails out when it landed on
+  // something already interactive, so action buttons inside cells keep working
+  // without every call site having to stopPropagation.
+  function activateRow(row: T, href: string | undefined) {
+    return (event: React.MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("a,button,input,select,textarea")) return;
+      if (href) router.push(href);
+      else onRowClick?.(row);
+    };
+  }
+
   const hasToolbar = Boolean(searchValue) || Boolean(filters?.length);
   const isFilteredEmpty = !isLoading && rows.length > 0 && sorted.length === 0;
 
@@ -270,8 +283,8 @@ export function AdminDataTable<T>({
           )}
 
           {filters && filters.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-              {filters.map((filter) => {
+            <div className="grid grid-cols-2 gap-2 sm:ml-auto sm:flex sm:flex-wrap sm:items-center">
+              {filters.map((filter, filterIndex) => {
                 // A caller may or may not include its own "all" option; inject
                 // one only when it hasn't, so the choice is never duplicated.
                 const hasAllOption = filter.options.some(
@@ -292,7 +305,13 @@ export function AdminDataTable<T>({
                   >
                     <SelectTrigger
                       size="sm"
-                      className="h-8 w-[160px]"
+                      className={cn(
+                        "h-8 w-full sm:w-[160px]",
+                        // An odd last filter takes the whole row on phones.
+                        filters.length % 2 === 1 &&
+                          filterIndex === filters.length - 1 &&
+                          "col-span-2 sm:col-span-1",
+                      )}
                       aria-label={filter.label}
                     >
                       {/* Base UI's Select.Value renders the raw value unless
@@ -343,7 +362,11 @@ export function AdminDataTable<T>({
           }
         />
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Below lg the same columns render as a card list (see below): a
+            5-6 column table is unreadable in a 280px window, and nothing about
+            it says "scroll sideways". */}
+        <div className="hidden overflow-x-auto lg:block">
           <table className="w-full border-collapse text-left">
             <thead className="border-b border-border bg-muted/40">
               <tr>
@@ -429,19 +452,7 @@ export function AdminDataTable<T>({
                         // buttons inside cells keep working without every call
                         // site having to stopPropagation.
                         onClick={
-                          interactive
-                            ? (event) => {
-                                const target = event.target as HTMLElement;
-                                if (
-                                  target.closest(
-                                    "a,button,input,select,textarea",
-                                  )
-                                )
-                                  return;
-                                if (href) router.push(href);
-                                else onRowClick?.(row);
-                              }
-                            : undefined
+                          interactive ? activateRow(row, href) : undefined
                         }
                         className={cn(
                           "relative border-b border-border/60 transition-colors last:border-0",
@@ -488,6 +499,71 @@ export function AdminDataTable<T>({
             </tbody>
           </table>
         </div>
+
+        <ul className="divide-y divide-border/60 lg:hidden">
+          {isLoading
+            ? Array.from({ length: Math.min(pageSize, 4) }).map((_, i) => (
+                <li key={i} className="space-y-2 px-4 py-3">
+                  <Skeleton className="h-4 w-3/5" />
+                  <Skeleton className="h-3 w-4/5" />
+                </li>
+              ))
+            : pageRows.map((row) => {
+                const href = getRowHref?.(row);
+                const label = getRowLabel?.(row) ?? getRowKey(row);
+                const interactive = Boolean(href) || Boolean(onRowClick);
+                const [primary, ...rest] = columns;
+                // Same overlay + content stacking as the table row: the
+                // stretched link sits at z-0, content is `relative` above it.
+                const cells = rest.map((c) => ({ c, node: c.render(row) }));
+                const fields = cells.filter(({ c, node }) => c.header && node != null && node !== false);
+                const actions = cells.filter(({ c, node }) => !c.header && node != null && node !== false);
+
+                return (
+                  <li
+                    key={getRowKey(row)}
+                    onClick={interactive ? activateRow(row, href) : undefined}
+                    className={cn(
+                      "relative px-4 py-3",
+                      interactive && "cursor-pointer active:bg-muted/40",
+                    )}
+                  >
+                    {href && (
+                      <Link
+                        href={href}
+                        className="absolute inset-0 z-0 rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <span className="sr-only">{label}</span>
+                      </Link>
+                    )}
+                    {!href && onRowClick && (
+                      <button
+                        type="button"
+                        onClick={() => onRowClick(row)}
+                        className="absolute inset-0 z-0 rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <span className="sr-only">{label}</span>
+                      </button>
+                    )}
+                    <div className="relative min-w-0">{primary.render(row)}</div>
+                    {fields.length > 0 && (
+                      <dl className="relative mt-2.5 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-1.5 text-sm">
+                        {fields.map(({ c, node }) => (
+                          <Fragment key={c.key}>
+                            <dt className="text-xs text-muted-foreground">{c.header}</dt>
+                            <dd className="flex min-w-0 justify-end text-right">{node}</dd>
+                          </Fragment>
+                        ))}
+                      </dl>
+                    )}
+                    {actions.map(({ c, node }) => (
+                      <div key={c.key} className="relative mt-3">{node}</div>
+                    ))}
+                  </li>
+                );
+              })}
+        </ul>
+        </>
       )}
 
       {!isLoading && sorted.length > 0 && (

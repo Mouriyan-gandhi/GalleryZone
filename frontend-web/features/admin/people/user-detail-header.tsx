@@ -90,7 +90,7 @@ export function UserDetailHeader({ user }: { user: AdminUser }) {
               </h1>
               <AdminStatusBadge status={user.status} size="sm" />
             </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">{user.email}</p>
+            <p className="mt-0.5 break-all text-sm text-muted-foreground">{user.email}</p>
 
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
               <Detail label="Role" value={user.role} className="capitalize" />

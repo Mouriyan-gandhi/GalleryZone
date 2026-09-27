@@ -298,7 +298,7 @@ export function ArtistSurveyForm() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="relative mx-auto flex min-h-[26rem] w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-gold/30 bg-card px-8 py-16 text-center sm:px-12"
+        className="relative mx-auto flex min-h-[26rem] w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-gold/30 bg-card px-6 py-16 text-center sm:px-12"
       >
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-gold/0 via-gold/50 to-gold/0" />
         <span className="flex size-16 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
@@ -334,13 +334,13 @@ export function ArtistSurveyForm() {
       onSubmit={handleSubmit}
       className="mx-auto w-full max-w-3xl rounded-2xl border border-border bg-card shadow-sm"
     >
-      <div className="border-b border-border px-8 py-7 sm:px-12">
+      <div className="border-b border-border px-5 py-7 sm:px-12">
         <h1 className="text-center font-display text-2xl font-semibold text-foreground sm:text-3xl">
           Artist Information and Art Type Survey
         </h1>
       </div>
 
-      <div className="border-b border-border px-8 py-6 sm:px-12">
+      <div className="border-b border-border px-5 py-6 sm:px-12">
         <p className="text-sm leading-relaxed text-muted-foreground">
           GalleryZone is a multi-role verified art e-commerce marketplace
           that connects independent artists, curated aggregators
@@ -911,7 +911,7 @@ export function ArtistSurveyForm() {
       </Question>
 
       {/* Submit Button */}
-      <div className="flex flex-col items-center gap-3 px-8 py-8 sm:px-12">
+      <div className="flex flex-col items-center gap-3 px-5 py-8 sm:px-12">
         <Button
           type="submit"
           disabled={isSubmitting}
@@ -937,7 +937,7 @@ function Question({
 }) {
   return (
     <div
-      className={cn("px-8 py-6 sm:px-12", !last && "border-b border-border")}
+      className={cn("px-5 py-6 sm:px-12", !last && "border-b border-border")}
     >
       {children}
     </div>

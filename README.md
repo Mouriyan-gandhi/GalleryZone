@@ -32,6 +32,36 @@ state machines, pricing replay, type-check, build). `npm run build` in
 `frontend-web/` must pass before a push; `npm run test:smoke` drives it with
 Playwright.
 
+## Local demo world
+
+A full local copy of the site with demo accounts and realistic data: Firebase
+emulators, a fake S3 bucket, and nothing that can reach production.
+`.env.demo` (committed) uses the offline-only project `demo-galleryzone`, and
+its mail, payment and monitoring keys are empty. Needs Java 11+ for the
+Firestore emulator. Start each in its own terminal:
+
+```bash
+cd backend && npm run demo:emulators   # Auth :9099, Firestore :8085, UI :4000
+cd backend && npm run demo:s3          # artwork images on :4568
+cd backend && npm run demo:api         # API :8080, against the emulators (the seed refuses any other API)
+cd frontend-web && npm run demo        # site :3000, signs in against the emulator
+cd backend && npm run demo:seed        # wipes the emulators, then seeds; safe to re-run
+```
+
+Every demo password is `Demo@12345`:
+
+| Account | Role | Shows |
+|---|---|---|
+| `admin@demo.galleryzone.test`, `admin2@…` | Admin | moderation queues, two-admin pricing approval |
+| `artist@demo.galleryzone.test` | Artist | every artwork state, wallet, certificates |
+| `artist2@demo.galleryzone.test` | Artist | very long names and titles |
+| `aggregator@demo.galleryzone.test` | Aggregator | holdings, sales, cash owed, remittance |
+| `collector@demo.galleryzone.test` | Collector | orders, collection, resale, a pending transfer |
+| `artist-new@`, `aggregator-new@`, `collector-new@` | each role | empty states |
+
+The wishlist is browser-local, so it starts empty. The data lives only in the
+emulators: stop them and it's gone.
+
 ## Deploying
 
 - **Website**: Vercel, *Import from GitHub* with **Root Directory = `frontend-web`**.

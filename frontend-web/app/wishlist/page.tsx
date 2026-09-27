@@ -32,7 +32,7 @@ export default function WishlistPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 flex-col py-10 px-5 sm:px-8 lg:px-10 max-w-[1500px] mx-auto w-full gap-8">
+      <main className="flex flex-1 flex-col py-6 px-5 sm:py-8 sm:px-8 lg:py-10 lg:px-10 max-w-[1500px] mx-auto w-full gap-6 sm:gap-8">
         <div>
           <h1 className="font-display text-3xl font-semibold text-foreground">
             Your Wishlist

@@ -69,7 +69,7 @@ export function CollectionTable() {
         title="No holdings yet"
         description="Reserve an artwork from Inventory to see it appear here."
         action={
-          <Button render={<Link href="/aggregator/inventory" />} className="mt-2">
+          <Button nativeButton={false} render={<Link href="/aggregator/inventory" />} className="mt-2">
             Browse Inventory
           </Button>
         }

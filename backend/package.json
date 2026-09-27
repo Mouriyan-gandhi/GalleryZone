@@ -24,7 +24,11 @@
     "start": "node --env-file=../.env --experimental-strip-types apps/api/dist/main.js",
     "dev": "npm run build && npm run start",
     "deploy:indexes": "node scripts/deploy-indexes.mjs",
-    "grant:role": "node --experimental-strip-types scripts/grant-role.ts"
+    "grant:role": "node --experimental-strip-types scripts/grant-role.ts",
+    "demo:emulators": "npx -y firebase-tools@latest emulators:start --only auth,firestore --project demo-galleryzone",
+    "demo:s3": "npx -y s3rver --directory ../.demo/s3 --address 127.0.0.1 --port 4568 --configure-bucket gz-demo",
+    "demo:api": "npm run build && node --env-file=../.env.demo --experimental-strip-types apps/api/dist/main.js",
+    "demo:seed": "node --env-file=../.env.demo --experimental-strip-types scripts/demo/seed.ts"
   },
   "engines": {
     "node": ">=22.6"

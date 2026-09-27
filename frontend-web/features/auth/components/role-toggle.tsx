@@ -28,7 +28,7 @@ export function RoleToggle<T extends string>({
   className,
 }: RoleToggleProps<T>) {
   return (
-    <div role="radiogroup" className={cn("flex flex-wrap gap-2", className)}>
+    <div role="radiogroup" className={cn("flex gap-2", className)}>
       {options.map((option) => {
         const isActive = option.value === value;
         const Icon = option.icon;
@@ -40,14 +40,15 @@ export function RoleToggle<T extends string>({
             aria-checked={isActive}
             onClick={() => onChange(option.value)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border px-2 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 sm:px-3 sm:text-sm",
               isActive
                 ? "border-gold-bright bg-gold-bright text-[#171310]"
                 : "border-border text-muted-foreground hover:border-gold-bright/50 hover:text-foreground",
             )}
           >
-            {Icon && <Icon className="size-4" />}
-            <span>{option.label}</span>
+            {/* Icons return from sm up; without them all three roles fit one row on a 320px phone. */}
+            {Icon && <Icon className="hidden size-4 shrink-0 sm:block" />}
+            <span className="truncate">{option.label}</span>
           </button>
         );
       })}

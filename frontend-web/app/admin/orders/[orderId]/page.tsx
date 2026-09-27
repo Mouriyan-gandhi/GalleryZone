@@ -53,7 +53,10 @@ export default function AdminOrderDetailPage(
         backLabel="Back to orders"
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start">
+      {/* grid-cols-1 below lg isn't decorative — see app/admin/page.tsx's
+          identical comment: an implicit grid track sizes to its widest
+          child's min-content instead of shrinking, overflowing the page. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start">
         <div className="space-y-4">
           <section className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-start gap-4">

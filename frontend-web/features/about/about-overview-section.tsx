@@ -16,7 +16,7 @@ const collageImage = "/artworks/landscape.png";
 
 export function AboutOverviewSection() {
   return (
-    <section className="relative overflow-hidden pt-16 pb-20 md:pt-20 md:pb-28">
+    <section className="relative overflow-hidden pt-12 pb-14 sm:pt-16 sm:pb-20 md:pt-20 md:pb-28">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
         {/* Hero */}
         <motion.div
@@ -75,7 +75,8 @@ export function AboutOverviewSection() {
               className="object-cover"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+            {/* On a 4:3 phone crop the caption covers most of the image, so the scrim reaches higher there. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent sm:from-black/80 sm:via-black/10" />
             <div className="absolute inset-x-0 bottom-0 p-6">
               <p className="font-display text-xl font-medium text-white sm:text-2xl">
                 Verified artists, real provenance.

@@ -57,7 +57,7 @@ export function AggregatorActivityFeed() {
           <p className="text-sm text-muted-foreground">
             No activity yet. Reserve an artwork from Inventory to get started.
           </p>
-          <Button render={<Link href="/aggregator/inventory" />} variant="outline" size="sm">
+          <Button nativeButton={false} render={<Link href="/aggregator/inventory" />} variant="outline" size="sm">
             Browse Inventory
           </Button>
         </div>

@@ -60,6 +60,11 @@ export const FOOTER_COLUMNS: FooterColumn[] = [
       { label: "Careers", href: "/about" },
       { label: "Newsroom", href: "/about" },
       { label: "Contact", href: "/contact" },
+    ],
+  },
+  {
+    title: "LEGAL",
+    links: [
       { label: "Terms of Service", href: "/terms" },
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Cookie Policy", href: "/cookies" },

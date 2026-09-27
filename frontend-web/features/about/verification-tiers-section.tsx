@@ -15,7 +15,7 @@ export function VerificationTiersSection() {
   return (
     <section
       id="how-it-works"
-      className="relative overflow-hidden py-24 md:py-32 bg-background"
+      className="relative overflow-hidden py-16 sm:py-24 md:py-32 bg-background"
     >
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
         <motion.div

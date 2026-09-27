@@ -1,9 +1,15 @@
 "use client";
 
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useMounted } from "@/hooks/useMounted";
 import Link from "next/link";
 import { Store } from "lucide-react";
 
+// Reads the browser's clock, which almost never agrees with the server's
+// (different timezone, or just a tick later) — computed at render time, it
+// disagreed with the server-rendered greeting often enough to fail
+// hydration (React error #418). Gated by useMounted so the server and first
+// client render both show the neutral fallback below.
 function timeOfDayGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -15,13 +21,14 @@ function timeOfDayGreeting(): string {
 // <h2> — a second <h1> here would be a duplicate top-level heading.
 export function DashboardGreeting() {
   const { data: me } = useCurrentUser();
+  const mounted = useMounted();
   const firstName = me?.name.split(" ")[0] ?? "there";
 
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
         <h2 className="font-display text-xl font-semibold text-foreground">
-          {timeOfDayGreeting()}, {firstName}
+          {mounted ? timeOfDayGreeting() : "Welcome back"}, {firstName}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Here&apos;s what needs your attention.

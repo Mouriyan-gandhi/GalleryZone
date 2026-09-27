@@ -56,7 +56,7 @@ export function MarketplaceSearchBar({
         placeholder="Search artworks, artists, styles..."
         aria-label="Search artworks"
         className={cn(
-          "h-12 rounded-full pr-14 pl-11 text-sm shadow-sm",
+          "h-12 rounded-full pr-14 pl-11 text-base shadow-sm sm:text-sm",
           dark
             ? "border-white/10 bg-white/10 text-white placeholder:text-white/40 focus:border-gold/50 focus:bg-white/15"
             : "border-border bg-card",

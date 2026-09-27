@@ -14,7 +14,7 @@ export default function FaqPage() {
     <>
       <SiteHeader />
       <main className="flex flex-1 flex-col">
-        <section className="relative overflow-hidden py-20 md:py-28">
+        <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
           <div className="mx-auto max-w-4xl px-6 lg:px-10">
             <h1 className="text-balance font-display text-4xl leading-[1.15] font-semibold sm:text-5xl">
               Frequently asked questions.

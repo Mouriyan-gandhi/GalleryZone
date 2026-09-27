@@ -124,6 +124,51 @@ export function ArtworkInfoPanel({
         )}
       </div>
 
+      {/* Buying sits with the price: at the end of the panel it was a screen and a half below the fold on phones. */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        {isAvailable ? (
+          <Link
+            href={`/checkout?artworkId=${artwork.id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-md bg-gold-bright px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold"
+          >
+            Buy Now
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-md border border-border bg-muted px-6 py-3 text-sm font-semibold text-muted-foreground"
+          >
+            {buyLabel}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => toggleWishlist(artwork.id)}
+          aria-pressed={isWishlisted}
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-md border px-5 py-3 text-sm font-medium transition-colors",
+            isWishlisted
+              ? "border-gold/50 bg-gold/10 text-gold-bright"
+              : "border-border text-foreground/85 hover:border-gold/40 hover:text-gold-bright",
+          )}
+        >
+          <Heart
+            className={cn("size-4", isWishlisted && "fill-gold-bright")}
+            strokeWidth={1.75}
+          />
+          {isWishlisted ? "Wishlisted" : "Wishlist"}
+        </button>
+      </div>
+
+      {artwork.verifiedArtist && (
+        <p className="-mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <BadgeCheck className="size-3.5 text-gold-bright" strokeWidth={2} />
+          Sold by a verified GalleryZone artist.
+        </p>
+      )}
+
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-y border-border py-5 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-xs text-muted-foreground">Category</dt>
@@ -165,7 +210,7 @@ export function ArtworkInfoPanel({
         <dl className="mt-3 flex flex-col gap-2 text-sm">
           <div className="flex items-center justify-between gap-4">
             <dt className="text-muted-foreground">Certificate number</dt>
-            <dd className="font-medium tabular-nums text-foreground">
+            <dd className="font-medium whitespace-nowrap tabular-nums text-foreground">
               {artwork.coaCertificateNumber || "Issued on approval"}
             </dd>
           </div>
@@ -212,50 +257,6 @@ export function ArtworkInfoPanel({
             })}
           </div>
         </div>
-      )}
-
-      <div className="flex flex-col gap-3 sm:flex-row">
-        {isAvailable ? (
-          <Link
-            href={`/checkout?artworkId=${artwork.id}`}
-            className="inline-flex flex-1 items-center justify-center rounded-md bg-gold-bright px-6 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold"
-          >
-            Buy Now
-          </Link>
-        ) : (
-          <button
-            type="button"
-            disabled
-            className="inline-flex flex-1 cursor-not-allowed items-center justify-center rounded-md border border-border bg-muted px-6 py-3 text-sm font-semibold text-muted-foreground"
-          >
-            {buyLabel}
-          </button>
-        )}
-
-        <button
-          type="button"
-          onClick={() => toggleWishlist(artwork.id)}
-          aria-pressed={isWishlisted}
-          className={cn(
-            "inline-flex items-center justify-center gap-2 rounded-md border px-5 py-3 text-sm font-medium transition-colors",
-            isWishlisted
-              ? "border-gold/50 bg-gold/10 text-gold-bright"
-              : "border-border text-foreground/85 hover:border-gold/40 hover:text-gold-bright",
-          )}
-        >
-          <Heart
-            className={cn("size-4", isWishlisted && "fill-gold-bright")}
-            strokeWidth={1.75}
-          />
-          {isWishlisted ? "Wishlisted" : "Wishlist"}
-        </button>
-      </div>
-
-      {artwork.verifiedArtist && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <BadgeCheck className="size-3.5 text-gold-bright" strokeWidth={2} />
-          Sold by a verified GalleryZone artist.
-        </p>
       )}
     </div>
   );

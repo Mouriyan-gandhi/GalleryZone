@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { readSessionRole, subscribeToSession } from "@/lib/session";
+import { useMounted } from "@/hooks/useMounted";
 import { CheckoutAddressStep } from "./checkout-address-step";
 import { CheckoutReviewStep } from "./checkout-review-step";
 import { CheckoutConfirmStep } from "./checkout-confirm-step";
@@ -35,6 +38,8 @@ export function CheckoutFlow({ artwork }: CheckoutFlowProps) {
 
   const topRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
+  const mounted = useMounted();
+  const sessionRole = useSyncExternalStore(subscribeToSession, readSessionRole, () => null);
 
   // Each step is shorter than the one before it, so moving forward leaves the
   // window scrolled past the new step — you land looking at the footer. Pull
@@ -55,6 +60,36 @@ export function CheckoutFlow({ artwork }: CheckoutFlowProps) {
   }, [step, placedOrder]);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
+
+  // Orders are placed from a customer account (the API refuses anyone else);
+  // without this, a signed-out visitor sat on address skeletons that never resolved.
+  if (mounted && sessionRole !== "customer") {
+    const next = `/checkout?artworkId=${encodeURIComponent(artwork.id)}`;
+    return (
+      <div className="mx-auto flex w-full max-w-md flex-col items-center gap-4 rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
+        <h2 className="font-display text-2xl font-semibold text-balance">
+          {sessionRole ? "Buying needs a collector account" : "Sign in to buy this artwork"}
+        </h2>
+        <p className="text-sm text-muted-foreground text-balance">
+          The certificate and ownership record are issued to the collector who places the order.
+        </p>
+        <div className="flex w-full flex-col gap-3 sm:flex-row">
+          <Link
+            href={`/login?next=${encodeURIComponent(next)}`}
+            className="inline-flex flex-1 items-center justify-center rounded-md bg-gold-bright px-5 py-3 text-sm font-semibold text-background transition-colors hover:bg-gold"
+          >
+            {sessionRole ? "Sign in as a collector" : "Sign in"}
+          </Link>
+          <Link
+            href="/register?role=customer"
+            className="inline-flex flex-1 items-center justify-center rounded-md border border-border px-5 py-3 text-sm font-medium text-foreground/85 transition-colors hover:border-gold/40 hover:text-gold-bright"
+          >
+            Create an account
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   function goToStep(index: number) {
     // Only allow jumping backward, and never once the order is placed.

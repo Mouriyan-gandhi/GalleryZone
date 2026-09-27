@@ -53,7 +53,7 @@ export function RateEditor({ initial, onCancel, onSubmit, submitting }: RateEdit
           <fieldset key={group.title}>
             <legend className="text-sm font-medium text-foreground">{group.title}</legend>
             <p className="mt-0.5 mb-3 text-xs text-muted-foreground">{group.description}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {group.fields.map((field) => (
                 <RateInput
                   key={field.key}
@@ -73,7 +73,7 @@ export function RateEditor({ initial, onCancel, onSubmit, submitting }: RateEdit
             <p className="mt-0.5 mb-2 text-xs text-muted-foreground">
               Carried through unchanged — edit these in the API&rsquo;s rate definitions first.
             </p>
-            <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
               {ungroupedKeys(initial).map((key) => (
                 <div key={key} className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1 text-xs">
                   <dt className="text-muted-foreground">{key}</dt>

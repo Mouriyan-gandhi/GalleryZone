@@ -36,7 +36,7 @@ const fadeUp = {
 
 export function AboutTeamSection() {
   return (
-    <section className="relative overflow-hidden py-20 md:py-28">
+    <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24">

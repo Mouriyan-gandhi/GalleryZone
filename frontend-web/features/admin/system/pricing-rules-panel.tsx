@@ -105,7 +105,7 @@ export function PricingRulesPanel() {
           {RATE_GROUPS.map((group) => (
             <div key={group.title}>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">{group.title}</p>
-              <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+              <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 {group.fields.map((field) => (
                   <div key={field.key} className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 text-sm">
                     <dt className="text-muted-foreground" title={field.hint}>{field.label}</dt>
@@ -118,7 +118,7 @@ export function PricingRulesPanel() {
           {ungroupedKeys(rates).length > 0 && (
             <div>
               <p className="text-xs font-semibold tracking-wide text-foreground uppercase">Other</p>
-              <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+              <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                 {ungroupedKeys(rates).map((key) => (
                   <div key={key} className="flex items-baseline justify-between gap-3 border-b border-border/60 py-1.5 text-sm">
                     <dt className="text-muted-foreground">{key}</dt>

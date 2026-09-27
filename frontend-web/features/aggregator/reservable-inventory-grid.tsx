@@ -85,21 +85,23 @@ export function ReservableInventoryGrid() {
           rather than letting someone pick a piece and hit the wall in the
           confirm dialog. */}
       {mouSigned === false && (
-        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-gold/40 bg-gold/5 p-4">
-          <FileSignature
-            className="size-4 shrink-0 text-gold-bright"
-            strokeWidth={1.75}
-          />
-          <p className="flex-1 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">
-              Sign your Aggregator MOU to reserve artwork.
-            </span>{" "}
-            It covers custody, pricing and settlement — GalleryZone can&rsquo;t
-            place a piece with you until it&rsquo;s signed.
-          </p>
+        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-gold/40 bg-gold/5 p-4 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3 sm:flex-1 sm:items-center">
+            <FileSignature
+              className="mt-0.5 size-4 shrink-0 text-gold-bright sm:mt-0"
+              strokeWidth={1.75}
+            />
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">
+                Sign your Aggregator MOU to reserve artwork.
+              </span>{" "}
+              It covers custody, pricing and settlement — GalleryZone can&rsquo;t
+              place a piece with you until it&rsquo;s signed.
+            </p>
+          </div>
           <Link
             href="/aggregator/profile"
-            className="inline-flex items-center gap-1.5 rounded-md border border-gold/60 px-4 py-2 text-sm font-medium text-gold-bright transition-colors hover:border-gold hover:bg-gold/10"
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-gold/60 px-4 py-2 text-sm font-medium text-gold-bright transition-colors hover:border-gold hover:bg-gold/10"
           >
             Go to My Profile
           </Link>
@@ -232,7 +234,7 @@ function InventoryArtworkCard({
         <Link
           href={`/marketplace/${artwork.id}`}
           target="_blank"
-          className="line-clamp-2 font-display text-base leading-snug font-semibold text-foreground hover:text-gold-bright transition-colors"
+          className="-my-1 line-clamp-2 py-1 font-display text-base leading-snug font-semibold text-foreground hover:text-gold-bright transition-colors"
         >
           {artwork.title}
         </Link>

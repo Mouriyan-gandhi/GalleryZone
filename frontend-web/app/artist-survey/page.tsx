@@ -13,7 +13,7 @@ export default function ArtistSurveyPage() {
   return (
     <>
       <SiteHeader />
-      <main className="flex flex-1 flex-col px-6 py-16 lg:px-10 lg:py-20">
+      <main className="flex flex-1 flex-col px-4 py-10 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
         <ArtistSurveyForm />
       </main>
       <SiteFooter />

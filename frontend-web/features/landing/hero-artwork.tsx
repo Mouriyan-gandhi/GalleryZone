@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { motion, type MotionValue, useTransform } from "framer-motion";
+import { motion } from "framer-motion";
 
 export type ArtworkAnchor = {
   src: string;
@@ -11,25 +11,14 @@ export type ArtworkAnchor = {
   topPct: number;
   width: number;
   height: number;
-  /** Reveal progress window within the overall scroll timeline (0–1). */
-  revealFrom: number;
-  revealTo: number;
+  /** Seconds after mount before this piece animates in. */
+  delay: number;
   /** Subtle rotation for a hand-placed, non-grid feel. */
   rotate: number;
 };
 
-export function HeroArtwork({
-  artwork,
-  progress,
-}: {
-  artwork: ArtworkAnchor;
-  progress: MotionValue<number>;
-}) {
-  const { revealFrom, revealTo, rotate } = artwork;
-
-  const opacity = useTransform(progress, [revealFrom, revealTo], [0, 1]);
-  const scale = useTransform(progress, [revealFrom, revealTo], [0.75, 1]);
-  const y = useTransform(progress, [revealFrom, revealTo], [28, 0]);
+export function HeroArtwork({ artwork }: { artwork: ArtworkAnchor }) {
+  const { delay, rotate } = artwork;
 
   return (
     <motion.div
@@ -41,11 +30,10 @@ export function HeroArtwork({
         height: artwork.height,
         translateX: "-50%",
         translateY: "-50%",
-        opacity,
-        scale,
-        y,
-        rotate,
       }}
+      initial={{ opacity: 0, scale: 0.75, y: 28 }}
+      animate={{ opacity: 1, scale: 1, y: 0, rotate }}
+      transition={{ delay, duration: 0.9, ease: "easeOut" }}
     >
       <Image
         src={artwork.src}

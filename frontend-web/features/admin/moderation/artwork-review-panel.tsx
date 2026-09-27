@@ -124,7 +124,10 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
+    // grid-cols-1 below lg isn't decorative — see app/admin/page.tsx's
+    // identical comment: an implicit grid track sizes to its widest child's
+    // min-content instead of shrinking, overflowing the page.
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
       {/* Left: the work itself, at a size you can actually judge. */}
       <div className="space-y-4">
         <div className="overflow-hidden rounded-xl border border-border bg-card">

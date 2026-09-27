@@ -332,14 +332,14 @@ function Sidebar({
             </Accordion>
           )}
         </div>
-
-        <AccountMenu collapsed={collapsed} />
       </aside>
     </>
   );
 }
 
-function AccountMenu({ collapsed }: { collapsed: boolean }) {
+// Compact account menu for the desktop topbar — sits next to SwitchMode
+// instead of the old full-width card pinned at the bottom of the sidebar.
+function AccountMenu() {
   const { data: me } = useCurrentUser();
   const [open, setOpen] = useState(false);
 
@@ -351,20 +351,19 @@ function AccountMenu({ collapsed }: { collapsed: boolean }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        className={cn(
-          "mx-3 mb-4 flex items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-3 text-left transition-colors hover:bg-sidebar-accent",
-          collapsed && "lg:justify-center lg:px-2",
-        )}
+        aria-label="Account menu"
+        className="flex items-center gap-1.5 rounded-full p-1 text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
       >
-        <UserAvatar name={me?.name} className="size-9" />
-        <div className={cn("min-w-0 flex-1", collapsed && "lg:hidden")}>
-          <p className="truncate text-sm font-medium text-sidebar-foreground">
+        <UserAvatar name={me?.name} className="size-8" />
+      </PopoverTrigger>
+      <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
+        <div className="px-2.5 py-2">
+          <p className="truncate text-sm font-medium text-foreground">
             {me?.name ?? "Aggregator"}
           </p>
           <p className="truncate text-xs text-muted-foreground">Aggregator</p>
         </div>
-      </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-56 p-1.5">
+        <div className="my-1 border-t border-border" />
         <Link
           href="/aggregator/profile"
           onClick={() => setOpen(false)}
@@ -440,6 +439,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="hidden lg:flex lg:items-center lg:gap-2">
         <NotificationsPopover groups={[]} />
         <SwitchMode />
+        <AccountMenu />
       </div>
     </header>
   );

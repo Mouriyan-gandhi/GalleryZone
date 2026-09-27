@@ -55,6 +55,35 @@ const EMAIL_DOMAIN_SUGGESTIONS = ["gmail.com", "yahoo.com"];
 // than inventing a second country list.
 const COUNTRY_OPTIONS: Country[] = COUNTRY_CODES.map((c) => ({ name: c.label, code: c.iso }));
 
+// Same flag picker, keyed by ISO for the flag image, but the phone field
+// actually stores/needs the dial code — map dial <-> iso through
+// COUNTRY_CODES rather than teaching UniSwapDialog a second identity shape.
+const DIAL_OPTIONS: Country[] = COUNTRY_CODES.map((c) => ({ name: `${c.dial} ${c.label}`, code: c.iso }));
+
+function DialCodePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (dial: string) => void;
+}) {
+  const iso = COUNTRY_CODES.find((c) => c.dial === value)?.iso ?? COUNTRY_CODES[0].iso;
+  const selected = DIAL_OPTIONS.find((o) => o.code === iso) ?? DIAL_OPTIONS[0];
+  return (
+    <div className="shrink-0">
+      <UniSwapDialog
+        value={selected}
+        countries={DIAL_OPTIONS}
+        title="Select dial code"
+        onChange={(country) => {
+          const dial = COUNTRY_CODES.find((c) => c.iso === country.code)?.dial ?? DEFAULT_COUNTRY_DIAL;
+          onChange(dial);
+        }}
+      />
+    </div>
+  );
+}
+
 // A number's local part (dial code stripped off) has to fall in this range
 // regardless of which country it's from -- E.164 caps the whole number at 15
 // digits, and nothing real is shorter than 6.
@@ -341,7 +370,7 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field data-invalid={Boolean(errors.companyName)}>
             <FieldLabel htmlFor="companyName">Company name</FieldLabel>
             <Input
@@ -391,22 +420,8 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
 
           <Field data-invalid={Boolean(errors.phone)}>
             <FieldLabel htmlFor="phone">Phone</FieldLabel>
-            <div className="flex gap-2">
-              <Select
-                value={companyDial}
-                onValueChange={(value) => value && setCompanyDial(value)}
-              >
-                <SelectTrigger className="h-10 w-24 shrink-0">
-                  <SelectValue placeholder={DEFAULT_COUNTRY_DIAL} />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRY_CODES.map((country) => (
-                    <SelectItem key={country.iso} value={country.dial}>
-                      {country.dial} {country.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-2">
+              <DialCodePicker value={companyDial} onChange={setCompanyDial} />
               <Input
                 id="phone"
                 type="tel"
@@ -475,7 +490,7 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="coordinatorName">Name</FieldLabel>
               <Input
@@ -541,22 +556,8 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
 
             <Field data-invalid={Boolean(errors.coordinatorPhone)}>
               <FieldLabel htmlFor="coordinatorPhone">Direct phone</FieldLabel>
-              <div className="flex gap-2">
-                <Select
-                  value={coordinatorDial}
-                  onValueChange={(value) => value && setCoordinatorDial(value)}
-                >
-                  <SelectTrigger className="h-10 w-24 shrink-0">
-                    <SelectValue placeholder={DEFAULT_COUNTRY_DIAL} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRY_CODES.map((country) => (
-                      <SelectItem key={country.iso} value={country.dial}>
-                        {country.dial} {country.iso}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2">
+                <DialCodePicker value={coordinatorDial} onChange={setCoordinatorDial} />
                 <Input
                   id="coordinatorPhone"
                   type="tel"

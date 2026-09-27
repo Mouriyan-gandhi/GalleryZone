@@ -96,7 +96,7 @@ export function CheckoutAddressStep({
       </div>
 
       {isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {[0, 1].map((i) => (
             <div
               key={i}
@@ -108,7 +108,7 @@ export function CheckoutAddressStep({
         <div
           role="radiogroup"
           aria-label="Delivery address"
-          className="grid gap-3 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
           {addresses.map((address) => {
             const selected = address.id === selectedAddressId;
@@ -207,7 +207,7 @@ export function CheckoutAddressStep({
                 </Field>
               )}
             />
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Controller
                 control={control}
                 name="city"
