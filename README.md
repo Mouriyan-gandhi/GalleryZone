@@ -1,4 +1,4 @@
-# GalleryZone
+# GalleryZone main website
 
 A marketplace for original artwork, built around one idea: every piece carries a
 verifiable identity — who made it, who owns it now, and everywhere it has been.
