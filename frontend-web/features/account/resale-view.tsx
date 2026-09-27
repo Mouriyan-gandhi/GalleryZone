@@ -87,24 +87,26 @@ export function ResaleView() {
             {eligible.map((item) => (
               <div
                 key={item.artwork.id}
-                className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 sm:flex-nowrap sm:gap-4"
               >
-                <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-                  <Image
-                    src={item.artwork.thumbnailUrl}
-                    alt={item.artwork.title}
-                    fill
-                    sizes="56px"
-                    className="object-cover"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {item.artwork.title}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    Acquired for <PriceTag amount={item.paidPrice} className="text-xs" />
-                  </p>
+                <div className="flex min-w-0 basis-full items-center gap-3 sm:flex-1 sm:gap-4">
+                  <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <Image
+                      src={item.artwork.thumbnailUrl}
+                      alt={item.artwork.title}
+                      fill
+                      sizes="56px"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {item.artwork.title}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      Acquired for <PriceTag amount={item.paidPrice} className="text-xs" />
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -139,32 +141,36 @@ export function ResaleView() {
               return (
                 <div
                   key={l.id}
-                  className="flex items-center gap-4 rounded-lg border border-border bg-card p-4"
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4 sm:flex-nowrap sm:gap-4"
                 >
-                  <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
-                    {artwork && (
-                      <Image
-                        src={artwork.thumbnailUrl}
-                        alt={artwork.title}
-                        fill
-                        sizes="56px"
-                        className="object-cover"
-                      />
+                  <div className="flex min-w-0 basis-full items-center gap-3 sm:flex-1 sm:gap-4">
+                    <div className="relative size-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                      {artwork && (
+                        <Image
+                          src={artwork.thumbnailUrl}
+                          alt={artwork.title}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {artwork?.title ?? "Artwork"}
+                      </p>
+                      <PriceTag amount={l.listedPrice} className="text-sm" />
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4">
+                    <ListingStatusPill status={l.status} />
+                    {l.status === "active" && (
+                      <>
+                        <SimulateSaleButton id={l.id} />
+                        <WithdrawButton id={l.id} />
+                      </>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-foreground">
-                      {artwork?.title ?? "Artwork"}
-                    </p>
-                    <PriceTag amount={l.listedPrice} className="text-sm" />
-                  </div>
-                  <ListingStatusPill status={l.status} />
-                  {l.status === "active" && (
-                    <>
-                      <SimulateSaleButton id={l.id} />
-                      <WithdrawButton id={l.id} />
-                    </>
-                  )}
                 </div>
               );
             })}

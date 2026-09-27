@@ -83,7 +83,7 @@ export function ContactSection() {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="grid gap-6 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="fullName">Full name</Label>
                     <div className="relative">

@@ -38,7 +38,10 @@ export default function AdminAggregatorDetailPage(
 
       <UserDetailHeader user={user} />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      {/* grid-cols-1 below sm isn't decorative — see app/admin/page.tsx's
+          identical comment: an implicit grid track sizes to its widest
+          child's min-content instead of shrinking, overflowing the page. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
           label="Active holdings"
           value={String(holdings.filter((h) => h.status === "reserved").length)}

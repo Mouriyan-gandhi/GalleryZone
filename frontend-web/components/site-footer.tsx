@@ -8,9 +8,9 @@ import type { FooterLink } from "./site-footer-data";
 function FooterLinkItem({ link }: { link: FooterLink }) {
   if (link.comingSoon) {
     return (
-      <span className="flex items-center gap-2 text-sm text-foreground/40 cursor-default select-none">
+      <span className="text-sm text-foreground/40 cursor-default select-none">
         {link.label}
-        <span className="inline-flex items-center rounded-sm bg-gold/15 px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.1em] text-gold uppercase leading-none">
+        <span className="ml-2 inline-block rounded-sm bg-gold/15 px-1.5 py-0.5 align-middle text-[10px] font-semibold tracking-[0.1em] text-gold uppercase leading-none">
           Soon
         </span>
       </span>
@@ -43,7 +43,7 @@ export function SiteFooter() {
 
       <div className="relative z-10 mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
-          className="grid grid-cols-1 gap-14 pt-20 lg:grid-cols-[1fr_2.2fr] lg:gap-10 lg:pt-24"
+          className="grid grid-cols-1 gap-10 pt-14 sm:gap-14 sm:pt-20 lg:grid-cols-[1fr_2.2fr] lg:gap-10 lg:pt-24"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-10%" }}
@@ -117,7 +117,7 @@ export function SiteFooter() {
           className="-mb-6 mt-16 overflow-hidden text-center sm:-mb-10 lg:-mb-14"
           aria-hidden
         >
-          <p className="translate-y-[0.1em] bg-gradient-to-b from-gold/25 to-gold/0 bg-clip-text font-display text-[18vw] leading-none font-bold tracking-tight text-transparent select-none sm:text-[14vw] lg:text-[11vw]">
+          <p className="translate-y-[0.1em] bg-gradient-to-b from-gold/25 to-gold/0 bg-clip-text font-display text-[12vw] leading-none font-bold tracking-tight text-transparent select-none lg:text-[11vw]">
             GALLERYZONE
           </p>
         </div>

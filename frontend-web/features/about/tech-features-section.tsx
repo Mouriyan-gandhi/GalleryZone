@@ -12,7 +12,7 @@ export function TechFeaturesSection() {
   const featureLarge = TECH_FEATURES[0]; // QR Tagging
 
   return (
-    <section className="relative overflow-hidden py-24 md:py-32 bg-background">
+    <section className="relative overflow-hidden py-16 sm:py-24 md:py-32 bg-background">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-10">
         <div className="flex flex-col gap-10">
           

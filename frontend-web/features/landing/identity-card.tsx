@@ -38,7 +38,7 @@ export function IdentityCard({
 
   return (
     <motion.div
-      className="group relative flex w-full max-w-[230px] flex-col rounded-lg border border-border bg-card p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] transition-colors duration-300 hover:border-gold/55"
+      className="group relative flex w-full max-w-sm flex-col rounded-lg sm:max-w-[230px] border border-border bg-card p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] transition-colors duration-300 hover:border-gold/55"
       onHoverStart={() => onHover?.(true)}
       onHoverEnd={() => onHover?.(false)}
       whileHover={{ y: -5 }}

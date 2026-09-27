@@ -72,18 +72,18 @@ export default async function ArtworkDetailPage(
         <div className="mx-auto w-full max-w-[1200px] px-6 py-10 lg:px-10 lg:py-14">
           <nav
             aria-label="Breadcrumb"
-            className="mb-6 text-xs text-muted-foreground"
+            className="mb-6 flex min-w-0 items-center text-xs text-muted-foreground"
           >
             <Link
               href="/marketplace"
-              className="transition-colors hover:text-gold-bright"
+              className="shrink-0 py-1.5 transition-colors hover:text-gold-bright lg:py-0"
             >
               Marketplace
             </Link>
             <span className="mx-1.5" aria-hidden="true">
               /
             </span>
-            <span className="text-foreground/80">{artwork.title}</span>
+            <span className="truncate text-foreground/80">{artwork.title}</span>
           </nav>
 
           <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16">

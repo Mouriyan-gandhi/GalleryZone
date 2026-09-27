@@ -243,7 +243,7 @@ export function SalesTable() {
               value={mobileSearch}
               onChange={(e) => setMobileSearch(e.target.value)}
               placeholder="Search by buyer or artwork..."
-              className="w-full rounded-lg border border-border bg-muted/30 py-2 pl-9 pr-4 text-sm outline-none placeholder:text-muted-foreground focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all"
+              className="w-full rounded-lg border border-border bg-muted/30 py-2 pl-9 pr-4 text-base outline-none placeholder:text-muted-foreground focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all sm:text-sm"
             />
           </div>
           <button

@@ -21,7 +21,7 @@ const CONTACT_POINTS = [
 
 export function ClosingCtaSection() {
   return (
-    <section className="relative overflow-hidden py-20 md:py-28">
+    <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
           className="relative overflow-hidden rounded-2xl border border-gold/25 bg-card"

@@ -47,7 +47,7 @@ export function AnalyticsView() {
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryStat label="GMV" value={formatINR(gmv)} note={rangeLabel} />
         <SummaryStat
           label="Platform revenue"
@@ -74,7 +74,7 @@ export function AnalyticsView() {
       />
 
       {/* Paired: two different questions at the same altitude. */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <VolumeBarChart
           data={volume}
           description={`Completed orders, ${rangeLabel.toLowerCase()}.`}
@@ -84,7 +84,10 @@ export function AnalyticsView() {
 
       {/* Paired: both are compositional rather than temporal, so they read
           together and neither needs the range control. */}
-      <div className="grid gap-4 lg:grid-cols-[1.25fr_1fr]">
+      {/* grid-cols-1 below lg isn't decorative — see app/admin/page.tsx's
+          identical comment: an implicit grid track sizes to its widest
+          child's min-content instead of shrinking, overflowing the page. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.25fr_1fr]">
         <FunnelChart data={artworkFunnel} />
         <TierDonutChart data={verificationTiers} />
       </div>

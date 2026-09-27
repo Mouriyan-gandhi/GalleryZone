@@ -385,21 +385,26 @@ export function FileUploader({
         )}
       </CardContent>
 
-      <CardFooter className="flex items-center justify-between gap-3">
+      <CardFooter className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <FaShieldAlt className="size-3" />
           <span className="text-xs">Encrypted in transit</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onCancel ?? clearAll}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCancel ?? clearAll}
+            className="flex-1 sm:flex-none"
+          >
             Cancel
           </Button>
           <Button
             size="sm"
             disabled={!allDone}
             onClick={handleSubmit}
-            className="gap-1.5"
+            className="flex-1 gap-1.5 sm:flex-none"
           >
             {submitLabel}
             <FaArrowRight className="size-3" />

@@ -9,8 +9,12 @@ import type { ArtistPublicStats } from "@/types/profile-stats";
 // figure that is already on every artwork card. What the artist is paid is
 // confidential and never reaches this component; see types/profile-stats.ts.
 
+// The API doesn't send a join date yet (lib/api-mappers.ts defaults it to ""),
+// which rendered as "Invalid Date".
 function joinedLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IN", {
+  const date = new Date(iso);
+  if (!iso || Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
     month: "long",
     year: "numeric",
   });

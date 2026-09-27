@@ -750,7 +750,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
             </p>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="category">Category</Label>
               <Select
@@ -854,7 +854,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
                     </span>
                     <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
                   </PopoverTrigger>
-                  <PopoverContent className="w-[320px] p-0" align="start">
+                  <PopoverContent className="w-[min(320px,calc(100vw-2rem))] p-0" align="start">
                     <Command>
                       <CommandInput placeholder="Search name, region, or category..." />
                       <CommandList>
@@ -1013,7 +1013,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
             </p>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="flex flex-col gap-2">
               <Label htmlFor="weightKg">Weight (kg)</Label>
               <Input
@@ -1100,7 +1100,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
               Marketplace and Aggregator are separate channels. Pick one, or
               both.
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {LISTING_TYPES.map((option) => {
                 const active = form.listingType === option.value;
                 return (
@@ -1175,7 +1175,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
                 <Nfc className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="nfcTagId"
-                  placeholder="Scan or enter the physical tag ID"
+                  placeholder="Scan or enter tag ID"
                   value={form.nfcTagId}
                   onChange={(e) => updateField("nfcTagId", e.target.value)}
                   className="h-10 pl-9"

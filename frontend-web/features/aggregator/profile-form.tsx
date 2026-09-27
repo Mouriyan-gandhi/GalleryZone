@@ -370,7 +370,7 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <Field data-invalid={Boolean(errors.companyName)}>
             <FieldLabel htmlFor="companyName">Company name</FieldLabel>
             <Input
@@ -490,7 +490,7 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="coordinatorName">Name</FieldLabel>
               <Input

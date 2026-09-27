@@ -161,7 +161,7 @@ export function AuthTextField<TFieldValues extends FieldValues>({
                 className={cn(
                   "h-11 rounded-xl bg-muted/30 px-4",
                   Icon && "pl-10",
-                  isPassword && "pr-10",
+                  isPassword && "pr-12",
                 )}
               />
               {isPassword && (
@@ -169,7 +169,7 @@ export function AuthTextField<TFieldValues extends FieldValues>({
                   type="button"
                   onClick={() => setRevealed((current) => !current)}
                   aria-label={revealed ? "Hide password" : "Show password"}
-                  className="absolute top-1/2 right-3.5 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  className="absolute top-1/2 right-1 flex size-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {revealed ? (
                     <EyeOff className="size-4" />

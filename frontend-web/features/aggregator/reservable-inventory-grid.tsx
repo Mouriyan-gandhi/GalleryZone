@@ -234,7 +234,7 @@ function InventoryArtworkCard({
         <Link
           href={`/marketplace/${artwork.id}`}
           target="_blank"
-          className="line-clamp-2 font-display text-base leading-snug font-semibold text-foreground hover:text-gold-bright transition-colors"
+          className="-my-1 line-clamp-2 py-1 font-display text-base leading-snug font-semibold text-foreground hover:text-gold-bright transition-colors"
         >
           {artwork.title}
         </Link>

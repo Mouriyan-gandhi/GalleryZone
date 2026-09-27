@@ -26,7 +26,7 @@ export function AboutStatsSection() {
   const { data } = usePublicStats();
   const STATS = statsFor(data);
   return (
-    <section className="relative overflow-hidden py-20 md:py-28">
+    <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
           className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between"
@@ -50,7 +50,7 @@ export function AboutStatsSection() {
         </motion.div>
 
         <motion.div
-          className="mt-14 grid grid-cols-1 divide-y divide-border border-t border-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4"
+          className="mt-10 grid grid-cols-2 gap-x-6 border-t border-border sm:mt-14 sm:gap-x-0 sm:divide-x sm:divide-border lg:grid-cols-4"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-10%" }}
@@ -64,12 +64,12 @@ export function AboutStatsSection() {
               key={stat.label}
               variants={fadeUp}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="flex flex-col gap-6 py-8 first:pt-8 sm:px-8 sm:first:pl-0 sm:last:pr-0"
+              className="flex flex-col gap-3 py-6 sm:gap-6 sm:px-8 sm:py-8 sm:first:pl-0 sm:last:pr-0"
             >
-              <span className="text-xs text-muted-foreground tabular-nums">
+              <span className="hidden text-xs text-muted-foreground tabular-nums sm:block">
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="font-display text-5xl font-semibold text-foreground tabular-nums sm:text-6xl">
+              <span className="font-display text-4xl font-semibold text-foreground tabular-nums sm:text-6xl">
                 {stat.value}
               </span>
               <div>

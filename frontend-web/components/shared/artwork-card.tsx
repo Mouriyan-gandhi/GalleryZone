@@ -74,7 +74,7 @@ export function ArtworkCard({ artwork, className }: ArtworkCardProps) {
         className,
       )}
     >
-      <div className="relative flex aspect-[4/5] w-full items-center justify-center bg-muted/30 p-4 sm:p-5">
+      <div className="relative flex aspect-[4/5] w-full items-center justify-center bg-muted/30 p-2.5 sm:p-5">
         <div className="relative h-full w-full overflow-hidden rounded-md border border-border/50 bg-muted shadow-sm transition-transform duration-500 ease-out group-hover:scale-[1.02]">
           <Image
             src={artwork.thumbnailUrl}
@@ -128,7 +128,7 @@ export function ArtworkCard({ artwork, className }: ArtworkCardProps) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-3 sm:p-4">
         <h3 className="line-clamp-2 font-display text-sm leading-snug font-semibold text-foreground">
           {artwork.title}
         </h3>
@@ -145,7 +145,7 @@ export function ArtworkCard({ artwork, className }: ArtworkCardProps) {
           {titleCase(artwork.category)} &middot; {artwork.medium}
         </p>
 
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-border/50 pt-3">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-border/50 pt-3">
           <div className="flex flex-col gap-0.5">
             <PriceTag amount={artwork.customerPrice} className="text-base font-semibold" />
           </div>

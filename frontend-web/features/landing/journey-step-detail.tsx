@@ -44,7 +44,7 @@ export function JourneyStepDetail({ step }: { step: JourneyStep }) {
                     strokeWidth={1.75}
                   />
                 </span>
-                <span className="text-[10px] leading-tight text-muted-foreground lg:text-[11px] lg:leading-snug lg:text-white/60">
+                <span className="text-[11px] leading-tight text-muted-foreground lg:leading-snug lg:text-white/60">
                   {req.label}
                 </span>
               </div>

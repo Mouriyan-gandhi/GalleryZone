@@ -34,10 +34,10 @@ function titleCase(value: string): string {
 }
 
 const GRID_CLASS =
-  "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-3 lg:gap-6";
+  "grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 lg:gap-6";
 
 const GRID_CLASS_COMPACT =
-  "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:grid-cols-4 lg:gap-6";
+  "grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4 lg:gap-6";
 
 const SORT_OPTIONS: {
   value: NonNullable<ArtworkFilters["sortBy"]>;
@@ -207,7 +207,7 @@ export function MarketplaceGrid({
               )}
             </button>
           )}
-          <p className="text-sm text-muted-foreground" role="status">
+          <p className="hidden text-sm text-muted-foreground sm:block" role="status">
             <strong className="font-semibold text-foreground">{page.total}</strong>{" "}
             {page.total === 1 ? "artwork" : "artworks"} found
           </p>
@@ -288,6 +288,11 @@ export function MarketplaceGrid({
           </div>
         </div>
       </div>
+      {/* Phones: the count gets its own line so the toolbar fits a 320px screen. */}
+      <p className="-mt-1 mb-3 text-xs text-muted-foreground sm:hidden" role="status">
+        <strong className="font-semibold text-foreground">{page.total}</strong>{" "}
+        {page.total === 1 ? "artwork" : "artworks"} found
+      </p>
 
       {/* Results */}
       <div

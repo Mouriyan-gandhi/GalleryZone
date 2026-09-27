@@ -229,7 +229,7 @@ function SubscriptionCard() {
         </span>
       </div>
 
-      <ul className="mt-4 grid gap-1.5 sm:grid-cols-2">
+      <ul className="mt-4 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {SUBSCRIPTION.benefits.map((benefit) => (
           <li
             key={benefit}

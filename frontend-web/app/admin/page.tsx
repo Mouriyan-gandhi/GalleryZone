@@ -15,7 +15,12 @@ export default function AdminOverviewPage() {
 
       <AdminKpiGrid />
 
-      <div className="grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+      {/* grid-cols-1 below lg isn't decorative: with no column utility at
+          all, an implicit grid track sizes to its child's min-content (a
+          chart's axis + margins can't shrink past some floor), overflowing
+          the page instead of shrinking the chart. Tailwind's grid-cols-1
+          uses minmax(0, 1fr), which is what actually fixes it. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.35fr_1fr]">
         <AdminRevenueOverview />
         <AdminActivityFeed />
       </div>

@@ -51,7 +51,7 @@ export function EarlyProgramSection() {
   const [left, right] = [BENEFITS.slice(0, 2), BENEFITS.slice(2)];
 
   return (
-    <section className="relative overflow-hidden py-20 md:py-28">
+    <section className="relative overflow-hidden py-14 sm:py-20 md:py-28">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
           className="rounded-2xl border border-gold/25 bg-card px-5 py-10 sm:px-8 sm:py-14 md:px-14 md:py-16"

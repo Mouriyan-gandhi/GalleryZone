@@ -217,7 +217,8 @@ export function RegisterForm({ initialRole }: RegisterFormProps) {
             name="password"
             label="Password"
             type="password"
-            placeholder="Min 8 characters, 1 letter, 1 number"
+            placeholder="Create a password"
+            description="At least 8 characters, with a letter and a number."
             autoComplete="new-password"
             icon={Lock}
           />

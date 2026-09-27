@@ -26,7 +26,7 @@ export function JourneySection() {
   }
 
   return (
-    <section className="relative overflow-hidden py-28 md:py-36">
+    <section className="relative overflow-hidden py-16 sm:py-28 md:py-36">
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <motion.div
           className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between"

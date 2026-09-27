@@ -289,7 +289,7 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
           </div>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="fullName">Full name</Label>
             <Input
@@ -335,7 +335,7 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
           />
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="instagram">
               Instagram handle{" "}
@@ -668,7 +668,7 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
           />
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor="pickupCity">City</Label>
             <Input
@@ -750,7 +750,7 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
             </p>
           </div>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="bankAccountNumber">Account number</Label>
             <Input

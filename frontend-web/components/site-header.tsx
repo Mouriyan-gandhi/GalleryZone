@@ -272,9 +272,11 @@ export function SiteHeader() {
                 </button>
               </div>
             ) : (
+              // Phones already have Sign In in the bottom nav; here it only
+              // crowded the row (wrapping at 360px, overflowing at 320px).
               <Link
                 href="/login"
-                className="text-sm font-medium text-foreground/85 transition-colors hover:text-foreground"
+                className="hidden whitespace-nowrap text-sm font-medium text-foreground/85 transition-colors hover:text-foreground sm:inline"
               >
                 Sign In
               </Link>

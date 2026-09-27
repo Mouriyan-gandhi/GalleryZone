@@ -90,7 +90,7 @@ export function SettingsForm() {
 
   if (isPending || !settings) {
     return (
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Skeleton className="h-[520px] rounded-xl" />
         <Skeleton className="h-[320px] rounded-xl" />
       </div>
@@ -145,7 +145,10 @@ function SettingsFormBody({ settings }: { settings: PlatformSettings }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+    // grid-cols-1 below lg isn't decorative — see app/admin/page.tsx's
+    // identical comment: an implicit grid track sizes to its widest child's
+    // min-content instead of shrinking, overflowing the page.
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4 rounded-xl border border-border bg-card p-5"
