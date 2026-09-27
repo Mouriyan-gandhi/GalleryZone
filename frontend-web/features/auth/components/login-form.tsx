@@ -23,6 +23,31 @@ import { ROLE_SECTION_HOME, type SessionRole } from "@/lib/session";
 // marketplace like any other visitor rather than straight to the dashboard.
 // Every other role keeps its normal section home.
 function landingAfterLogin(role: SessionRole): string {
+  // proxy.ts and checkout send people here with ?next=<where they were going>.
+  // Same-site paths only, checked by parsing rather than blacklisting raw
+  // prefixes: a smuggled tab or newline (e.g. "/\t/evil.com", deliverable as
+  // ?next=%2F%09%2Fevil.com) survives a startsWith("//") check but is
+  // stripped by the URL parser itself, which normalizes it into the
+  // cross-origin "//evil.com" this guard exists to block. Letting the same
+  // parser do the check closes that gap. proxy.ts still bounces a
+  // wrong-role destination to the right portal.
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next) {
+    try {
+      const url = new URL(next, window.location.origin);
+      const path = url.pathname + url.search + url.hash;
+      // The parser collapses dot segments, so "/.//evil.com" is same-origin
+      // yet its pathname is "//evil.com", which router.push resolves
+      // cross-origin. Re-check the result, and skip the auth pages themselves.
+      if (
+        url.origin === window.location.origin &&
+        !/^[/\\]{2}/.test(path) &&
+        !/^\/(login|register|forgot-password|reset-password)(\/|\?|#|$)/.test(path)
+      ) return path;
+    } catch {
+      // Malformed ?next value — fall through to the role's normal home.
+    }
+  }
   return role === "artist" ? "/marketplace" : ROLE_SECTION_HOME[role];
 }
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth-schemas";
