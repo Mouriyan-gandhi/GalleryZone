@@ -8,6 +8,7 @@
 !/.github/
 !/.gitignore
 !/.env.example
+!/.env.demo
 !/README.md
 
 # The single env file lives at the root — never committed.
