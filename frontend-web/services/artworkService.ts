@@ -2,6 +2,13 @@ import type { Artwork, ArtworkFilters, ArtworkSummary, MarketplacePage } from "@
 import type { ArtistProfile } from "@/types/artist";
 import { http, isApiError } from "@/lib/api";
 import {
+  DEMO_ARTWORKS_ENABLED,
+  demoArtwork,
+  demoArtworksByArtist,
+  isDemoId,
+  withDemoArtworks,
+} from "@/lib/demo-artworks";
+import {
   toArtistProfile,
   toArtwork,
   toArtworkSummary,
@@ -16,10 +23,12 @@ import {
 // server (GET /v1/artworks?...): the browser never downloads the whole
 // catalogue, and the filter options come back as facets computed from
 // what is actually live.
-export const PAGE_SIZE = 24;
+export const PAGE_SIZE = 20;
+/** The API's max page size (artworks.controller.ts). */
+export const MAX_PAGE_SIZE = 60;
 
-function toQuery(filters: ArtworkFilters): Record<string, string> {
-  const q: Record<string, string> = { pageSize: String(PAGE_SIZE) };
+function toQuery(filters: ArtworkFilters, pageSize: number): Record<string, string> {
+  const q: Record<string, string> = { pageSize: String(pageSize) };
   if (filters.category?.length) q.category = filters.category.join(",");
   if (filters.medium?.length) q.medium = filters.medium.join(",");
   if (filters.rarity) q.rarity = filters.rarity;
@@ -35,14 +44,21 @@ function toQuery(filters: ArtworkFilters): Record<string, string> {
 }
 
 export const artworkService = {
-  async list(filters: ArtworkFilters): Promise<MarketplacePage> {
-    const dto = await http.get<MarketplacePageDto>("/v1/artworks", { params: toQuery(filters) });
+  async list(filters: ArtworkFilters, pageSize = PAGE_SIZE): Promise<MarketplacePage> {
+    if (DEMO_ARTWORKS_ENABLED) {
+      const real = await http.get<MarketplacePageDto>("/v1/artworks", {
+        params: toQuery({ ...filters, page: undefined }, MAX_PAGE_SIZE),
+      });
+      return withDemoArtworks(toMarketplacePage(real), filters, pageSize);
+    }
+    const dto = await http.get<MarketplacePageDto>("/v1/artworks", { params: toQuery(filters, pageSize) });
     return toMarketplacePage(dto);
   },
 
   // Full Artwork for the detail page; undefined when no artwork matches,
   // which callers (the Artwork Detail page) turn into notFound().
   async get(id: string): Promise<Artwork | undefined> {
+    if (DEMO_ARTWORKS_ENABLED && isDemoId(id)) return demoArtwork(id);
     try {
       return toArtwork(await http.get<ArtworkDto>(`/v1/artworks/${encodeURIComponent(id)}`));
     } catch (error) {
@@ -54,6 +70,7 @@ export const artworkService = {
   // "More from this artist" rail + the Artist Public Profile's listings
   // grid — the public summary shape, never full Artwork records.
   async listByArtist(artistId: string): Promise<ArtworkSummary[]> {
+    if (DEMO_ARTWORKS_ENABLED && isDemoId(artistId)) return demoArtworksByArtist(artistId);
     const { artworks } = await http.get<{ artworks: ArtworkDto[] }>(
       `/v1/artists/${encodeURIComponent(artistId)}/artworks`,
     );
@@ -66,24 +83,11 @@ interface ArtistCardDto extends ArtistDto {
   coverImageUrl: string | null;
 }
 
-export interface PublicStats {
-  artworksListed: number;
-  artistsOnboard: number;
-  mediums: number;
-  categories: number;
-}
-
-export const statsService = {
-  async publicStats(): Promise<PublicStats> {
-    return http.get<PublicStats>("/v1/stats/public");
-  },
-};
-
 export const artistService = {
   /** Directory: artists with at least one live listing. */
-  async list(): Promise<(ArtistProfile & { coverImageUrl: string | null })[]> {
+  async list(): Promise<(ArtistProfile & { coverImageUrl: string | null; artworkCount: number })[]> {
     const { artists } = await http.get<{ artists: ArtistCardDto[] }>("/v1/artists");
-    return artists.map((a) => ({ ...toArtistProfile(a), coverImageUrl: a.coverImageUrl }));
+    return artists.map((a) => ({ ...toArtistProfile(a), coverImageUrl: a.coverImageUrl, artworkCount: a.artworkCount }));
   },
 
   async get(id: string): Promise<ArtistProfile | undefined> {

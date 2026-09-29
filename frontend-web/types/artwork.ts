@@ -73,6 +73,12 @@ export interface ArtworkSummary {
   listingType: ListingType;
   /** GalleryZone's rank. Absent on records nobody has ranked yet. */
   rarityType?: ArtworkRarity | null;
+  /** Label and filter details the listing endpoint carries per row. */
+  yearCreated?: number | null;
+  dimensions?: string | null;
+  coaCertificateNumber?: string | null;
+  sizeBand?: ArtworkSizeBand | null;
+  artistLocation?: string | null;
 }
 
 export interface Artwork extends ArtworkSummary {
