@@ -76,6 +76,7 @@ function MarketplacePageContent() {
           categories={overview?.facets.categories ?? []}
           selected={filters.category}
           onSelectCategory={selectCategory}
+          artworks={artworks}
         />
 
         <div className="mx-auto w-full max-w-[1440px] px-5 sm:px-6 lg:px-10">
