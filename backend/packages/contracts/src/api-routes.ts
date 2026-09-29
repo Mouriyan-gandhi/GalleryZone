@@ -39,6 +39,7 @@ export const apiRoutes: readonly RouteSpec[] = [
   { method: "GET", path: "/v1/artists/:id", authRole: "public", summary: "Public artist profile", replaces: "artistService.get" },
   { method: "GET", path: "/v1/artists/:id/artworks", authRole: "public", summary: "One artist's listings", replaces: "artworkService.listByArtist" },
   { method: "GET", path: "/v1/verify/:artworkId", authRole: "public", summary: "NFC/QR provenance passport", replaces: "n/a — Phase 5" },
+  { method: "GET", path: "/v1/passport/mine", authRole: "customer", summary: "Passports of the pieces I own, made or hold on display (customer, artist, aggregator)", replaces: "n/a — new" },
   { method: "POST", path: "/v1/artworks/:artworkId/transfers", authRole: "customer", summary: "Current owner hands over ownership / display rights", replaces: "ownershipService.initiate" },
   { method: "GET", path: "/v1/transfers/:id", authRole: "customer", summary: "One transfer (parties only)", replaces: "ownershipService.get" },
   { method: "POST", path: "/v1/transfers/:id/accept", authRole: "customer", summary: "Invited recipient accepts", replaces: "ownershipService.accept" },

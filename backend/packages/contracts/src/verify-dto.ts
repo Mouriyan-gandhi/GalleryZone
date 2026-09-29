@@ -35,3 +35,24 @@ export interface VerifyPassportDto {
     displayEndedAt: string | null;
   }[];
 }
+
+/** How the signed-in viewer is connected to a piece: they own it, made it, or hold it on display. */
+export type PassportRelation = "owner" | "artist" | "holder";
+
+/**
+ * GET /v1/passport/mine — the passports of the pieces the signed-in viewer is
+ * connected to. Each entry carries the SAME public passport /v1/verify serves
+ * (so it can never show more than a scan would) plus how the viewer relates
+ * to the piece. `total` is the full count when `items` was capped.
+ */
+export interface MyPassportsDto {
+  total: number;
+  items: {
+    relations: PassportRelation[];
+    /** Only for a piece the viewer made: whether a physical tag is linked. Null otherwise. */
+    nfcLinked: boolean | null;
+    /** Only for a piece the viewer holds on display: the holding to open. Null otherwise. */
+    holdingId: string | null;
+    passport: VerifyPassportDto;
+  }[];
+}

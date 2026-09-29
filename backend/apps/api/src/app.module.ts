@@ -26,6 +26,7 @@ import { ResaleController } from "./resale.controller.ts";
 import { ReportsController } from "./reports.controller.ts";
 import { CoaController } from "./coa.controller.ts";
 import { VerifyController } from "./verify.controller.ts";
+import { PassportController } from "./passport.controller.ts";
 import { OwnershipController } from "./ownership.controller.ts";
 import { MouController } from "./mou.controller.ts";
 import { ImagesController } from "./images.controller.ts";
@@ -84,6 +85,7 @@ import { DbModule } from "./db.module.ts";
     ReportsController,
     CoaController,
     VerifyController,
+    PassportController,
     OwnershipController,
     MouController,
     ImagesController,
