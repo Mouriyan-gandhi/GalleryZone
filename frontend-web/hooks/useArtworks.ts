@@ -1,5 +1,5 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { artworkService } from "@/services/artworkService";
+import { artworkService, MAX_PAGE_SIZE } from "@/services/artworkService";
 import type { ArtworkFilters, MarketplaceFacets } from "@/types/artwork";
 
 // Query key convention per SAD §5.4: ['artworks', filters]. `filters` is a
@@ -15,14 +15,15 @@ export function useArtworks(filters: ArtworkFilters) {
   });
 }
 
-// The unfiltered first page — its facets drive the filter sidebar (distinct
-// values across the whole live marketplace, so no option is a dead end and
-// nothing is hardcoded) and its artworks give the quick-category chips a
-// real thumbnail. Cached separately from any filtered listing.
+// The unfiltered first page at the API's max size — its facets drive the
+// filter sidebar (distinct values across the whole live marketplace, so no
+// option is a dead end and nothing is hardcoded) and its artworks let the
+// sidebar show exact per-option counts while the catalogue fits in it.
+// Cached separately from any filtered listing.
 export function useMarketplaceOverview() {
   return useQuery({
     queryKey: ["artworks", "overview"],
-    queryFn: () => artworkService.list({}),
+    queryFn: () => artworkService.list({}, MAX_PAGE_SIZE),
     staleTime: 60_000,
   });
 }

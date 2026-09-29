@@ -3,7 +3,6 @@
 import { type FC, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useTheme } from "next-themes";
 
 export interface ContinuousPaginationProps {
   page: number;
@@ -23,14 +22,12 @@ const PageButton: FC<PageButtonProps> = ({ children, disabled, onClick }) => {
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="text-muted-foreground hover:text-foreground border-border bg-background flex h-10 w-10 items-center justify-center rounded-lg border shadow-[0_4px_10px_hsl(var(--foreground)/0.1)] disabled:cursor-not-allowed disabled:opacity-40 sm:h-16 sm:w-16"
+      className="text-muted-foreground hover:text-foreground border-border bg-background flex size-10 items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-40"
       whileHover={
         disabled
           ? {}
           : {
-              scale: 1.08,
-              y: -6,
-              boxShadow: "0 6px 10px hsl(var(--foreground)/0.12)",
+              y: -2,
             }
       }
       whileTap={disabled ? {} : { scale: 0.92 }}
@@ -46,9 +43,6 @@ export const ContinuousPagination: FC<ContinuousPaginationProps> = ({
   pageCount,
   onPage,
 }) => {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-
   if (pageCount <= 1) return null;
 
   const paginate = (next: number) => {
@@ -59,13 +53,13 @@ export const ContinuousPagination: FC<ContinuousPaginationProps> = ({
   return (
     <nav
       aria-label="Marketplace pages"
-      className="mt-8 flex items-center justify-center gap-1.5 text-sm sm:gap-3"
+      className="mt-8 flex items-center justify-center gap-2 text-sm"
     >
       <PageButton disabled={page <= 1} onClick={() => paginate(page - 1)}>
-        <ChevronLeft className="h-5 w-5 sm:h-7 sm:w-7" />
+        <ChevronLeft className="size-4" />
       </PageButton>
 
-      <div className="relative flex gap-1.5 sm:gap-3">
+      <div className="relative flex gap-2">
         {Array.from({ length: pageCount }).map((_, i) => {
           const n = i + 1;
           const isActive = n === page;
@@ -76,21 +70,12 @@ export const ContinuousPagination: FC<ContinuousPaginationProps> = ({
               type="button"
               aria-current={isActive ? "page" : undefined}
               onClick={() => paginate(n)}
-              className={`border-border relative z-10 flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-medium shadow-[0_4px_10px_hsl(var(--foreground)/0.1)] transition-colors duration-300 sm:h-16 sm:w-16 ${
+              className={`border-border relative z-10 flex size-10 items-center justify-center rounded-lg border text-sm font-medium transition-colors duration-300 ${
                 isActive
                   ? "text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground bg-background"
               }`}
-              whileHover={
-                !isActive
-                  ? {
-                      y: -6,
-                      boxShadow: isDark
-                        ? "0 10px 20px hsl(var(--foreground)/0.4)"
-                        : "0 6px 10px hsl(var(--foreground)/0.12)",
-                    }
-                  : {}
-              }
+              whileHover={!isActive ? { y: -2 } : {}}
               whileTap={{ scale: 0.92 }}
               transition={{ type: "spring", stiffness: 260, damping: 18 }}
             >
@@ -130,7 +115,7 @@ export const ContinuousPagination: FC<ContinuousPaginationProps> = ({
                 )}
               </AnimatePresence>
 
-              <span className="relative z-10 text-lg font-semibold sm:text-xl">
+              <span className="relative z-10 text-sm font-semibold">
                 {n}
               </span>
             </motion.button>
@@ -139,7 +124,7 @@ export const ContinuousPagination: FC<ContinuousPaginationProps> = ({
       </div>
 
       <PageButton disabled={page >= pageCount} onClick={() => paginate(page + 1)}>
-        <ChevronRight className="h-5 w-5 sm:h-7 sm:w-7" />
+        <ChevronRight className="size-4" />
       </PageButton>
     </nav>
   );

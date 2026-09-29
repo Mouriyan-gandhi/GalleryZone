@@ -1,47 +1,43 @@
 "use client";
 
-import { useId, useMemo } from "react";
-import {
-  RotateCcw,
-  Filter,
-  Shapes,
-  Palette,
-  Star,
-  IndianRupee,
-  Ruler,
-  User,
-  MapPin,
-} from "lucide-react";
+import { useMemo } from "react";
+import { PanelLeftClose } from "lucide-react";
 import {
   Accordion,
+  AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  AccordionContent,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { MultiSelectCombobox, type MultiSelectOption } from "@/components/shared/multi-select-combobox";
-import { cn } from "@/lib/utils";
-import { useMarketplaceFacets } from "@/hooks/useArtworks";
+import { cn, formatINR, humanize } from "@/lib/utils";
+import { useMarketplaceFacets, useMarketplaceOverview } from "@/hooks/useArtworks";
 import {
   ARTWORK_RARITY_OPTIONS,
   type ArtworkFilters,
   type ArtworkRarity,
   type ArtworkSizeBand,
+  type ArtworkSummary,
 } from "@/types/artwork";
 
-// Sentinel for "no selection" in the Select primitives below, which need a
-// real string value - mapped back to `undefined` on the ArtworkFilters
-// object so filterArtworks() (Task 2) sees an absent field, not a literal
-// "all" category.
-const ALL_VALUE = "all";
+export const DEFAULT_MARKETPLACE_FILTERS: ArtworkFilters = { sortBy: "newest" };
+
+type PriceRange = { min?: number; max?: number };
+
+// Rupee bands for the Price group. A band maps straight onto the API's
+// minPrice/maxPrice, so picking one replaces any other price filter.
+const PRICE_BANDS: PriceRange[] = [
+  { max: 10_000 },
+  { min: 10_000, max: 25_000 },
+  { min: 25_000, max: 50_000 },
+  { min: 50_000, max: 100_000 },
+  { min: 100_000 },
+];
+
+export function priceLabel({ min, max }: PriceRange): string {
+  if (min === undefined && max !== undefined) return `Under ${formatINR(max)}`;
+  if (max === undefined && min !== undefined) return `Above ${formatINR(min)}`;
+  return `${formatINR(min ?? 0)} – ${formatINR(max ?? 0)}`;
+}
 
 const SIZE_OPTIONS: { value: ArtworkSizeBand; label: string }[] = [
   { value: "small", label: "Small" },
@@ -49,18 +45,8 @@ const SIZE_OPTIONS: { value: ArtworkSizeBand; label: string }[] = [
   { value: "large", label: "Large" },
 ];
 
-// Upper bound for the price slider: the priciest live piece, rounded up to
-// a clean step so the scale doesn't jitter as listings come and go. Falls
-// back to a sane default while the facets load.
-function priceBoundFor(max: number | undefined): number {
-  if (!max || max <= 0) return 200_000;
-  const step = max >= 1_000_000 ? 500_000 : max >= 100_000 ? 50_000 : 10_000;
-  return Math.ceil(max / step) * step;
-}
-
-// Same solid per-rank colors as the artwork card's corner stamp
-// (components/shared/rarity-badge.tsx "stamp" variant) — one rank language
-// across the whole marketplace, not a second palette invented for the filter.
+// Same solid per-rank colors as the card's corner stamp (rarity-badge.tsx):
+// one rank language across the marketplace.
 const RANK_TONE: Record<ArtworkRarity, string> = {
   R: "bg-destructive text-white",
   U: "bg-emerald-600 text-white",
@@ -68,34 +54,67 @@ const RANK_TONE: Record<ArtworkRarity, string> = {
   N: "bg-muted-foreground text-background",
 };
 
-export const DEFAULT_MARKETPLACE_FILTERS: ArtworkFilters = { sortBy: "newest" };
-
-function titleCase(value: string): string {
-  return value.replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-// Only checks the facets this component itself renders (not `query`, which
-// the search bar owns, or `sortBy`, which now lives with the results row) -
-// governs whether "Clear All" shows up.
+// Governs whether "Clear all" shows. `query` belongs to the search bar and
+// `sortBy` to the results toolbar, so neither counts.
 function hasActiveStructuredFilters(filters: ArtworkFilters): boolean {
   return Boolean(
     filters.category?.length ||
-    filters.medium?.length ||
-    filters.rarity ||
-    filters.artistId ||
-    filters.location ||
-    filters.size ||
-    typeof filters.minPrice === "number" ||
-    typeof filters.maxPrice === "number",
+      filters.medium?.length ||
+      filters.rarity ||
+      filters.artistId ||
+      filters.location ||
+      filters.size ||
+      typeof filters.minPrice === "number" ||
+      typeof filters.maxPrice === "number",
   );
+}
+
+function countBy(artworks: ArtworkSummary[], key: (artwork: ArtworkSummary) => string | null | undefined) {
+  const counts: Record<string, number> = {};
+  for (const artwork of artworks) {
+    const value = key(artwork);
+    if (value) counts[value] = (counts[value] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function inBand(price: number, { min, max }: PriceRange): boolean {
+  return (min === undefined || price >= min) && (max === undefined || price < max);
+}
+
+// ponytail: counts are tallied from the overview page (the API's max of 60),
+// so they only show while the whole catalogue fits on it. Add per-option
+// counts to the API's facets (like rarityCounts) once it outgrows that.
+function useOptionCounts() {
+  const overview = useMarketplaceOverview().data;
+  return useMemo(() => {
+    if (!overview || overview.total > overview.artworks.length) return null;
+    const artworks = overview.artworks;
+    return {
+      category: countBy(artworks, (a) => a.category),
+      medium: countBy(artworks, (a) => a.medium),
+      size: countBy(artworks, (a) => a.sizeBand),
+      artist: countBy(artworks, (a) => a.artistId),
+      location: countBy(artworks, (a) => a.artistLocation),
+      price: PRICE_BANDS.map((band) => artworks.filter((a) => inBand(a.customerPrice, band)).length),
+    };
+  }, [overview]);
+}
+
+function toggleIn(list: string[] | undefined, value: string): string[] | undefined {
+  const current = list ?? [];
+  const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
+  return next.length ? next : undefined;
 }
 
 interface MarketplaceFiltersProps {
   filters: ArtworkFilters;
   onChange: (filters: ArtworkFilters) => void;
   className?: string;
-  /** The mobile sheet already has its own "Filters" title/close and Reset/Apply footer. */
+  /** The mobile sheet already has its own title and Reset/Show footer. */
   bare?: boolean;
+  /** Shows a collapse button in the header (desktop sidebar). */
+  onCollapse?: () => void;
 }
 
 export function MarketplaceFilters({
@@ -103,104 +122,172 @@ export function MarketplaceFilters({
   onChange,
   className,
   bare = false,
+  onCollapse,
 }: MarketplaceFiltersProps) {
-  const minId = useId();
-  const maxId = useId();
-
-  // Every option list below comes from the live marketplace's facets —
-  // distinct values across all listed pieces, so no option is a dead end.
+  // Every option comes from the live marketplace's facets, so none is a dead end.
   const facets = useMarketplaceFacets();
-  const CATEGORY_OPTIONS = facets.categories;
-  const MEDIUM_OPTIONS = facets.mediums;
-  const ARTIST_OPTIONS = facets.artists;
-  const LOCATION_OPTIONS = facets.locations;
-  // Totals per rank across the live catalogue — how many of each rank
-  // exist, not how many match the other filters currently active.
-  const rankCounts = useMemo<Record<ArtworkRarity, number>>(
-    () => ({ R: 0, U: 0, O: 0, N: 0, ...facets.rarityCounts }),
-    [facets.rarityCounts],
-  );
-  const MAX_PRICE_BOUND = priceBoundFor(facets.priceRange?.max);
+  const counts = useOptionCounts();
 
   function update(patch: Partial<ArtworkFilters>) {
-    onChange({ ...filters, ...patch });
+    onChange({ ...filters, ...patch, page: undefined });
   }
 
-  const minPrice = filters.minPrice ?? 0;
-  const maxPrice = filters.maxPrice ?? MAX_PRICE_BOUND;
-  const minPct = (minPrice / MAX_PRICE_BOUND) * 100;
-  const maxPct = (maxPrice / MAX_PRICE_BOUND) * 100;
+  const priceOptions = PRICE_BANDS.map((band, i) => ({ band, count: counts?.price[i] })).filter(
+    ({ count }) => count !== 0,
+  );
+  const sizeOptions = SIZE_OPTIONS.filter((option) => !counts || counts.size[option.value]);
+  const rankOptions = ARTWORK_RARITY_OPTIONS.filter((option) => facets.rarityCounts[option.value]);
 
   return (
     <aside
       className={cn(
-        "flex h-fit max-h-[calc(100vh-6rem)] w-full flex-col gap-5 overflow-y-auto rounded-2xl border border-border bg-card/60 p-5",
+        "flex h-fit w-full flex-col",
         className,
       )}
     >
       {!bare && (
-        <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 font-display text-base font-semibold text-foreground">
-            <Filter className="size-4 text-gold-bright" strokeWidth={1.75} />
-            Filters
-          </h2>
-          {hasActiveStructuredFilters(filters) && (
-            <button
-              type="button"
-              onClick={() =>
-                onChange({ ...DEFAULT_MARKETPLACE_FILTERS, query: filters.query })
-              }
-              className="text-xs font-medium text-gold-bright hover:underline"
-            >
-              Clear All
-            </button>
-          )}
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <h2 className="font-display text-xl font-semibold text-foreground">Filters</h2>
+          <div className="flex items-center gap-2">
+            {hasActiveStructuredFilters(filters) && (
+              <button
+                type="button"
+                onClick={() => onChange({ ...DEFAULT_MARKETPLACE_FILTERS, query: filters.query })}
+                className="text-xs font-medium text-gold-bright hover:underline"
+              >
+                Clear all
+              </button>
+            )}
+            {onCollapse && (
+              <button
+                type="button"
+                onClick={onCollapse}
+                aria-label="Collapse filters"
+                title="Collapse filters"
+                className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <PanelLeftClose className="size-4" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      <Accordion className="gap-0">
-        <MultiSelectFilterGroup
-          value="type"
-          icon={Shapes}
-          label="Art Type"
-          allLabel="All Art Types"
-          selected={filters.category ?? []}
-          options={CATEGORY_OPTIONS.map((category) => ({ value: category, label: titleCase(category) }))}
-          onSelectedChange={(next) => update({ category: next.length ? next : undefined })}
-        />
+      <Accordion multiple defaultValue={["category", "medium", "price"]}>
+        {facets.categories.length > 0 && (
+          <FilterGroup value="category" label="Category">
+            {facets.categories.map((category) => (
+              <OptionRow
+                key={category}
+                label={humanize(category)}
+                count={counts?.category[category]}
+                checked={filters.category?.includes(category) ?? false}
+                onToggle={() => update({ category: toggleIn(filters.category, category) })}
+              />
+            ))}
+          </FilterGroup>
+        )}
 
-        <MultiSelectFilterGroup
-          value="medium"
-          icon={Palette}
-          label="Medium"
-          allLabel="All Mediums"
-          selected={filters.medium ?? []}
-          options={MEDIUM_OPTIONS.map((medium) => ({ value: medium, label: medium }))}
-          onSelectedChange={(next) => update({ medium: next.length ? next : undefined })}
-        />
+        {facets.mediums.length > 0 && (
+          <FilterGroup value="medium" label="Medium">
+            {facets.mediums.map((medium) => (
+              <OptionRow
+                key={medium}
+                label={humanize(medium)}
+                count={counts?.medium[medium]}
+                checked={filters.medium?.includes(medium) ?? false}
+                onToggle={() => update({ medium: toggleIn(filters.medium, medium) })}
+              />
+            ))}
+          </FilterGroup>
+        )}
 
-        <AccordionItem value="rank">
-          <AccordionTrigger>
-            <span className="flex items-center gap-2">
-              <Star className="size-4 text-muted-foreground" strokeWidth={1.75} />
-              Rank
-            </span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="flex flex-col gap-2.5">
-              {ARTWORK_RARITY_OPTIONS.map((option) => {
-                const checked = filters.rarity === option.value;
-                return (
-                  <label
-                    key={option.value}
-                    className="grid cursor-pointer grid-cols-[auto_auto_1fr_auto] items-center gap-3 w-full"
-                  >
-                    <Checkbox
-                      checked={checked}
-                      onCheckedChange={() =>
-                        update({ rarity: checked ? undefined : option.value })
-                      }
-                    />
+        {priceOptions.length > 0 && (
+          <FilterGroup value="price" label="Price">
+            {priceOptions.map(({ band, count }) => {
+              const checked = filters.minPrice === band.min && filters.maxPrice === band.max;
+              return (
+                <OptionRow
+                  key={priceLabel(band)}
+                  label={priceLabel(band)}
+                  count={count}
+                  checked={checked}
+                  onToggle={() =>
+                    update(
+                      checked
+                        ? { minPrice: undefined, maxPrice: undefined }
+                        : { minPrice: band.min, maxPrice: band.max },
+                    )
+                  }
+                />
+              );
+            })}
+          </FilterGroup>
+        )}
+
+        {sizeOptions.length > 0 && (
+          <FilterGroup value="size" label="Size">
+            {sizeOptions.map((option) => {
+              const checked = filters.size === option.value;
+              return (
+                <OptionRow
+                  key={option.value}
+                  label={option.label}
+                  count={counts?.size[option.value]}
+                  checked={checked}
+                  onToggle={() => update({ size: checked ? undefined : option.value })}
+                />
+              );
+            })}
+          </FilterGroup>
+        )}
+
+        {facets.artists.length > 0 && (
+          <FilterGroup value="artist" label="Artist">
+            {facets.artists.map((artist) => {
+              const checked = filters.artistId === artist.id;
+              return (
+                <OptionRow
+                  key={artist.id}
+                  label={artist.name}
+                  count={counts?.artist[artist.id]}
+                  checked={checked}
+                  onToggle={() => update({ artistId: checked ? undefined : artist.id })}
+                />
+              );
+            })}
+          </FilterGroup>
+        )}
+
+        {facets.locations.length > 0 && (
+          <FilterGroup value="location" label="Location">
+            {facets.locations.map((location) => {
+              const checked = filters.location === location;
+              return (
+                <OptionRow
+                  key={location}
+                  label={location}
+                  count={counts?.location[location]}
+                  checked={checked}
+                  onToggle={() => update({ location: checked ? undefined : location })}
+                />
+              );
+            })}
+          </FilterGroup>
+        )}
+
+        {rankOptions.length > 0 && (
+          <FilterGroup value="rank" label="Rank">
+            {rankOptions.map((option) => {
+              const checked = filters.rarity === option.value;
+              return (
+                <OptionRow
+                  key={option.value}
+                  label={option.label}
+                  count={facets.rarityCounts[option.value]}
+                  checked={checked}
+                  onToggle={() => update({ rarity: checked ? undefined : option.value })}
+                  leading={
                     <span
                       className={cn(
                         "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
@@ -209,306 +296,59 @@ export function MarketplaceFilters({
                     >
                       {option.value}
                     </span>
-                    <span className="text-sm text-foreground">
-                      {option.label}
-                    </span>
-                    <span className="text-xs text-muted-foreground text-right">
-                      {rankCounts[option.value]}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="price">
-          <AccordionTrigger>
-            <span className="flex items-center gap-2">
-              <IndianRupee
-                className="size-4 text-muted-foreground"
-                strokeWidth={1.75}
-              />
-              Price Range (₹)
-            </span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  id={minId}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  placeholder="Min"
-                  value={filters.minPrice ?? ""}
-                  onChange={(e) =>
-                    update({
-                      minPrice:
-                        e.target.value === ""
-                          ? undefined
-                          : Number(e.target.value),
-                    })
                   }
-                  className="h-9"
                 />
-                <span className="text-sm text-muted-foreground" aria-hidden="true">
-                  to
-                </span>
-                <Input
-                  id={maxId}
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  placeholder="Max"
-                  value={filters.maxPrice ?? ""}
-                  onChange={(e) =>
-                    update({
-                      maxPrice:
-                        e.target.value === ""
-                          ? undefined
-                          : Number(e.target.value),
-                    })
-                  }
-                  className="h-9"
-                />
-              </div>
-
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-medium text-muted-foreground">
-                  ₹{minPrice.toLocaleString("en-IN")}
-                </span>
-                <span className="text-xs font-medium text-muted-foreground">
-                  ₹{maxPrice.toLocaleString("en-IN")}
-                </span>
-              </div>
-
-              <div className="relative h-1.5 rounded-full bg-secondary">
-                <div
-                  className="absolute h-full rounded-full bg-gold"
-                  style={{ left: `${minPct}%`, right: `${100 - maxPct}%` }}
-                  aria-hidden="true"
-                />
-                <input
-                  type="range"
-                  aria-label="Minimum price"
-                  min={0}
-                  max={MAX_PRICE_BOUND}
-                  step={1000}
-                  value={minPrice}
-                  onChange={(e) => {
-                    const next = Math.min(Number(e.target.value), maxPrice);
-                    update({ minPrice: next > 0 ? next : undefined });
-                  }}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-deep [&::-moz-range-thumb]:bg-background [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-deep [&::-webkit-slider-thumb]:bg-background pointer-events-none"
-                />
-                <input
-                  type="range"
-                  aria-label="Maximum price"
-                  min={0}
-                  max={MAX_PRICE_BOUND}
-                  step={1000}
-                  value={maxPrice}
-                  onChange={(e) => {
-                    const next = Math.max(Number(e.target.value), minPrice);
-                    update({
-                      maxPrice: next < MAX_PRICE_BOUND ? next : undefined,
-                    });
-                  }}
-                  className="absolute inset-0 h-full w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-deep [&::-moz-range-thumb]:bg-background [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-deep [&::-webkit-slider-thumb]:bg-background pointer-events-none"
-                />
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        <SelectFilterGroup
-          value="size"
-          icon={Ruler}
-          label="Size"
-          allLabel="All Sizes"
-          current={
-            filters.size
-              ? SIZE_OPTIONS.find((o) => o.value === filters.size)?.label
-              : null
-          }
-          selectValue={filters.size ?? ALL_VALUE}
-          onSelectChange={(value) =>
-            update({
-              size:
-                value !== ALL_VALUE ? (value as ArtworkSizeBand) : undefined,
-            })
-          }
-        >
-          {SIZE_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectFilterGroup>
-
-        <SelectFilterGroup
-          value="artist"
-          icon={User}
-          label="Artist"
-          allLabel="All Artists"
-          current={
-            filters.artistId
-              ? ARTIST_OPTIONS.find((a) => a.id === filters.artistId)?.name
-              : null
-          }
-          selectValue={filters.artistId ?? ALL_VALUE}
-          onSelectChange={(value) =>
-            update({ artistId: value !== ALL_VALUE ? value : undefined })
-          }
-        >
-          {ARTIST_OPTIONS.map((artist) => (
-            <SelectItem key={artist.id} value={artist.id}>
-              {artist.name}
-            </SelectItem>
-          ))}
-        </SelectFilterGroup>
-
-        <SelectFilterGroup
-          value="location"
-          icon={MapPin}
-          label="Location"
-          allLabel="All Locations"
-          current={filters.location}
-          selectValue={filters.location ?? ALL_VALUE}
-          onSelectChange={(value) =>
-            update({ location: value !== ALL_VALUE ? value : undefined })
-          }
-          isLast
-        >
-          {LOCATION_OPTIONS.map((location) => (
-            <SelectItem key={location} value={location}>
-              {location}
-            </SelectItem>
-          ))}
-        </SelectFilterGroup>
+              );
+            })}
+          </FilterGroup>
+        )}
       </Accordion>
-
-      {!bare && (
-        <button
-          type="button"
-          onClick={() =>
-            onChange({ ...DEFAULT_MARKETPLACE_FILTERS, query: filters.query })
-          }
-          className="mt-1 inline-flex items-center justify-center gap-2 rounded-full border border-border py-2.5 text-sm font-medium text-foreground transition-colors hover:border-gold/50 hover:text-gold-bright"
-        >
-          <RotateCcw className="size-3.5" strokeWidth={1.75} />
-          Reset Filters
-        </button>
-      )}
     </aside>
   );
 }
 
-// The five filter groups that are "just a Select" (Art Type, Medium, Size,
-// Artist, Location) share one shape: an icon+label trigger
-// with the current selection shown as a subtitle even while collapsed
-// (matching the reference board), and a Select in the panel. Rank
-// (checkboxes) and Price Range (slider) don't fit this shape, so they stay
-// hand-written above instead of being forced through this component.
-function SelectFilterGroup({
+function FilterGroup({
   value,
-  icon: Icon,
   label,
-  allLabel,
-  current,
-  selectValue,
-  onSelectChange,
   children,
-  isLast = false,
 }: {
   value: string;
-  icon: typeof Shapes;
   label: string;
-  allLabel: string;
-  current?: string | null;
-  selectValue: string;
-  onSelectChange: (value: string) => void;
   children: React.ReactNode;
-  isLast?: boolean;
 }) {
   return (
-    <AccordionItem value={value} className={isLast ? "border-b-0" : undefined}>
-      <AccordionTrigger>
-        <span className="flex flex-col items-start gap-0.5">
-          <span className="flex items-center gap-2">
-            <Icon className="size-4 text-muted-foreground" strokeWidth={1.75} />
-            {label}
-          </span>
-          <span className="pl-6 text-xs font-normal text-muted-foreground">
-            {current || allLabel}
-          </span>
-        </span>
-      </AccordionTrigger>
+    <AccordionItem value={value}>
+      <AccordionTrigger className="py-3.5 font-semibold hover:no-underline">{label}</AccordionTrigger>
       <AccordionContent>
-        <Select value={selectValue} onValueChange={(v) => onSelectChange(v ?? ALL_VALUE)}>
-          <SelectTrigger className="h-10 w-full">
-            <SelectValue placeholder={allLabel} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>{allLabel}</SelectItem>
-            {children}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col pb-1">{children}</div>
       </AccordionContent>
     </AccordionItem>
   );
 }
 
-// Art Type and Medium can each match more than one value at once — same
-// trigger/subtitle shape as SelectFilterGroup above, but the panel is a
-// MultiSelectCombobox (badges) instead of a single-value Select.
-function MultiSelectFilterGroup({
-  value,
-  icon: Icon,
+function OptionRow({
   label,
-  allLabel,
-  selected,
-  options,
-  onSelectedChange,
+  count,
+  checked,
+  onToggle,
+  leading,
 }: {
-  value: string;
-  icon: typeof Shapes;
   label: string;
-  allLabel: string;
-  selected: string[];
-  options: MultiSelectOption[];
-  onSelectedChange: (next: string[]) => void;
+  count?: number;
+  checked: boolean;
+  onToggle: () => void;
+  leading?: React.ReactNode;
 }) {
-  const current =
-    selected.length === 0
-      ? null
-      : selected.length === 1
-        ? (options.find((o) => o.value === selected[0])?.label ?? selected[0])
-        : `${selected.length} selected`;
-
   return (
-    <AccordionItem value={value}>
-      <AccordionTrigger>
-        <span className="flex flex-col items-start gap-0.5">
-          <span className="flex items-center gap-2">
-            <Icon className="size-4 text-muted-foreground" strokeWidth={1.75} />
-            {label}
-          </span>
-          <span className="pl-6 text-xs font-normal text-muted-foreground">
-            {current || allLabel}
-          </span>
-        </span>
-      </AccordionTrigger>
-      <AccordionContent>
-        <MultiSelectCombobox
-          options={options}
-          value={selected}
-          onChange={onSelectedChange}
-          placeholder={allLabel}
-          searchPlaceholder={`Search ${label.toLowerCase()}...`}
-        />
-      </AccordionContent>
-    </AccordionItem>
+    <label className="flex cursor-pointer items-center gap-3 py-2 text-sm text-foreground/85 transition-colors hover:text-foreground lg:py-1.5">
+      <Checkbox checked={checked} onCheckedChange={onToggle} />
+      {leading}
+      <span className="min-w-0 flex-1 truncate" title={label}>
+        {label}
+      </span>
+      {count !== undefined && (
+        <span className="text-xs text-muted-foreground tabular-nums">({count})</span>
+      )}
+    </label>
   );
 }

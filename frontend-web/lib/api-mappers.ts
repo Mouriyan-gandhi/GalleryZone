@@ -74,6 +74,13 @@ export function toMarketplacePage(dto: MarketplacePageDto): MarketplacePage {
 // images: [] — show a neutral placeholder rather than a broken <img>.
 export const ARTWORK_PLACEHOLDER_IMAGE = "/artworks/framed-painting.png";
 
+// Multiple artworks without a real photo all resolve to the same fallback
+// URL above — callers use this to render an honest "no image yet" state
+// instead of an <Image>, so unrelated listings don't look like duplicates.
+export function isPlaceholderImage(url: string): boolean {
+  return url === ARTWORK_PLACEHOLDER_IMAGE;
+}
+
 export function paiseToRupees(paise: number): number {
   return Math.round(paise) / 100;
 }
@@ -136,6 +143,11 @@ export function toArtworkSummary(dto: ArtworkDto): ArtworkSummary {
     status: a.status,
     listingType: a.listingType,
     rarityType: a.rarityType ?? null,
+    yearCreated: a.yearCreated,
+    dimensions: a.dimensions,
+    coaCertificateNumber: a.coaCertificateNumber || null,
+    sizeBand: dto.sizeBand ?? null,
+    artistLocation: dto.artistLocation ?? null,
   };
 }
 

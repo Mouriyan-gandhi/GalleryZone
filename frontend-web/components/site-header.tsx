@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -125,14 +126,19 @@ export function SiteHeader() {
           <div className="flex flex-1 items-center">
             <Link
               href={sessionRole ? ROLE_SECTION_HOME[sessionRole] : "/"}
-              className="flex items-baseline gap-2.5"
+              className="flex items-center gap-2.5"
             >
-            <span className="font-display text-2xl font-semibold italic text-gold-bright">
-              GZ
-            </span>
-            <span className="text-sm font-medium tracking-[0.18em] text-foreground">
-              GALLERYZONE
-            </span>
+              <Image
+                src="/brand/gz-logo.png"
+                alt="GalleryZone"
+                width={822}
+                height={560}
+                priority
+                className="h-9 w-auto shrink-0"
+              />
+              <span className="text-sm font-medium tracking-[0.18em] text-foreground">
+                GALLERYZONE
+              </span>
             </Link>
           </div>
 
@@ -305,11 +311,15 @@ export function SiteHeader() {
               <Link
                 href={sessionRole ? ROLE_SECTION_HOME[sessionRole] : "/"}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-baseline gap-2"
+                className="flex items-center gap-2"
               >
-                <span className="font-display text-xl font-semibold italic text-gold-bright">
-                  GZ
-                </span>
+                <Image
+                  src="/brand/gz-logo.png"
+                  alt="GalleryZone"
+                  width={822}
+                  height={560}
+                  className="h-7 w-auto shrink-0"
+                />
                 <span className="text-xs font-medium tracking-[0.18em] text-foreground">
                   GALLERYZONE
                 </span>
