@@ -53,7 +53,7 @@ export function useSetArtworkRarityMutation() {
       rarity,
     }: {
       artworkId: string;
-      rarity: ArtworkRarity | null;
+      rarity: ArtworkRarity;
     }) => adminService.setArtworkRarity(artworkId, rarity),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["admin-artworks"] });

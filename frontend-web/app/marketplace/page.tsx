@@ -12,10 +12,10 @@ import {
 } from "@/features/marketplace/marketplace-filters";
 import { MarketplaceGrid } from "@/features/marketplace/marketplace-grid";
 import { MarketplaceHero } from "@/features/marketplace/marketplace-hero";
-import { PassportBand } from "@/features/marketplace/passport-band";
+import { MarketplaceShowcase } from "@/features/marketplace/marketplace-showcase";
 import { isPlaceholderImage } from "@/lib/api-mappers";
 import { cn } from "@/lib/utils";
-import type { ArtworkFilters } from "@/types/artwork";
+import type { ArtworkFilters, ArtworkRarity } from "@/types/artwork";
 import { useMarketplaceOverview } from "@/hooks/useArtworks";
 
 export default function MarketplacePage() {
@@ -62,6 +62,12 @@ function MarketplacePageContent() {
       const alreadyOnly = f.category?.length === 1 && f.category[0] === value;
       return { ...f, category: value && !alreadyOnly ? [value] : undefined, page: undefined };
     });
+  }
+
+  // A rank in the showcase filters the catalogue to it and brings it into view.
+  function pickRank(rarity: ArtworkRarity) {
+    setFilters((f) => ({ ...f, rarity, page: undefined }));
+    document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" });
   }
 
   return (
@@ -124,7 +130,12 @@ function MarketplacePageContent() {
           </section>
         </div>
 
-        <PassportBand artwork={passportPiece} />
+        <MarketplaceShowcase
+          artwork={passportPiece}
+          rankCounts={overview?.facets.rarityCounts ?? {}}
+          onPickRank={pickRank}
+          loading={!overview}
+        />
 
         <MarketplaceMobileFilterSheet
           open={mobileFiltersOpen}

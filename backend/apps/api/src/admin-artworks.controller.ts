@@ -12,7 +12,7 @@ import { ZodValidationPipe } from "./zod-validation.pipe.ts";
 import { CacheKeys, ReadCache } from "./read-cache.ts";
 import { Emails } from "./mail/emails.ts";
 
-const raritySchema = z.object({ rarity: z.enum([...artworkRarityValues]).nullable() }).strict();
+const raritySchema = z.object({ rarity: z.enum([...artworkRarityValues]) }).strict();
 type RarityBody = z.infer<typeof raritySchema>;
 
 @Controller("v1/admin")

@@ -9,12 +9,12 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import { STAMP_TONE } from "@/components/shared/rarity-badge";
 import { cn, formatINR, humanize } from "@/lib/utils";
 import { useMarketplaceFacets, useMarketplaceOverview } from "@/hooks/useArtworks";
 import {
   ARTWORK_RARITY_OPTIONS,
   type ArtworkFilters,
-  type ArtworkRarity,
   type ArtworkSizeBand,
   type ArtworkSummary,
 } from "@/types/artwork";
@@ -44,15 +44,6 @@ const SIZE_OPTIONS: { value: ArtworkSizeBand; label: string }[] = [
   { value: "medium", label: "Medium" },
   { value: "large", label: "Large" },
 ];
-
-// Same solid per-rank colors as the card's corner stamp (rarity-badge.tsx):
-// one rank language across the marketplace.
-const RANK_TONE: Record<ArtworkRarity, string> = {
-  R: "bg-destructive text-white",
-  U: "bg-emerald-600 text-white",
-  O: "bg-gold-deep text-white",
-  N: "bg-muted-foreground text-background",
-};
 
 // Governs whether "Clear all" shows. `query` belongs to the search bar and
 // `sortBy` to the results toolbar, so neither counts.
@@ -291,7 +282,7 @@ export function MarketplaceFilters({
                     <span
                       className={cn(
                         "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                        RANK_TONE[option.value],
+                        STAMP_TONE[option.value],
                       )}
                     >
                       {option.value}

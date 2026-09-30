@@ -44,8 +44,14 @@ export type UserStatus = (typeof userStatusValues)[number];
 
 export type RoleGrant = "platform_admin" | "finance_admin" | "moderation_admin";
 export type ListingType = "marketplace_only" | "aggregator_only" | "marketplace_and_aggregator";
-export const artworkRarityValues = ["R", "U", "O", "N"] as const;
+export const artworkRarityValues = ["R", "U", "O", "S"] as const;
 export type ArtworkRarity = (typeof artworkRarityValues)[number];
+
+/** Standard used to be "N" (Normal); documents ranked before the rename still carry it. */
+export function normalizeRarity(value: string | null | undefined): ArtworkRarity | null {
+  if (value === "N") return "S";
+  return (artworkRarityValues as readonly string[]).includes(value ?? "") ? (value as ArtworkRarity) : null;
+}
 
 // --- Collection name constants -------------------------------------------------
 // Firestore has no schema enforcement, so these constants are the only

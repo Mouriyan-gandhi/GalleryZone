@@ -8,7 +8,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { isArtistGstRegistered } from "./profiles.ts";
 import { artistSettlementOf, artworkStateMachine, editWindowExpiresAt, externalSalePenaltyOf, type ArtistSettlement, type ArtworkStatus, type PricingRates } from "@galleryzone/domain";
-import { Collections, artworkPricingCol, artworkStatusEventsCol, type ArtworkDoc, type ArtworkPhysical, type ArtworkPricingDoc, type ArtworkStatusEventDoc, type ExternalSalePenaltyDoc, type ListingType } from "./collections.ts";
+import { Collections, normalizeRarity, artworkPricingCol, artworkStatusEventsCol, type ArtworkDoc, type ArtworkPhysical, type ArtworkPricingDoc, type ArtworkStatusEventDoc, type ExternalSalePenaltyDoc, type ListingType } from "./collections.ts";
 import { listArtworkImages, type ArtworkImage } from "./artwork-images.ts";
 import { getPublicArtwork, type PublicArtworkView } from "./public-artworks.ts";
 import { issueCertificate } from "./coa.ts";
@@ -269,6 +269,9 @@ const createdMillis = (doc: ArtworkDoc): number => doc.createdAt?.toMillis?.() ?
 export async function approveArtwork(db: Firestore, artworkId: string): Promise<void> {
   const current = await latestStatusOf(db, artworkId);
   artworkStateMachine.assertTransition(current, "marketplace");
+  // The rank is the platform's call and is compulsory: nothing goes live without one.
+  const doc = (await db.collection(Collections.artworks).doc(artworkId).get()).data() as ArtworkDoc | undefined;
+  if (!normalizeRarity(doc?.rarityType)) throw new ArtistArtworkError("Rank the artwork (Rare, Unique, Original or Standard) before approving it");
   await appendArtworkStatus(db, artworkId, { status: "marketplace", changedBy: null, reason: null });
   // A listed artwork always has a certificate number (artist MOU §11) —
   // idempotent, so re-approval after a return keeps the original number.

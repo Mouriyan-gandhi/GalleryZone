@@ -179,7 +179,7 @@ export const adminService = {
 
   getPendingArtwork: (id: string): Promise<Artwork | undefined> => adminApi.getArtwork(id),
 
-  approveArtwork: (id: string): Promise<{ id: string; status: "marketplace" }> => adminApi.approveArtwork(id),
+  approveArtwork: (id: string, rarity: ArtworkRarity): Promise<{ id: string; status: "marketplace" }> => adminApi.approveArtwork(id, rarity),
 
   rejectArtwork: (id: string, reason: string): Promise<{ id: string; status: "returned"; reason: string }> => {
     if (!reason.trim()) return Promise.reject(new Error("A rejection reason is required"));
@@ -288,7 +288,7 @@ export const adminService = {
   // to whichever collection actually holds the piece — a work still awaiting
   // approval lives in pendingArtworksCol, and ranking it there is the point:
   // an admin reviewing a submission is exactly when they judge it.
-  setArtworkRarity: (id: string, rarity: ArtworkRarity | null): Promise<Artwork> => adminApi.setArtworkRarity(id, rarity),
+  setArtworkRarity: (id: string, rarity: ArtworkRarity): Promise<Artwork> => adminApi.setArtworkRarity(id, rarity),
 
   setArtworkInsuranceStatus: (id: string, insuranceStatus: NonNullable<Artwork["insuranceStatus"]>): Promise<Artwork> => {
     if (insuranceStatus !== "approved" && insuranceStatus !== "rejected") return Promise.reject(new Error("Only approve or reject can be recorded"));

@@ -15,7 +15,7 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import type { ArtworkStatus } from "@galleryzone/domain";
-import { Collections, type ArtworkDoc } from "./collections.ts";
+import { Collections, normalizeRarity, type ArtworkDoc } from "./collections.ts";
 import { latestStatusOf, refreshListing } from "./listing-projection.ts";
 
 export { latestStatusOf as latestArtworkStatus };
@@ -67,7 +67,7 @@ async function toPublicView(db: Firestore, id: string, artwork: ArtworkDoc): Pro
     insured: artwork.insuranceStatus === "approved",
     status: listing.status,
     listingType: artwork.listingType,
-    rarityType: artwork.rarityType,
+    rarityType: normalizeRarity(artwork.rarityType),
     coaCertificateNumber: artwork.coaCertificateNumber,
     coaIssuedAt: artwork.coaIssuedAt?.toDate().toISOString() ?? null,
     createdAt: artwork.createdAt?.toDate().toISOString() ?? new Date(0).toISOString(),

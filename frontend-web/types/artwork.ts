@@ -330,7 +330,17 @@ export const WITHDRAWABLE_STATUSES = new Set<ArtworkStatus>([
 // GalleryZone decides this, not the artist. It is a ranking the platform puts
 // its name behind, so an artist cannot self-declare their work Rare — the
 // admin sets it from /admin/artworks/<id>.
-export type ArtworkRarity = "R" | "U" | "O" | "N";
+//
+// Every piece carries one — it is compulsory, chosen by an admin when the piece
+// is approved and changeable afterwards, never cleared. "S" (Standard) was "N"
+// (Normal) before the rename.
+export type ArtworkRarity = "R" | "U" | "O" | "S";
+
+/** Reads a rank from the API, mapping the retired "N" onto "S". */
+export function normalizeRarity(value: string | null | undefined): ArtworkRarity | null {
+  if (value === "N") return "S";
+  return value === "R" || value === "U" || value === "O" || value === "S" ? value : null;
+}
 
 // Same 4 states as GstStatus (types/admin.ts) — reused rather than imported
 // to keep this file's types self-contained from the admin domain; the
@@ -346,7 +356,7 @@ export const ARTWORK_RARITY_LABEL: Record<ArtworkRarity, string> = {
   R: "Rare",
   U: "Unique",
   O: "Original",
-  N: "Normal",
+  S: "Standard",
 };
 
 export const ARTWORK_RARITY_OPTIONS: {
@@ -362,7 +372,7 @@ export const ARTWORK_RARITY_OPTIONS: {
   {
     value: "U",
     label: "Unique",
-    description: "Singular piece — the only one in existence.",
+    description: "Singular piece, the only one in existence.",
   },
   {
     value: "O",
@@ -370,8 +380,8 @@ export const ARTWORK_RARITY_OPTIONS: {
     description: "Hand-made original by the artist.",
   },
   {
-    value: "N",
-    label: "Normal",
+    value: "S",
+    label: "Standard",
     description: "Open edition or standard listing.",
   },
 ];
