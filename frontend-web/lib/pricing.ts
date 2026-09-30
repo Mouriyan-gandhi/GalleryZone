@@ -62,11 +62,16 @@ export const AGGREGATOR_COMMISSION_RATE = 0.2;
 // price" — marketplace sales take nothing off.
 export const ARTIST_CONVENIENCE_RATE = 0.02;
 
+// Also aggregator sales only, of the artist's price (client, 30 Sep 2026:
+// "convenience 2%, technology 1%, others if happens"). Replaces the sheet's
+// example ₹500 "tech" line.
+export const ARTIST_TECHNOLOGY_RATE = 0.01;
+
 // Source: "How pay out looks as per Govt guidelines.xlsx" (9 Sep 2026),
 // confirmed against the client on a call. Income-tax TDS on the artist's own
-// price — separate from the 5% GST on the artwork, and only ever deducted
-// once the artist is GST-registered. Not GST-registered → this stays 0 on
-// every channel, exactly as before this rule existed.
+// price — separate from the 5% GST on the artwork. Withheld only once the
+// artist's sales this financial year pass ₹5 lakh (client, 30 Sep 2026); the
+// server decides that, so it is a flag on artistSettlementOf, not a rule here.
 export const ARTIST_TDS_RATE = 0.001;
 
 // GST on GalleryZone's own service-type charges (the convenience fee, and any
@@ -75,9 +80,8 @@ export const ARTIST_TDS_RATE = 0.001;
 // service charges, so this never applies there.
 export const SERVICE_GST_RATE = 0.18;
 
-// The sheet's aggregator example carries a ₹500 "other charges (if incurred)
-// — example tech" line with no defined trigger. Confirmed with the client:
-// default to 0 until a real trigger exists, rather than guess one.
+// "Other charges (if incurred)": real costs, charged when they happen (client,
+// 30 Sep 2026). Zero until one does.
 export const ARTIST_OTHER_CHARGE = 0;
 
 /** Charged to the customer at checkout. Zero during the launch period. */
@@ -185,6 +189,7 @@ export interface ArtistSettlement {
   gross: number;
   deliveryDeduction: number;
   convenienceDeduction: number;
+  technologyDeduction: number;
   otherChargesDeduction: number;
   serviceGstDeduction: number;
   tdsDeduction: number;
@@ -197,18 +202,18 @@ export interface ArtistSettlement {
 // also what settles the contradiction between artist MOU §10 (artist pays the
 // placement leg) and aggregator MOU §7 (aggregator pays it) — the artist does.
 //
-// `isGstRegistered` is the one thing that changes with the 9 Sep 2026 rule:
-// TDS only ever applies once the artist is GST-registered, on both channels.
-// Everything else in this function is unaffected by that flag — GalleryZone's
-// own take (delivery, convenience, service GST) is identical either way,
-// because TDS and service GST are money owed to the government, not to
-// GalleryZone. See pricing.check.ts's whole-flow balance check.
+// `tdsApplies` is true once this sale takes the artist's financial-year sales
+// past ₹5 lakh (client, 30 Sep 2026); the server knows the year's sales and
+// says so. Everything else in this function is unaffected by it — GalleryZone's
+// own take (convenience, technology) is identical either way, because TDS and
+// service GST are money owed to the government, not to GalleryZone. See
+// pricing.check.ts's whole-flow balance check.
 export function artistSettlementOf(
   artistPrice: number,
   channel: SaleChannel,
-  isGstRegistered: boolean,
+  tdsApplies: boolean,
 ): ArtistSettlement {
-  const tdsDeduction = isGstRegistered
+  const tdsDeduction = tdsApplies
     ? Math.round(artistPrice * ARTIST_TDS_RATE)
     : 0;
 
@@ -217,6 +222,7 @@ export function artistSettlementOf(
       gross: artistPrice,
       deliveryDeduction: 0,
       convenienceDeduction: 0,
+      technologyDeduction: 0,
       otherChargesDeduction: 0,
       serviceGstDeduction: 0,
       tdsDeduction,
@@ -227,15 +233,18 @@ export function artistSettlementOf(
   const convenienceDeduction = Math.round(
     artistPrice * ARTIST_CONVENIENCE_RATE,
   );
+  const technologyDeduction = Math.round(artistPrice * ARTIST_TECHNOLOGY_RATE);
   const otherChargesDeduction = ARTIST_OTHER_CHARGE;
   const serviceGstDeduction = Math.round(
-    (convenienceDeduction + otherChargesDeduction) * SERVICE_GST_RATE,
+    (convenienceDeduction + technologyDeduction + otherChargesDeduction) *
+      SERVICE_GST_RATE,
   );
 
   return {
     gross: artistPrice,
     deliveryDeduction: DELIVERY_CHARGE,
     convenienceDeduction,
+    technologyDeduction,
     otherChargesDeduction,
     serviceGstDeduction,
     tdsDeduction,
@@ -243,6 +252,7 @@ export function artistSettlementOf(
       artistPrice -
       DELIVERY_CHARGE -
       convenienceDeduction -
+      technologyDeduction -
       otherChargesDeduction -
       serviceGstDeduction -
       tdsDeduction,
@@ -261,9 +271,26 @@ export function aggregatorCommissionOf(
   return Math.round(markup * AGGREGATOR_COMMISSION_RATE);
 }
 
-/** Aggregator MOU §7 — 5% of the price the piece is being displayed at. */
-export function aggregatorAdvanceOf(displayPrice: number): number {
-  return Math.round(displayPrice * AGGREGATOR_ADVANCE_RATE);
+/**
+ * What a chosen selling price (before GST) means for everyone: the display
+ * price a customer sees, the GST inside it, the markup over the artist's
+ * price, and how the aggregator's 20% commission splits that markup.
+ * `gstRate` comes from the API's offer, so an approved rate change moves this
+ * with the rest of the site.
+ */
+export function aggregatorTermsAt({
+  sellingPrice,
+  artistPrice,
+  gstRate = GST_RATE,
+}: {
+  sellingPrice: number;
+  artistPrice: number;
+  gstRate?: number;
+}) {
+  const displayPrice = Math.round(sellingPrice * (1 + gstRate));
+  const markup = Math.max(0, sellingPrice - artistPrice);
+  const commission = Math.round(markup * AGGREGATOR_COMMISSION_RATE);
+  return { displayPrice, gst: displayPrice - sellingPrice, markup, commission, galleryZoneShare: markup - commission };
 }
 
 // --- The aggregator cycle ---------------------------------------------------
@@ -276,11 +303,12 @@ export function aggregatorAdvanceOf(displayPrice: number): number {
 // Two things change from month to month, and they change independently:
 //
 //   Month  Offered to the aggregator at   Advance
-//   1      1,30,000                       5% of the DISPLAY price
-//   2      1,28,000                       5% or 3% of the ARTIST price
-//   3      1,26,000                       3% of the artist price
-//   4      1,24,000                       3% of the artist price
-//   5      1,22,000                       3% of the artist price
+//   1      1,30,000 (or the price they set)  5% of THEIR price, before GST
+//   2      1,28,000 (1,30,000 if month 1     5% of the ARTIST price
+//          was appreciated)
+//   3      1,26,000                          3% of the artist price
+//   4      1,24,000                          3% of the artist price
+//   5      1,22,000                          3% of the artist price
 //
 // Every month also carries the delivery charge alongside the advance.
 
@@ -388,53 +416,52 @@ export function aggregatorDiscountRateOf(month: number): number {
 export function aggregatorOfferPriceOf(
   artistPrice: number,
   month: number,
+  { appreciated = false }: { appreciated?: boolean } = {},
 ): number {
-  const reduction = Math.round(artistPrice * aggregatorDiscountRateOf(month));
+  // Client, 30 Sep 2026: if the month-1 aggregator priced above the offer, the
+  // next one is back at the full price and the monthly drops start a month later.
+  const steps = appreciated ? Math.max(1, month - 1) : month;
+  const reduction = Math.round(artistPrice * aggregatorDiscountRateOf(steps));
   return basePriceOf(artistPrice) - reduction;
 }
 
 export interface AggregatorAdvance {
   month: number;
   rate: number;
-  /** What the rate is applied to — display price in month 1, artist price after. */
+  /** What the rate is applied to — the price the aggregator sets (before GST) in month 1, the artist price after. */
   base: number;
-  basis: "display_price" | "artist_price";
+  basis: "selling_price" | "artist_price";
   advance: number;
   deliveryCharge: number;
   /** Advance plus delivery — what is actually locked from the wallet. */
   payable: number;
 }
 
-// Month 1 is charged on the display price; every later month is charged on the
-// artist price. Month 2 is the only month whose RATE can vary: it stays at 5%
-// when the previous aggregator exercised their one price change, and drops to
-// 3% when they did not. Months 3 onward are always 3%.
+// Client, 30 Sep 2026. Month 1: 5% of the price the aggregator sets, before GST
+// (7,500 on 1,50,000; 6,500 if they keep 1,30,000). Month 2: 5% of the artist
+// price. Months 3 to 5: 3% of the artist price.
 export function aggregatorAdvanceForMonth({
   month,
-  displayPrice,
+  sellingPrice,
   artistPrice,
-  previousAggregatorChangedPrice = false,
   deliveryCharge = DELIVERY_CHARGE,
 }: {
   month: number;
-  displayPrice: number;
+  /** What the aggregator sells at, before GST. Only month 1 uses it. */
+  sellingPrice: number;
   artistPrice: number;
-  previousAggregatorChangedPrice?: boolean;
   deliveryCharge?: number;
 }): AggregatorAdvance {
   const firstMonth = month <= 1;
-  const rate =
-    firstMonth || (month === 2 && previousAggregatorChangedPrice)
-      ? AGGREGATOR_ADVANCE_RATE
-      : 0.03;
-  const base = firstMonth ? displayPrice : artistPrice;
+  const rate = month <= 2 ? AGGREGATOR_ADVANCE_RATE : 0.03;
+  const base = firstMonth ? sellingPrice : artistPrice;
   const advance = Math.round(base * rate);
 
   return {
     month,
     rate,
     base,
-    basis: firstMonth ? "display_price" : "artist_price",
+    basis: firstMonth ? "selling_price" : "artist_price",
     advance,
     deliveryCharge,
     payable: advance + deliveryCharge,

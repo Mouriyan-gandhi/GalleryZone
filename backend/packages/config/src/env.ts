@@ -31,6 +31,8 @@ export interface AppEnv {
   /** Where this API is reachable by browsers — baked into image URLs. */
   publicApiUrl: string;
   s3: { bucket: string; accessKeyId: string; secretAccessKey: string; endpoint: string; region: string } | null;
+  /** Who signs the MOUs for Galleryzone. Unset leaves the company's name/designation blanks empty on every MOU. */
+  mouSignatory: { name: string | null; designation: string | null };
 }
 
 function required(name: string, value: string | undefined): string {
@@ -83,5 +85,6 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
             region: source.S3_REGION || "auto",
           }
         : null,
+    mouSignatory: { name: optional(source.MOU_SIGNATORY_NAME?.trim()), designation: optional(source.MOU_SIGNATORY_DESIGNATION?.trim()) },
   };
 }

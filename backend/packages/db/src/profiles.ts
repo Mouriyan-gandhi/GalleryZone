@@ -202,12 +202,13 @@ export async function updateOwnProfile(db: Firestore, uid: string, patch: Profil
 }
 
 /**
- * Whether TDS §194-O applies to this artist's settlements. The payout sheets
- * withhold 0.1% only from a GST-registered artist; an unregistered one is
- * outside scope. "Registered" means an admin has approved the GSTIN, not
- * merely that the artist typed one in.
+ * Whether this user's GSTIN has been approved by an admin, not merely typed
+ * in. An aggregator needs it before they can reserve anything (client, 30 Sep
+ * 2026); for an artist it is optional and only earns better access to the sales
+ * channels. It no longer decides TDS: that follows the year's sales
+ * (artist-sales.ts).
  */
-export async function isArtistGstRegistered(db: Firestore, uid: string): Promise<boolean> {
+export async function hasApprovedGst(db: Firestore, uid: string): Promise<boolean> {
   if (!uid) return false;
   const snap = await db.collection(userProfileCol(uid)).doc("data").get();
   return (snap.data() as Partial<ProfileDoc> | undefined)?.gstStatus === "approved";

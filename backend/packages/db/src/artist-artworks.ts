@@ -6,8 +6,9 @@
 
 import type { Firestore } from "firebase-admin/firestore";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { isArtistGstRegistered } from "./profiles.ts";
-import { artistSettlementOf, artworkStateMachine, editWindowExpiresAt, externalSalePenaltyOf, type ArtistSettlement, type ArtworkStatus, type PricingRates } from "@galleryzone/domain";
+import { hasApprovedGst } from "./profiles.ts";
+import { artistSalesSoFar } from "./artist-sales.ts";
+import { artistSettlementOf, artworkStateMachine, editWindowExpiresAt, externalSalePenaltyOf, tdsAppliesOnSale, type ArtistSettlement, type ArtworkStatus, type PricingRates } from "@galleryzone/domain";
 import { Collections, artworkPricingCol, artworkStatusEventsCol, type ArtworkDoc, type ArtworkPhysical, type ArtworkPricingDoc, type ArtworkStatusEventDoc, type ExternalSalePenaltyDoc, type ListingType } from "./collections.ts";
 import { listArtworkImages, type ArtworkImage } from "./artwork-images.ts";
 import { getPublicArtwork, type PublicArtworkView } from "./public-artworks.ts";
@@ -182,14 +183,17 @@ export async function updateArtwork(
 export interface OwnerArtworkView extends PublicArtworkView {
   artistPricePaise: number;
   /**
-   * What the artist is actually paid, line by line, on each channel — the
-   * payout sheets' own breakdown, not just a net figure. TDS reflects this
-   * artist's real GST-registration status.
+   * What the artist would be paid if this sold now, line by line, on each
+   * channel: the payout sheets' own breakdown, not just a net figure. TDS is
+   * withheld once the artist's sales this financial year pass ₹5 lakh, so it
+   * reflects the year so far.
    */
   artistNet: {
     marketplace: number;
     aggregatorEstimate: number;
     isGstRegistered: boolean;
+    /** This sale would take the year past the ₹5 lakh line, so TDS would be withheld. */
+    tdsApplies: boolean;
     breakdown: { marketplace: ArtistSettlement; aggregator: ArtistSettlement };
   };
   images: ArtworkImage[];
@@ -204,7 +208,18 @@ export interface OwnerArtworkView extends PublicArtworkView {
   editableUntil: string;
 }
 
-async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc, rates: PricingRates): Promise<OwnerArtworkView | null> {
+/** What an estimate needs to know about the artist, read once however many pieces are shown. */
+interface ArtistContext {
+  isGstRegistered: boolean;
+  salesSoFarPaise: number;
+}
+
+async function artistContext(db: Firestore, artistId: string): Promise<ArtistContext> {
+  const [isGstRegistered, salesSoFarPaise] = await Promise.all([hasApprovedGst(db, artistId), artistSalesSoFar(db, artistId)]);
+  return { isGstRegistered, salesSoFarPaise };
+}
+
+async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc, rates: PricingRates, context: ArtistContext): Promise<OwnerArtworkView | null> {
   const pub = await getPublicArtwork(db, artworkId);
   if (!pub) return null;
   const [pricingSnap, images, eventsSnap] = await Promise.all([
@@ -213,9 +228,10 @@ async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc
     db.collection(artworkStatusEventsCol(artworkId)).orderBy("changedAt", "asc").get(),
   ]);
   const artistPricePaise = (pricingSnap.data() as ArtworkPricingDoc | undefined)?.artistPricePaise ?? 0;
-  const isGstRegistered = await isArtistGstRegistered(db, artwork.artistId);
-  const marketplaceSettlement = artistSettlementOf(artistPricePaise, "marketplace", rates, { isGstRegistered });
-  const aggregatorSettlement = artistSettlementOf(artistPricePaise, "aggregator", rates, { isGstRegistered });
+  const { isGstRegistered } = context;
+  const tdsApplies = tdsAppliesOnSale(context.salesSoFarPaise, artistPricePaise, rates);
+  const marketplaceSettlement = artistSettlementOf(artistPricePaise, "marketplace", rates, { tdsApplies });
+  const aggregatorSettlement = artistSettlementOf(artistPricePaise, "aggregator", rates, { tdsApplies });
   return {
     ...pub,
     images,
@@ -224,6 +240,7 @@ async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc
       marketplace: marketplaceSettlement.net,
       aggregatorEstimate: aggregatorSettlement.net,
       isGstRegistered,
+      tdsApplies,
       breakdown: { marketplace: marketplaceSettlement, aggregator: aggregatorSettlement },
     },
     statusHistory: eventsSnap.docs.map((d) => {
@@ -246,7 +263,7 @@ export async function getArtistArtwork(db: Firestore, artistId: string, artworkI
   const snap = await db.collection(Collections.artworks).doc(artworkId).get();
   const artwork = snap.data() as ArtworkDoc | undefined;
   if (!artwork || artwork.artistId !== artistId) return null;
-  return toOwnerView(db, artworkId, artwork, rates);
+  return toOwnerView(db, artworkId, artwork, rates, await artistContext(db, artistId));
 }
 
 /**
@@ -260,7 +277,8 @@ export async function getArtistArtwork(db: Firestore, artistId: string, artworkI
 export async function listArtistArtworksOwned(db: Firestore, artistId: string, rates: PricingRates): Promise<OwnerArtworkView[]> {
   const snap = await db.collection(Collections.artworks).where("artistId", "==", artistId).get();
   const docs = [...snap.docs].sort((a, b) => createdMillis(b.data() as ArtworkDoc) - createdMillis(a.data() as ArtworkDoc));
-  const views = await Promise.all(docs.map((d) => toOwnerView(db, d.id, d.data() as ArtworkDoc, rates)));
+  const context = await artistContext(db, artistId);
+  const views = await Promise.all(docs.map((d) => toOwnerView(db, d.id, d.data() as ArtworkDoc, rates, context)));
   return views.filter((v): v is OwnerArtworkView => v !== null);
 }
 

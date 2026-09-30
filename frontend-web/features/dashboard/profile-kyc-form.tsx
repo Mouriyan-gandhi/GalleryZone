@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { FileUploader } from "@/components/ui/file-uploader";
+import { GstStatusBadge } from "@/components/shared/gst-status-badge";
 import { formatINR } from "@/lib/utils";
 import { InstagramGlyph } from "@/components/social-icons";
 import {
@@ -60,28 +61,6 @@ type ProfileFormState = {
   socialProofVideoUrl: string;
   gstin: string;
   pan: string;
-};
-
-const GST_STATUS_LABEL: Record<
-  "not_submitted" | "submitted" | "approved" | "rejected",
-  { label: string; className: string }
-> = {
-  not_submitted: {
-    label: "Not started",
-    className: "border-border text-muted-foreground",
-  },
-  submitted: {
-    label: "Pending GalleryZone approval",
-    className: "border-gold/40 bg-gold/10 text-gold-bright",
-  },
-  approved: {
-    label: "Approved",
-    className: "border-emerald-500/40 bg-emerald-500/10 text-emerald-500",
-  },
-  rejected: {
-    label: "Rejected — resubmit",
-    className: "border-destructive/40 bg-destructive/10 text-destructive",
-  },
 };
 
 type PickupFormState = {
@@ -446,11 +425,7 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
                   (optional &middot; preferred)
                 </span>
               </Label>
-              <span
-                className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${GST_STATUS_LABEL[gstStatus].className}`}
-              >
-                {GST_STATUS_LABEL[gstStatus].label}
-              </span>
+              <GstStatusBadge status={gstStatus} />
             </div>
             <div className="relative sm:max-w-xs">
               <Receipt className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -473,9 +448,11 @@ function ProfileKycFormBody({ profile }: { profile: ArtistAccountProfile }) {
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Not required to list or sell. If your yearly income is above{" "}
-                {formatINR(GST_SUGGESTED_INCOME_THRESHOLD)}, we recommend
-                adding one — used only for invoicing and settlement, never
+                Not required to list or sell, but worth adding: a GSTIN lets
+                you claim input tax credit on your art costs and gives you
+                better access to sales channels. If your yearly income is
+                above {formatINR(GST_SUGGESTED_INCOME_THRESHOLD)}, we
+                recommend it. Used only for invoicing and settlement, never
                 shown on your public profile or to buyers.
               </p>
             )}

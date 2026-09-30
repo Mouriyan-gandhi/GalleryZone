@@ -8,27 +8,47 @@
 //   POST /v1/payments/razorpay/webhook    public — Razorpay's server → ours
 //        payment.captured / order.paid → paid; payment.failed → recorded
 //
+// An aggregator's wallet top-up is the same shape (client, 30 Sep 2026: money
+// comes in "from his bank account like Razorpay"):
+//   POST /v1/aggregator/wallet/topups             aggregator — { amountPaise } → the same session shape
+//   POST /v1/aggregator/wallet/topups/:id/verify  aggregator — the Checkout.js callback → credits the wallet
+//   POST /v1/aggregator/wallet/topups/:id/simulate  aggregator — PAYMENTS_MODE=simulated only
+// The webhook routes a payment to a top-up by the gzTopupId note on its order.
+//
 // Both the verify callback and the webhook can mark the same order paid;
 // markOrderPaid is idempotent so whichever arrives second is a no-op. The
 // webhook is the source of truth (it arrives even if the buyer closes the
 // tab); the verify call just makes the success screen instant.
 
-import { BadRequestException, Body, Controller, Headers, HttpCode, Inject, NotFoundException, Param, Post, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, ForbiddenException, Headers, HttpCode, Inject, NotFoundException, Param, Post, Req } from "@nestjs/common";
 import { SkipThrottle } from "@nestjs/throttler";
 import type { Request } from "express";
 import { z } from "zod";
 import {
   CheckoutError,
+  WalletTopupError,
   attachProviderOrder,
+  attachTopupProviderOrder,
+  createWalletTopup,
   getCurrentUser,
   getOrder,
+  getWalletTopup,
   markOrderPaid,
   markPaymentFailed,
+  markTopupFailed,
+  markTopupPaid,
   orderIdForProviderOrder,
+  topupIdForProviderOrder,
   Collections,
   type Db,
   type ArtworkDoc,
 } from "@galleryzone/db";
+import {
+  startWalletTopupInputSchema,
+  verifyWalletTopupInputSchema,
+  type StartWalletTopupInput,
+  type VerifyWalletTopupInput,
+} from "@galleryzone/contracts";
 import type { AppEnv } from "@galleryzone/config";
 import { Public, Roles } from "../auth/roles.decorator.ts";
 import type { AuthenticatedRequest } from "../auth/roles.guard.ts";
@@ -128,6 +148,60 @@ export class PaymentsController {
     }
   }
 
+  private async ownTopup(req: AuthenticatedRequest, id: string) {
+    const topup = await getWalletTopup(this.db, id);
+    // 404, not 403: don't confirm to a stranger that the id exists.
+    if (!topup || topup.userId !== req.authUser.uid) throw new NotFoundException({ type: "about:blank", title: "Top-up not found", status: 404, code: "not_found" });
+    return topup;
+  }
+
+  @Roles("aggregator")
+  @Post("aggregator/wallet/topups")
+  async startTopup(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(startWalletTopupInputSchema)) body: StartWalletTopupInput) {
+    const { topupId } = await createWalletTopup(this.db, { userId: req.authUser.uid, amountPaise: body.amountPaise });
+    if (this.env.paymentsMode !== "razorpay") return { mode: "simulated" as const, topupId, amountPaise: body.amountPaise };
+
+    const [user, gateway] = await Promise.all([
+      getCurrentUser(this.db, req.authUser.uid, { touchLogin: false }),
+      this.razorpay.createTopupOrder({ topupId, amountPaise: body.amountPaise, userId: req.authUser.uid }),
+    ]);
+    await attachTopupProviderOrder(this.db, topupId, gateway.id);
+    return {
+      mode: "razorpay" as const,
+      topupId,
+      keyId: this.razorpay.keyId,
+      razorpayOrderId: gateway.id,
+      amountPaise: body.amountPaise,
+      currency: "INR",
+      name: "GalleryZone",
+      description: "Add funds to your GalleryZone wallet",
+      prefill: { name: user?.name ?? "", email: user?.email ?? "", contact: user?.phone ?? "" },
+    };
+  }
+
+  @Roles("aggregator")
+  @Post("aggregator/wallet/topups/:id/verify")
+  async verifyTopup(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(verifyWalletTopupInputSchema)) body: VerifyWalletTopupInput) {
+    const topup = await this.ownTopup(req, id);
+    if (topup.providerOrderId !== body.razorpayOrderId || !this.razorpay.verifyCheckoutSignature(body)) {
+      throw new BadRequestException({ type: "about:blank", title: "Payment signature does not match", status: 400, code: "bad_signature" });
+    }
+    const result = await markTopupPaid(this.db, id, { method: "razorpay_checkout", providerPaymentId: body.razorpayPaymentId });
+    return { status: "paid", amountPaise: result.amountPaise };
+  }
+
+  /** The simulated gateway, for environments with no Razorpay keys. Refused the moment PAYMENTS_MODE is razorpay. */
+  @Roles("aggregator")
+  @Post("aggregator/wallet/topups/:id/simulate")
+  async simulateTopup(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+    if (this.env.paymentsMode !== "simulated") {
+      throw new ForbiddenException({ type: "about:blank", title: "Simulated payment is disabled", status: 403, code: "payments_not_simulated" });
+    }
+    await this.ownTopup(req, id);
+    const result = await markTopupPaid(this.db, id, { method: "simulated", providerPaymentId: null });
+    return { status: "paid", amountPaise: result.amountPaise };
+  }
+
   /** Razorpay → us. Always 200 once the signature checks out, so Razorpay stops retrying; unknown events are ignored. */
   @Public()
   @SkipThrottle()
@@ -141,6 +215,11 @@ export class PaymentsController {
     const event = req.body as WebhookEvent;
     const payment = event.payload?.payment?.entity;
     const providerOrderId = payment?.order_id ?? event.payload?.order?.entity?.id ?? null;
+    // A wallet top-up is told apart from an artwork order by its note (or its gateway order id).
+    const topupId =
+      payment?.notes?.gzTopupId ?? event.payload?.order?.entity?.notes?.gzTopupId ?? (providerOrderId ? await topupIdForProviderOrder(this.db, providerOrderId) : null);
+    if (topupId) return this.topupWebhook(event.event, topupId, payment);
+
     const noteOrderId = payment?.notes?.gzOrderId ?? event.payload?.order?.entity?.notes?.gzOrderId ?? null;
     const orderId = noteOrderId ?? (providerOrderId ? await orderIdForProviderOrder(this.db, providerOrderId) : null);
     if (!orderId) return { received: true, matched: false };
@@ -169,6 +248,20 @@ export class PaymentsController {
       }
       default:
         break;
+    }
+    return { received: true, matched: true };
+  }
+
+  private async topupWebhook(event: string, topupId: string, payment: { id?: string; method?: string } | undefined) {
+    try {
+      if (event === "payment.captured" || event === "order.paid") {
+        await markTopupPaid(this.db, topupId, { method: payment?.method ? `razorpay_${payment.method}` : "razorpay", providerPaymentId: payment?.id ?? null });
+      } else if (event === "payment.failed") {
+        await markTopupFailed(this.db, topupId, { providerPaymentId: payment?.id ?? null });
+      }
+    } catch (error) {
+      // An unknown top-up id is an operator problem, not a retry loop.
+      if (!(error instanceof WalletTopupError)) throw error;
     }
     return { received: true, matched: true };
   }

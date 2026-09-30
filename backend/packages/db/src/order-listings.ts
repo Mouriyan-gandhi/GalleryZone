@@ -1,6 +1,7 @@
 // Order listing reads — Firestore version.
 
 import type { Firestore } from "firebase-admin/firestore";
+import { artistSalesByOrder } from "./artist-sales.ts";
 import { Collections, artworkPricingCol, orderStatusEventsCol, type ArtworkDoc, type ArtworkPricingDoc, type OrderDoc, type OrderStatusEventDoc, type PaymentDoc } from "./collections.ts";
 
 export interface OrderView extends OrderDoc {
@@ -53,14 +54,17 @@ export async function listArtistOrders(db: Firestore, artistId: string): Promise
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
   const snaps = await Promise.all(chunks.map((chunk) => db.collection(Collections.orders).where("artworkId", "in", chunk).get()));
+  const sales = await artistSalesByOrder(db, artistId);
   const rows = await Promise.all(
     snaps.flatMap((s) => s.docs).map(async (d) => {
       const order = d.data() as OrderDoc;
       const pricingSnap = await db.collection(artworkPricingCol(order.artworkId)).doc("data").get();
       const pricing = pricingSnap.data() as ArtworkPricingDoc | undefined;
       const view = await decorate(db, d.id, order);
-      // Marketplace channel: the artist's price is paid in full (domain artistSettlementOf).
-      return { ...view, artistNetPaise: pricing?.artistPricePaise ?? 0 };
+      // What the sale actually paid out (less any TDS). An order from before
+      // sales were recorded has no record: the artist's price, which the old
+      // rules only ever moved by 0.1%.
+      return { ...view, artistNetPaise: sales.get(d.id)?.netPaise ?? pricing?.artistPricePaise ?? 0 };
     }),
   );
   return rows.sort((a, b) => (b.createdAt?.toMillis() ?? 0) - (a.createdAt?.toMillis() ?? 0));

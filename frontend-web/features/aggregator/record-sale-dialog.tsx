@@ -96,7 +96,7 @@ export function RecordSaleDialog({
     // Always the holding's own selling price. The field used to be editable,
     // but every ledger posting for the sale settles on the display price, so
     // a different number here would only make the sale record and the money
-    // disagree -- the API refuses it. Re-price the holding to change it.
+    // disagree -- the API refuses it. The price is set once, when reserving.
     if (open && holding) {
       reset({ soldPrice: holding.displayPrice, ...BLANK_BUYER_FIELDS });
     }
@@ -208,8 +208,8 @@ export function RecordSaleDialog({
                     aria-invalid={fieldState.invalid}
                   />
                   <FieldDescription>
-                    This piece&rsquo;s selling price. To change it, set a new
-                    price on the holding before recording the sale.
+                    This piece&rsquo;s selling price, including GST. It was
+                    set when you reserved the piece.
                   </FieldDescription>
                   <FieldError errors={[fieldState.error]} />
                 </Field>

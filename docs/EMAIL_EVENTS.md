@@ -64,11 +64,11 @@ page either — it resolves per role.
 
 | Event | To | Status | Notes |
 |---|---|---|---|
-| GSTIN approved / rejected | the artist | **Live** | Matters for money: approval switches on TDS withholding. |
+| GSTIN approved / rejected | the artist or aggregator | **Live** | An aggregator can't reserve until it is approved. It no longer decides TDS, which follows the artist's financial-year sales. |
 | KYC approved / rejected | the artist | **Live** | Blocks payouts while unresolved. |
 | Insurance approved / rejected on a piece | the artist | **Live** | |
 | Artist MOU version bumped → re-signature required | all artists | **Not built** | Today they only find out on next sign-in. |
-| Earnings crossed the ₹5,00,000 §194-O threshold | the artist | **Not built** | Admin flags it; the artist should know why TDS changed. |
+| Sales crossed ₹5,00,000 in the financial year (TDS starts) | the artist | **Not built** | TDS is now withheld from the sale that crosses the line. The artist should know why a payout came in lower. |
 
 ## 4. Orders and payment
 
@@ -114,11 +114,14 @@ page either — it resolves per role.
 | Aggregator reserved a piece | the aggregator | **Live** | Their confirmation of the advance and the placement window. |
 | Aggregator reserved a piece | the artist | **Live** | Names the gallery and the date the placement window closes. |
 | Reserved piece — shipping instructions | the artist | **Not built** | |
-| Placement window closing (7 days out) | the aggregator | **Not built** | Needs a scheduled job. |
-| Placement expired, piece must return | the aggregator + the artist | **Not built** | Needs the expiry cron. |
+| Placement window closing (7 days out) | the aggregator | **Not built** | The expiry sweep exists now (below), so this is a small addition to it. |
+| Placement window ended, piece moved on, advance released | the aggregator | **Live** | Sent by the sweep in `holding-expiry.ts`, which runs at boot and every 15 minutes. Not sent to the artist yet. |
+| Aggregator priced a piece at least double GalleryZone's offer | admins | **Live** | A warning, never a block (`aggregatorPriceWarnRate`). |
+| Aggregator asked to keep a piece past its window | admins | **Live** | Carries their assurance. |
+| Extension request approved / declined | the aggregator | **Live** | Carries GalleryZone's note. |
 | Piece returned unsold | the artist + admins | **Not built** | |
 | Sale recorded at a partner gallery | the artist + admins | **Not built** | |
-| Cash-at-premises sale awaiting remittance | the aggregator | **Not built** | Chaser for money owed to GalleryZone. |
+| Cash-at-premises sale due, or overdue | the aggregator | **Not built** | The full price is due 2 days after the sale (client, 30 Sep 2026). The due date and an overdue flag show on the Settlements page; no mail is sent yet. |
 | Admin pulled a piece back | the aggregator + the artist | **Not built** | |
 | Aggregator MOU re-signature required | all aggregators | **Not built** | |
 
@@ -150,9 +153,10 @@ decision, and support acknowledgement in both directions. What is left:
    transfer are separate events; only approval is mailed. Needs the RazorpayX
    payout integration to have something to report.
 3. **GST invoice issued** → the buyer. Needs the invoice PDF first.
-4. **Scheduled mails** — placement expiry, listing expiry, free-edit window
-   closing, settlement released. These all need the cron work already on the
-   launch list, so they come last.
+4. **Scheduled mails** — listing expiry, free-edit window closing,
+   settlement released, and a 7-day warning before a placement window ends.
+   Placement expiry itself now runs (`holding-expiry.ts`); the rest all need
+   the cron work already on the launch list, so they come last.
 5. **Support ticket replied to.** There is no admin reply flow, or an admin
    support queue page, to hang it on yet.
 

@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import {
   aggregatorAdvanceForMonth,
-  aggregatorAdvanceOf,
   aggregatorOfferPriceOf,
+  aggregatorTermsAt,
   billableWeightKg,
   canPlaceWithAnotherAggregator,
   daysLeftInListing,
@@ -54,26 +54,27 @@ assert.equal(
   "GST is never a line added to the total",
 );
 
-// --- 9 Sep 2026: TDS, per "How pay out looks as per Govt guidelines.xlsx" --
+// --- TDS, per "How pay out looks as per Govt guidelines.xlsx" ----------------
 //
-// 0.1% TDS on the artist's own price, but ONLY once the artist is
-// GST-registered — not GST-registered means the sale runs exactly as it did
-// before this rule existed.
+// 0.1% TDS on the artist's own price, withheld only once the artist's sales this
+// financial year pass ₹5 lakh (client, 30 Sep 2026). The server knows the year's
+// sales and passes `tdsApplies`.
 
 const artistOnMarketplace = artistSettlementOf(ARTIST_PRICE, "marketplace", false);
-assert.equal(artistOnMarketplace.net, 100_000, "not GST-registered: marketplace artist keeps the full price");
+assert.equal(artistOnMarketplace.net, 100_000, "under the line: marketplace artist keeps the full price");
 assert.equal(artistOnMarketplace.deliveryDeduction, 0);
 assert.equal(artistOnMarketplace.convenienceDeduction, 0);
-assert.equal(artistOnMarketplace.tdsDeduction, 0, "no TDS without GST registration");
+assert.equal(artistOnMarketplace.technologyDeduction, 0, "no technology charge on the marketplace");
+assert.equal(artistOnMarketplace.tdsDeduction, 0, "no TDS under ₹5 lakh of sales");
 
-const artistOnMarketplaceGstRegistered = artistSettlementOf(ARTIST_PRICE, "marketplace", true);
-assert.equal(artistOnMarketplaceGstRegistered.tdsDeduction, 100, "0.1% TDS once GST-registered");
-assert.equal(artistOnMarketplaceGstRegistered.net, 99_900, "GST-registered: 1,00,000 less 100 TDS");
+const artistOnMarketplacePastTheLine = artistSettlementOf(ARTIST_PRICE, "marketplace", true);
+assert.equal(artistOnMarketplacePastTheLine.tdsDeduction, 100, "0.1% TDS once past ₹5 lakh");
+assert.equal(artistOnMarketplacePastTheLine.net, 99_900, "past the line: 1,00,000 less 100 TDS");
 
 // GalleryZone's share: what the customer paid, less GST (goes to the
 // government), less delivery (goes to the carrier), less the artist. Checked
-// against the not-GST-registered settlement, since GalleryZone's own share
-// is unaffected either way — TDS goes to the government, never to GalleryZone.
+// against the settlement with no TDS, since GalleryZone's own share is
+// unaffected either way — TDS goes to the government, never to GalleryZone.
 assert.equal(
   marketplace.total - marketplace.gstIncluded - marketplace.deliveryCharge - artistOnMarketplace.net,
   30_000,
@@ -90,8 +91,12 @@ const aggregatorCheckout = checkoutTotal(aggregatorDisplay);
 assert.equal(aggregatorCheckout.total, 160_000, "customer pays 1,60,000");
 assert.equal(aggregatorCheckout.gstIncluded, 7_500);
 
-assert.equal(aggregatorAdvanceOf(aggregatorDisplay), 7_875, "5% advance on the display price");
-assert.equal(aggregatorAdvanceOf(150_000), 7_500, "5% advance on the sheet's pre-tax figure");
+// The advance is 5% of the price the aggregator sets, before GST.
+assert.equal(
+  aggregatorAdvanceForMonth({ month: 1, sellingPrice: 150_000, artistPrice: ARTIST_PRICE }).advance,
+  7_500,
+  "5% advance on the pre-tax 1,50,000",
+);
 
 assert.equal(
   aggregatorCommissionOf(aggregatorDisplay, ARTIST_PRICE),
@@ -105,21 +110,22 @@ assert.equal(aggregatorCommissionOf(withGst(90_000), ARTIST_PRICE), 0, "no negat
 const artistOnAggregator = artistSettlementOf(ARTIST_PRICE, "aggregator", false);
 assert.equal(artistOnAggregator.deliveryDeduction, 2_500);
 assert.equal(artistOnAggregator.convenienceDeduction, 2_000, "2% convenience");
-assert.equal(artistOnAggregator.otherChargesDeduction, 0, "no trigger defined yet");
-assert.equal(artistOnAggregator.serviceGstDeduction, 360, "18% of the 2,000 convenience charge");
-assert.equal(artistOnAggregator.tdsDeduction, 0, "no TDS without GST registration");
-assert.equal(artistOnAggregator.net, 95_140, "not GST-registered artist receives 95,140");
+assert.equal(artistOnAggregator.technologyDeduction, 1_000, "1% technology");
+assert.equal(artistOnAggregator.otherChargesDeduction, 0, "real costs only, none yet");
+assert.equal(artistOnAggregator.serviceGstDeduction, 540, "18% of (2,000 + 1,000)");
+assert.equal(artistOnAggregator.tdsDeduction, 0, "no TDS under ₹5 lakh of sales");
+assert.equal(artistOnAggregator.net, 93_960, "artist receives 93,960 with the default 2,500 delivery");
 
-const artistOnAggregatorGstRegistered = artistSettlementOf(ARTIST_PRICE, "aggregator", true);
-assert.equal(artistOnAggregatorGstRegistered.tdsDeduction, 100, "0.1% TDS once GST-registered");
-assert.equal(artistOnAggregatorGstRegistered.serviceGstDeduction, 360, "service GST is unaffected by TDS");
-assert.equal(artistOnAggregatorGstRegistered.net, 95_040, "GST-registered artist receives 95,040");
+const artistOnAggregatorPastTheLine = artistSettlementOf(ARTIST_PRICE, "aggregator", true);
+assert.equal(artistOnAggregatorPastTheLine.tdsDeduction, 100, "0.1% TDS once past ₹5 lakh");
+assert.equal(artistOnAggregatorPastTheLine.serviceGstDeduction, 540, "service GST is unaffected by TDS");
+assert.equal(artistOnAggregatorPastTheLine.net, 93_860, "past the line: 93,860");
 
 // Whole-flow balance: everything the customer and the aggregator put in has to
 // come back out as GST, delivery, the three parties' shares, and now also
 // service GST + TDS — both of which are owed to the government, not
 // GalleryZone, so they must be added to moneyOut rather than left inside the
-// artist's net for GalleryZone's 42,000 margin to still balance.
+// artist's net for GalleryZone's margin to still balance.
 const aggregatorSettlement = 7_500 + DELIVERY_CHARGE + 10_000; // advance back + delivery back + commission
 const moneyIn = aggregatorCheckout.total + 7_500 + DELIVERY_CHARGE;
 const moneyOut =
@@ -130,7 +136,7 @@ const moneyOut =
   artistOnAggregator.net +
   artistOnAggregator.serviceGstDeduction +
   artistOnAggregator.tdsDeduction;
-assert.equal(moneyIn - moneyOut, 42_000, "GalleryZone keeps 42,000 on an aggregator sale — TDS and service GST are pass-through, not extra margin");
+assert.equal(moneyIn - moneyOut, 43_000, "GalleryZone keeps 43,000 on an aggregator sale (the old 42,000 plus the 1% technology charge) — TDS and service GST are pass-through, not extra margin");
 
 // --- Working the ladder backwards -------------------------------------------
 
@@ -186,23 +192,24 @@ assert.equal(
   "commission carries no GST of its own",
 );
 
-// As of 9 Sep 2026 the artist's settlement DOES include tax calculations —
-// 18% GST on the convenience/other charges, and TDS once GST-registered —
-// but never on the artwork price itself, and never combined with each other.
+// The artist's settlement DOES include tax calculations — 18% GST on the
+// convenience/technology/other charges, and TDS once past ₹5 lakh — but never
+// on the artwork price itself, and never combined with each other.
 assert.equal(
   artistOnAggregator.net,
   ARTIST_PRICE -
     artistOnAggregator.deliveryDeduction -
     artistOnAggregator.convenienceDeduction -
+    artistOnAggregator.technologyDeduction -
     artistOnAggregator.otherChargesDeduction -
     artistOnAggregator.serviceGstDeduction -
     artistOnAggregator.tdsDeduction,
   "the artist's settlement accounts for every deduction, nothing hidden",
 );
 assert.equal(
-  artistOnAggregatorGstRegistered.net,
-  artistOnAggregator.net - artistOnAggregatorGstRegistered.tdsDeduction,
-  "TDS is the only difference GST-registration makes to an aggregator sale",
+  artistOnAggregatorPastTheLine.net,
+  artistOnAggregator.net - artistOnAggregatorPastTheLine.tdsDeduction,
+  "TDS is the only difference passing the ₹5 lakh line makes to an aggregator sale",
 );
 
 // --- The five-month aggregator cycle ----------------------------------------
@@ -213,6 +220,28 @@ assert.deepEqual(
   [130_000, 128_000, 126_000, 124_000, 122_000],
   "offer price falls 2/4/6/8% of the artist price",
 );
+
+// If the month-1 aggregator priced above the offer, month 2 is back at the full
+// price and the drops start a month later (client, 30 Sep 2026).
+assert.deepEqual(
+  [1, 2, 3, 4, 5].map((month) => aggregatorOfferPriceOf(ARTIST_PRICE, month, { appreciated: true })),
+  [130_000, 130_000, 128_000, 126_000, 124_000],
+  "an appreciated month 1 delays the drops by a month",
+);
+
+// What each price means for everyone, before GST in, display price out.
+assert.deepEqual(
+  aggregatorTermsAt({ sellingPrice: 150_000, artistPrice: ARTIST_PRICE }),
+  { displayPrice: 157_500, gst: 7_500, markup: 50_000, commission: 10_000, galleryZoneShare: 40_000 },
+  "the client's own 1,50,000 example",
+);
+assert.deepEqual(
+  aggregatorTermsAt({ sellingPrice: 130_000, artistPrice: ARTIST_PRICE }),
+  { displayPrice: 136_500, gst: 6_500, markup: 30_000, commission: 6_000, galleryZoneShare: 24_000 },
+  "keeping GalleryZone's price",
+);
+assert.equal(aggregatorTermsAt({ sellingPrice: 90_000, artistPrice: ARTIST_PRICE }).commission, 0, "never a negative commission");
+assert.equal(aggregatorTermsAt({ sellingPrice: 100_000, artistPrice: ARTIST_PRICE, gstRate: 0.12 }).displayPrice, 112_000, "the GST rate comes from the caller");
 
 // Month 6 is the transit buffer. If it is ever used it holds at month 5.
 assert.equal(aggregatorOfferPriceOf(ARTIST_PRICE, 6), 122_000);
@@ -227,49 +256,27 @@ assert.equal(
   "GalleryZone's margin absorbs the whole reduction",
 );
 
-// Advance, month by month. Month 1 is charged on the display price the
-// aggregator sets; every later month on the artist price.
-const monthOne = aggregatorAdvanceForMonth({
-  month: 1,
-  displayPrice: 150_000,
-  artistPrice: ARTIST_PRICE,
-});
-assert.equal(monthOne.advance, 7_500, "month 1: 5% of 1,50,000");
-assert.equal(monthOne.basis, "display_price");
+// Advance, month by month (client, 30 Sep 2026). Month 1: 5% of the price the
+// aggregator sets, before GST. Month 2: 5% of the artist price. Months 3 to 5:
+// 3% of the artist price.
+const monthOneKept = aggregatorAdvanceForMonth({ month: 1, sellingPrice: 130_000, artistPrice: ARTIST_PRICE });
+assert.equal(monthOneKept.advance, 6_500, "month 1, price kept: 5% of 1,30,000");
+
+const monthOne = aggregatorAdvanceForMonth({ month: 1, sellingPrice: 150_000, artistPrice: ARTIST_PRICE });
+assert.equal(monthOne.advance, 7_500, "month 1, price raised: 5% of 1,50,000");
+assert.equal(monthOne.basis, "selling_price");
 assert.equal(monthOne.payable, 7_500 + DELIVERY_CHARGE, "advance plus delivery");
 
-// Month 2 keeps 5% only when the previous aggregator used their price change.
-const monthTwoChanged = aggregatorAdvanceForMonth({
-  month: 2,
-  displayPrice: 150_000,
-  artistPrice: ARTIST_PRICE,
-  previousAggregatorChangedPrice: true,
-});
-assert.equal(monthTwoChanged.advance, 5_000, "month 2 after a price change: 5% of 1,00,000");
-assert.equal(monthTwoChanged.basis, "artist_price");
+const monthTwo = aggregatorAdvanceForMonth({ month: 2, sellingPrice: 130_000, artistPrice: ARTIST_PRICE });
+assert.equal(monthTwo.advance, 5_000, "month 2: 5% of 1,00,000");
+assert.equal(monthTwo.basis, "artist_price");
 
-const monthTwoUnchanged = aggregatorAdvanceForMonth({
-  month: 2,
-  displayPrice: 150_000,
-  artistPrice: ARTIST_PRICE,
-  previousAggregatorChangedPrice: false,
-});
-assert.equal(monthTwoUnchanged.advance, 3_000, "month 2 with no price change: 3%");
-
-// Months 3-5 are 3% of the artist price regardless of what anyone did.
 for (const month of [3, 4, 5]) {
-  for (const changed of [true, false]) {
-    assert.equal(
-      aggregatorAdvanceForMonth({
-        month,
-        displayPrice: 150_000,
-        artistPrice: ARTIST_PRICE,
-        previousAggregatorChangedPrice: changed,
-      }).advance,
-      3_000,
-      `month ${month} is always 3% of the artist price`,
-    );
-  }
+  assert.equal(
+    aggregatorAdvanceForMonth({ month, sellingPrice: 130_000, artistPrice: ARTIST_PRICE }).advance,
+    3_000,
+    `month ${month} is 3% of the artist price`,
+  );
 }
 
 // --- The 180-day listing, and who keeps the leftover -------------------------

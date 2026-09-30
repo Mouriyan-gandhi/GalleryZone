@@ -11,7 +11,6 @@
 // inside one DB transaction, tagged with a shared transactionId.
 
 import {
-  aggregatorAdvanceOf,
   aggregatorCommissionOf,
   artistSettlementOf,
   checkoutTotal,
@@ -22,6 +21,7 @@ import {
 export type LedgerAccountType =
   | "artist_payable"
   | "aggregator_payable"
+  | "aggregator_held"
   | "customer_wallet"
   | "platform_revenue"
   | "razorpay_escrow"
@@ -57,17 +57,17 @@ export function marketplaceCheckoutPostings({
   artistId,
   artistPricePaise,
   rates,
-  isGstRegistered = false,
+  tdsApplies = false,
 }: {
   artistId: string;
   artistPricePaise: number;
   rates: PricingRates;
-  /** Drives the §194-O TDS leg — see artistSettlementOf. */
-  isGstRegistered?: boolean;
+  /** Drives the §194-O TDS leg: true once this sale takes the artist's year past the threshold. */
+  tdsApplies?: boolean;
 }): Posting[] {
   const displayPrice = Math.round(artistPricePaise * (1 + rates.platformMarkup) * (1 + rates.gstRate));
   const checkout = checkoutTotal(displayPrice, rates);
-  const settlement = artistSettlementOf(artistPricePaise, "marketplace", rates, { isGstRegistered });
+  const settlement = artistSettlementOf(artistPricePaise, "marketplace", rates, { tdsApplies });
   // Residual, same reasoning as aggregatorSalePostings below: balances by
   // construction, and also carries the delivery-courier pass-through
   // (checkout.deliveryCharge is customer-paid, not artist-deducted, on
@@ -93,20 +93,21 @@ export function marketplaceCheckoutPostings({
 // --- Aggregator sale ------------------------------------------------------------
 //
 // Two money events, kept separate because they can land on different days:
-// (1) the advance was already captured into escrow at reservation time
-// (aggregatorAdvancePostings, below) — recordSale() does NOT re-capture it;
+// (1) the advance and delivery deposit were held from the aggregator's wallet
+// at reservation time (aggregatorHoldPostings, below) — recordSale() does NOT
+// take them again;
 // (2) the sale itself, which recognizes the artist payable, the aggregator's
-// commission payable, and releases GalleryZone's margin, while returning
-// the advance liability to zero (the advance was a deposit against this
-// exact sale).
+// commission payable, and releases GalleryZone's margin, while the hold goes
+// back to the aggregator's wallet (client, 30 Sep 2026: the money is held, and
+// "comes back when the piece sells").
 export function aggregatorSalePostings({
   artistId,
   aggregatorId,
   displayPricePaise,
   artistPricePaise,
-  advanceAlreadyHeldPaise,
+  heldPaise,
   rates,
-  isGstRegistered = false,
+  tdsApplies = false,
   otherChargesPaise,
   deliveryChargePaise,
 }: {
@@ -114,9 +115,10 @@ export function aggregatorSalePostings({
   aggregatorId: string;
   displayPricePaise: number;
   artistPricePaise: number;
-  advanceAlreadyHeldPaise: number;
+  /** The advance and delivery deposit held from the aggregator's wallet at reservation. */
+  heldPaise: number;
   rates: PricingRates;
-  isGstRegistered?: boolean;
+  tdsApplies?: boolean;
   /** "Other charges (if incurred)" actually billed on this sale. */
   otherChargesPaise?: number;
   /** The real artist→aggregator delivery leg, when it has been quoted. */
@@ -124,7 +126,7 @@ export function aggregatorSalePostings({
 }): Posting[] {
   const gstIncluded = displayPricePaise - exGst(displayPricePaise, rates);
   const settlement = artistSettlementOf(artistPricePaise, "aggregator", rates, {
-    isGstRegistered,
+    tdsApplies,
     ...(otherChargesPaise === undefined ? {} : { otherChargesPaise }),
     ...(deliveryChargePaise === undefined ? {} : { deliveryChargePaise }),
   });
@@ -143,20 +145,20 @@ export function aggregatorSalePostings({
   // separate ledger account (this scaffold has no dedicated
   // courier_payable account type yet — Phase 2 can split it out once the
   // real Shiprocket/courier billing integration exists).
-  // The 18% service GST withheld from the artist is owed to the government
-  // too, so it joins the artwork GST on the gst_payable leg rather than
-  // sitting in GalleryZone's margin.
+  // The 18% service GST withheld from the artist (on convenience, technology
+  // and any other charges) is owed to the government too, so it joins the
+  // artwork GST on the gst_payable leg rather than sitting in GalleryZone's
+  // margin.
   const gstLiability = gstIncluded + settlement.serviceGstDeduction;
   const platformResidual =
     displayPricePaise - gstLiability - settlement.tdsDeduction - settlement.net - commission;
 
   return assertBalanced(
     [
-      // The advance held in escrow since reservation is released back out —
-      // it isn't new money, so this leg is a wash against the postings
-      // aggregatorAdvancePostings already made.
-      { accountType: "razorpay_escrow", amountPaise: -advanceAlreadyHeldPaise, reason: "advance_applied_to_sale" },
-      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: advanceAlreadyHeldPaise, reason: "advance_released" },
+      // The hold made at reservation goes back to the aggregator's wallet. It
+      // isn't new money: it is the aggregatorHoldPostings legs, reversed.
+      { accountType: "aggregator_held", ownerId: aggregatorId, amountPaise: heldPaise, reason: "hold_released_on_sale" },
+      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: -heldPaise, reason: "hold_returned_to_wallet" },
       { accountType: "razorpay_escrow", amountPaise: displayPricePaise, reason: "aggregator_sale_capture" },
       { accountType: "gst_payable", amountPaise: -gstLiability, reason: "gst_liability" },
       { accountType: "tds_payable", amountPaise: -settlement.tdsDeduction, reason: "artist_tds_withheld" },
@@ -168,42 +170,92 @@ export function aggregatorSalePostings({
   );
 }
 
-// --- Aggregator advance (captured at reservation, before any sale) ------------
+// --- Aggregator wallet: top-up, hold, release -----------------------------------
+//
+// aggregator_payable is the wallet: what GalleryZone owes the aggregator, and
+// what they can reserve with or withdraw. Money reaches it only from a real
+// payment (a Razorpay top-up) or from a sale (commission, a released hold).
+// aggregator_held is what is set aside for reservations: still theirs, but not
+// spendable and not withdrawable until the piece sells or comes back.
 
-export function aggregatorAdvancePostings({
-  aggregatorId,
-  displayPricePaise,
-  rates,
-}: {
-  aggregatorId: string;
-  displayPricePaise: number;
-  rates: PricingRates;
-}): Posting[] {
-  const advance = aggregatorAdvanceOf(displayPricePaise, rates);
+/** Money in: the aggregator paid a Razorpay order. The cash is in escrow and it is now theirs to spend. */
+export function walletTopupPostings({ aggregatorId, amountPaise }: { aggregatorId: string; amountPaise: number }): Posting[] {
   return assertBalanced(
     [
-      { accountType: "razorpay_escrow", amountPaise: advance, reason: "aggregator_advance_capture" },
-      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: -advance, reason: "advance_liability" },
+      { accountType: "razorpay_escrow", amountPaise, reason: "wallet_topup_capture" },
+      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: -amountPaise, reason: "wallet_topup" },
     ],
-    "aggregatorAdvancePostings",
+    "walletTopupPostings",
   );
 }
 
-// --- Unsold return: advance refunded, delivery forfeited (per the mock's own rule) --
+// Reserving sets aside the advance plus the delivery deposit from the wallet.
+// The amounts are whatever aggregatorAdvanceForMonth decided for this month and
+// were recorded on the holding; nothing here recomputes them. No cash moves:
+// the money was already in escrow from the top-up.
+export function aggregatorHoldPostings({
+  aggregatorId,
+  advancePaise,
+  deliveryPaise,
+}: {
+  aggregatorId: string;
+  advancePaise: number;
+  deliveryPaise: number;
+}): Posting[] {
+  const hold = advancePaise + deliveryPaise;
+  return assertBalanced(
+    [
+      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: hold, reason: "reservation_hold" },
+      { accountType: "aggregator_held", ownerId: aggregatorId, amountPaise: -hold, reason: "reservation_hold" },
+    ],
+    "aggregatorHoldPostings",
+  );
+}
+
+// --- Unsold return: advance back in the wallet, delivery forfeited ----------------
+//
+// The delivery deposit pays for the courier leg the piece caused, so it goes to
+// GalleryZone's side (platform_revenue carries the courier pass-through, as it
+// does on a sale). It comes back only on a sale.
 
 export function aggregatorReturnPostings({
   aggregatorId,
   advancePaise,
+  deliveryPaise,
 }: {
   aggregatorId: string;
   advancePaise: number;
+  deliveryPaise: number;
 }): Posting[] {
   return assertBalanced(
     [
-      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: advancePaise, reason: "advance_refund_liability" },
-      { accountType: "razorpay_escrow", amountPaise: -advancePaise, reason: "advance_refund_capture" },
+      { accountType: "aggregator_held", ownerId: aggregatorId, amountPaise: advancePaise + deliveryPaise, reason: "hold_released_on_return" },
+      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise: -advancePaise, reason: "advance_returned_to_wallet" },
+      ...(deliveryPaise > 0
+        ? [{ accountType: "platform_revenue" as const, amountPaise: -deliveryPaise, reason: "delivery_deposit_forfeited" }]
+        : []),
     ],
     "aggregatorReturnPostings",
+  );
+}
+
+// --- Cash sale: the aggregator pays the price in from their wallet ------------------
+//
+// A cash_at_premises sale books the customer's payment into escrow at the moment
+// of sale (aggregatorSalePostings) although the cash is in the aggregator's till.
+// Depositing it retires that placeholder. From the wallet: the aggregator's
+// balance is reduced and the escrow leg is settled against the cash they paid in
+// through the top-up, so escrow ends up equal to real money. A bank transfer to
+// GalleryZone needs no posting: the cash the sale already counted has arrived.
+// ponytail: an aggregator_receivable account would show the debt while it is
+// open; add it if unremitted cash ever needs reporting on the books.
+export function cashRemittanceFromWalletPostings({ aggregatorId, amountPaise }: { aggregatorId: string; amountPaise: number }): Posting[] {
+  return assertBalanced(
+    [
+      { accountType: "aggregator_payable", ownerId: aggregatorId, amountPaise, reason: "cash_sale_paid_from_wallet" },
+      { accountType: "razorpay_escrow", amountPaise: -amountPaise, reason: "cash_sale_remitted" },
+    ],
+    "cashRemittanceFromWalletPostings",
   );
 }
 

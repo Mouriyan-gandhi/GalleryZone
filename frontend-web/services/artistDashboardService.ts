@@ -63,17 +63,8 @@ function toArtistProfileView(p: OwnProfileDto): ArtistProfileView {
     joinedAt: p.createdAt,
   };
 }
-import { MOU_VERSION } from "@/features/dashboard/mou-data";
 import { KPI_METRICS } from "@/features/dashboard/dashboard-data";
-
-/** Wire shape from apps/api mou.controller.ts. */
-interface MouAcceptanceDto {
-  party: "artist" | "aggregator";
-  version: string;
-  signatureName: string;
-  signatureDataUrl: string | null;
-  acceptedAt: string;
-}
+import { mouService } from "@/services/mouService";
 import type {
   ActivityEntry,
   WalletTransaction,
@@ -303,58 +294,22 @@ export const artistDashboardService = {
     return artistWalletApi.requestWithdrawal(amount);
   },
 
-  // The profile record is still mock-backed (no backend write route for
-  // PAN/GST/bank details yet), but two things on it are real: the identity
-  // (name/email from GET /v1/auth/me — the MOU signature has to match the
-  // account's real name) and the signed MOU record (GET /v1/artist/mou).
-  // An acceptance for an older MOU version is reported as null, which is
-  // what makes a newly published MOU require a fresh signature.
-  // The account's own profile (GET /v1/me/profile) plus the signed MOU
-  // record (GET /v1/artist/mou). An acceptance for an older MOU version is
-  // reported as null, which is what makes a newly published MOU require a
-  // fresh signature.
+  // The account's own profile (GET /v1/me/profile) plus the MOU: the
+  // signature of the version in force (null for an older one, which forces a
+  // re-sign) and the draft, the current text's blanks filled from this
+  // profile — so saving the profile refreshes what the unsigned MOU shows.
   getProfile: async () => {
-    const [p, mou] = await Promise.all([
-      profileApi.get(),
-      http.get<{ acceptance: MouAcceptanceDto | null }>("/v1/artist/mou"),
-    ]);
-    const acceptance = mou.acceptance;
-    return {
-      ...toArtistProfileView(p),
-      mouAcceptance:
-        acceptance && acceptance.version === MOU_VERSION
-          ? {
-              acceptedAt: acceptance.acceptedAt,
-              signatureName: acceptance.signatureName,
-              version: acceptance.version,
-              signatureDataUrl: acceptance.signatureDataUrl,
-            }
-          : null,
-    };
+    const [p, mou] = await Promise.all([profileApi.get(), mouService.get("artist")]);
+    return { ...toArtistProfileView(p), mouAcceptance: mou.acceptance, mouDraft: mou.draft };
   },
 
   // Signing the MOU is its own call rather than a profile patch: the server
-  // records the signing time and the version, checks the typed name against
-  // the account, and never lets an ordinary profile save overwrite it.
-  acceptMou: async (input: {
-    signatureName: string;
-    version: string;
-    signatureDataUrl?: string | null;
-  }) => {
-    const acceptance = await http.post<MouAcceptanceDto>("/v1/artist/mou/accept", {
-      version: input.version,
-      signatureName: input.signatureName.trim(),
-      signatureDataUrl: input.signatureDataUrl ?? null,
-    });
-    return {
-      ...toArtistProfileView(await profileApi.get()),
-      mouAcceptance: {
-        acceptedAt: acceptance.acceptedAt,
-        signatureName: acceptance.signatureName,
-        version: acceptance.version,
-        signatureDataUrl: acceptance.signatureDataUrl,
-      },
-    };
+  // records the signing time, checks the version, the typed name and that
+  // every required blank can be filled, snapshots those blanks, and never
+  // lets an ordinary profile save overwrite the record.
+  acceptMou: async (input: { signatureName: string; version: string; signatureDataUrl: string }) => {
+    await mouService.accept("artist", input);
+    return artistDashboardService.getProfile();
   },
 
   updateProfile: async (patch: Partial<ArtistProfileView>) => {
@@ -373,15 +328,8 @@ export const artistDashboardService = {
       if (patch[key] !== undefined) body[key] = patch[key] || null;
     }
     const updated = toArtistProfileView(await profileApi.update(body));
-    const mou = await http.get<{ acceptance: MouAcceptanceDto | null }>("/v1/artist/mou");
-    const acceptance = mou.acceptance;
-    return {
-      ...updated,
-      mouAcceptance:
-        acceptance && acceptance.version === MOU_VERSION
-          ? { acceptedAt: acceptance.acceptedAt, signatureName: acceptance.signatureName, version: acceptance.version, signatureDataUrl: acceptance.signatureDataUrl }
-          : null,
-    };
+    const mou = await mouService.get("artist");
+    return { ...updated, mouAcceptance: mou.acceptance, mouDraft: mou.draft };
   },
 
   listOrders: async (): Promise<Array<Order & { artistPayout: number }>> => {

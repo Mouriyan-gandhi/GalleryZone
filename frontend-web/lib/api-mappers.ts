@@ -110,6 +110,7 @@ export function toArtwork(dto: ArtworkDto): Artwork {
     status: dto.status,
     listingType: dto.listingType,
     rarityType: dto.rarityType,
+    sizeBand: dto.sizeBand ?? null,
     description: dto.description,
     dimensions: dto.dimensions,
     yearCreated: dto.yearCreated,

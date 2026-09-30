@@ -34,3 +34,6 @@ export * from "./messaging.ts";
 export * from "./resale.ts";
 export * from "./reports.ts";
 export * from "./passport.ts";
+export * from "./artist-sales.ts";
+export * from "./holding-lifecycle.ts";
+export * from "./wallet-topups.ts";

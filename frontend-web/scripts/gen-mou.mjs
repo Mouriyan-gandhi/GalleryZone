@@ -1,57 +1,146 @@
-import { readFileSync, writeFileSync } from "node:fs";
-const src = readFileSync(new URL("../../docs/legal/artist-mou-2026.2.txt", import.meta.url), "utf8").replace(/\r/g, "");
-const lines = src.split("\n").map((l) => l.trim()).filter(Boolean);
-const clauses = [];
-let cur = null; let declaration = []; let mode = "head"; let preamble = [];
-for (const l of lines) {
-  if (/^_{5,}$/.test(l)) continue;
-  const h = l.match(/^(\d+)\.\s+([A-Z][A-Z ,&/'-]+)$/);
-  if (h) { cur = { number: +h[1], title: h[2], blocks: [] }; clauses.push(cur); mode = "clause"; continue; }
-  if (/^DECLARATION$/.test(l)) { mode = "decl"; continue; }
-  if (/^FOR GALLERYZONE PRIVATE LIMITED$/.test(l)) { mode = "sig"; continue; }
-  if (mode === "head") { if (/^Galleryzone and the Artist are/.test(l)) preamble.push(l); continue; }
-  if (mode === "sig") continue;
-  const item = l.match(/^([a-z]|[ivx]+)\.\s+(.*)$/);
-  if (mode === "decl") { if (item) declaration.push(item[2]); continue; }
-  if (item) {
-    const last = cur.blocks[cur.blocks.length - 1];
-    if (last && last.type === "list") last.items.push(item[2]); else cur.blocks.push({ type: "list", items: [item[2]] });
-  } else cur.blocks.push({ type: "paragraph", text: l });
-}
-const title = (t) => t.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase()).replace(/\bAnd\b/g, "and").replace(/\bOf\b/g, "of").replace(/\bBefore\b/g, "Before");
-const esc = (s) => JSON.stringify(s);
-let out = `// The artist's Memorandum of Understanding with GalleryZone. GENERATED from
-// docs/legal/artist-mou-2026.2.txt by frontend-web/scripts/gen-mou.mjs —
-// do not hand-edit; fix the source document and regenerate, so the screen,
-// the PDF and the paper version can never say different things.
+// Generates the MOU data the website renders from the canonical text in
+// docs/legal/<party>-mou-<version>.txt — one paragraph per line, transcribed
+// word for word from the company's PDF (the PDFs sit next to them).
 //
-// Publishing a new version (bump MOU_VERSION) forces every artist to re-sign;
-// the signing time recorded is the server's clock at the moment of signing.
+//   node scripts/gen-mou.mjs
+//
+// Never hand-edit the generated files: change the text file (as a NEW
+// version — a signed version's text must not change), bump the version here
+// and CURRENT_MOU_VERSION in backend/packages/db/src/mou.ts, and regenerate.
+//
+// Each line becomes one block. Blanks ("Artist Name: ______") become fields
+// bound to the party they sit under: the counterparty in the opening block
+// and under its own signature heading, Galleryzone under
+// "FOR GALLERYZONE PRIVATE LIMITED". An unknown blank label fails the run
+// rather than rendering an empty line nobody can fill.
 
-import type { MouDocument } from "@/features/mou/mou-agreement";
+import { readFileSync, writeFileSync } from "node:fs";
 
-export const MOU_VERSION = "2026.2";
-
-export const MOU_PREAMBLE = [
-  "This Memorandum of Understanding is entered into between Galleryzone Private Limited (“Galleryzone”, “the Company”, or “the Platform”) and the Artist.",
-  ${esc(preamble[0])},
+const DOCS = [
+  {
+    party: "artist",
+    version: "2026.3",
+    source: "artist-mou-2026.3.txt",
+    pdf: "GalleryZone_Artist_MOU_Revised_Legal_Compliance_Draft.pdf",
+    out: "../features/dashboard/mou-data.ts",
+    versionExport: "MOU_VERSION",
+    docExport: "ARTIST_MOU",
+    title: "Artist Memorandum of Understanding",
+    intro: "Your agreement with Galleryzone. Your details are filled in from your profile. Read it in full, then sign.",
+    footer: "GalleryZone Private Limited — Artist MOU Revised Draft",
+    // Centered in the PDF: the two title lines only.
+    centered: (i) => i < 2,
+    partyHeadings: ["ARTIST"],
+  },
+  {
+    party: "aggregator",
+    version: "2026.2",
+    source: "aggregator-mou-2026.2.txt",
+    pdf: "GalleryZone_Aggregator_MOU_Revised_Final.pdf",
+    out: "../features/aggregator/aggregator-mou-data.ts",
+    versionExport: "AGGREGATOR_MOU_VERSION",
+    docExport: "AGGREGATOR_MOU",
+    title: "Aggregator Memorandum of Understanding",
+    intro: "Your partner agreement with Galleryzone. Your details are filled in from your profile. Nothing can be reserved until it is signed.",
+    footer: "GalleryZone Private Limited — Aggregator MOU — Revised Final Draft",
+    // Centered in the PDF: the whole opening block except its blanks.
+    centered: (_i, inPreamble, isField) => inPreamble && !isField,
+    partyHeadings: ["AUTHORIZED ART PARTNER / AGGREGATOR", "FOR AUTHORIZED ART PARTNER / AGGREGATOR"],
+  },
 ];
 
-export const ARTIST_MOU: MouDocument = {
-  title: "Memorandum of Understanding",
-  version: MOU_VERSION,
-  intro: "Your overall agreement with GalleryZone. Read it in full, then sign.",
-  preamble: MOU_PREAMBLE,
-  clauses: [
+const FIELD_KEYS = {
+  party: {
+    "Artist Name": "party.name",
+    Name: "party.name",
+    "Business Name": "party.businessName",
+    Address: "party.address",
+    Mobile: "party.mobile",
+    "Mobile No.": "party.mobile",
+    Email: "party.email",
+    "Government ID": "party.governmentId",
+    "GST No.": "party.gstNo",
+    "Effective Date": "party.effectiveDate",
+    Signature: "party.signature",
+    Date: "party.date",
+  },
+  company: {
+    "Authorized Signatory": "company.signatory",
+    Name: "company.name",
+    Designation: "company.designation",
+    Signature: "company.signature",
+    Date: "company.date",
+  },
+};
+
+const FIELD = /^([A-Z][A-Za-z .]+):\s*(?:_{3,}|_+\s*\/\s*_+\s*\/\s*_+)$/;
+const CLAUSE_HEADING = /^\d+\.\s+[A-Z][A-Z ,;&/'()–—-]+$/;
+const SUBHEADING = /^\d+\.\d+(\([a-z]\))?\s+[A-Z][^.;:]*$/;
+const ITEM = /^([a-z])\.\s+(.+)$/;
+const allCaps = (t) => /[A-Z]{3}/.test(t) && t === t.toUpperCase();
+
+for (const doc of DOCS) {
+  const lines = readFileSync(new URL(`../../docs/legal/${doc.source}`, import.meta.url), "utf8")
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const blocks = [];
+  let scope = "party";
+  let inPreamble = true;
+  lines.forEach((line, i) => {
+    if (CLAUSE_HEADING.test(line)) inPreamble = false;
+    const field = line.match(FIELD);
+    const center = doc.centered(i, inPreamble, Boolean(field)) || undefined;
+
+    if (i === 0) return blocks.push({ type: "title", text: line });
+    if (field) {
+      const key = FIELD_KEYS[scope][field[1]];
+      if (!key) throw new Error(`${doc.source}: no field for "${field[1]}" under ${scope}`);
+      return blocks.push({ type: "field", label: field[1], key });
+    }
+    if (line === "FOR GALLERYZONE PRIVATE LIMITED") {
+      scope = "company";
+      return blocks.push({ type: "signer", text: line });
+    }
+    if (doc.partyHeadings.includes(line)) {
+      scope = "party";
+      return blocks.push(inPreamble ? { type: "heading", text: line, center } : { type: "signer", text: line });
+    }
+    if (line.startsWith("LEGAL REVIEW NOTE:")) return blocks.push({ type: "note", text: line });
+    if (CLAUSE_HEADING.test(line) || allCaps(line)) return blocks.push({ type: "heading", text: line, center });
+    if (SUBHEADING.test(line) && line.length < 80) return blocks.push({ type: "subheading", text: line });
+    const item = line.match(ITEM);
+    if (item) return blocks.push({ type: "item", marker: `${item[1]}.`, text: item[2] });
+    blocks.push({ type: "paragraph", text: line, center });
+  });
+
+  const out = `// GENERATED by frontend-web/scripts/gen-mou.mjs from docs/legal/${doc.source}
+// (transcribed word for word from docs/legal/${doc.pdf}). Do not hand-edit:
+// change the text as a new version and regenerate.
+//
+// The version must match CURRENT_MOU_VERSION.${doc.party} in
+// backend/packages/db/src/mou.ts — the API refuses a signature for any other.
+
+import type { MouDocument } from "@/features/mou/mou-document";
+
+export const ${doc.versionExport} = ${JSON.stringify(doc.version)};
+
+export const ${doc.docExport}: MouDocument = {
+  party: ${JSON.stringify(doc.party)},
+  version: ${doc.versionExport},
+  title: ${JSON.stringify(doc.title)},
+  intro: ${JSON.stringify(doc.intro)},
+  footer: ${JSON.stringify(doc.footer)},
+  blocks: [
+${blocks.map((b) => `    ${JSON.stringify(Object.fromEntries(Object.entries(b).filter(([, v]) => v !== undefined)))},`).join("\n")}
+  ],
+};
 `;
-for (const c of clauses) {
-  out += `    {\n      number: ${c.number},\n      title: ${esc(title(c.title.trim()))},\n      blocks: [\n`;
-  for (const b of c.blocks) {
-    if (b.type === "paragraph") out += `        { type: "paragraph", text: ${esc(b.text)} },\n`;
-    else out += `        {\n          type: "list",\n          items: [\n${b.items.map((i) => `            ${esc(i)},\n`).join("")}          ],\n        },\n`;
-  }
-  out += `      ],\n    },\n`;
+  writeFileSync(new URL(doc.out, import.meta.url), out);
+  const count = (type) => blocks.filter((b) => b.type === type).length;
+  console.log(
+    `${doc.source}: ${blocks.length} blocks — ${count("heading")} headings, ${count("subheading")} subheadings, ${count("paragraph")} paragraphs, ${count("item")} items, ${count("field")} fields, ${count("signer")} signer headings`,
+  );
 }
-out += `  ],\n  declaration: [\n${declaration.map((d) => `    ${esc(d)},\n`).join("")}  ],\n};\n`;
-writeFileSync(new URL("../features/dashboard/mou-data.ts", import.meta.url), out);
-console.log(clauses.length, "clauses;", declaration.length, "declaration items; preamble:", preamble.length);

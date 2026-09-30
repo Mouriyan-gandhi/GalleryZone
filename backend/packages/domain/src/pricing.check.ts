@@ -13,6 +13,7 @@ import {
   aggregatorAdvanceForMonth,
   aggregatorCommissionOf,
   aggregatorOfferPriceOf,
+  isPriceWarning,
   artistPriceFrom,
   artistSettlementOf,
   basePriceOf,
@@ -52,49 +53,58 @@ const R = (rupees: number) => Math.round(rupees * 100);
   assert.equal(checkout.convenienceGst, 0);
   assert.equal(checkout.total, R(139_000), "display + flat delivery");
 
-  // Payout sheet, marketplace column: nothing comes off but TDS.
-  const unregistered = artistSettlementOf(artistPrice, "marketplace", rates);
-  assert.equal(unregistered.tdsDeduction, 0);
-  assert.equal(unregistered.net, R(100_000), "marketplace pays an unregistered artist in full");
+  // Payout sheet, marketplace column: nothing comes off but TDS, and TDS only
+  // once the artist's sales this financial year pass ₹5 lakh.
+  const underTheLine = artistSettlementOf(artistPrice, "marketplace", rates);
+  assert.equal(underTheLine.tdsDeduction, 0);
+  assert.equal(underTheLine.net, R(100_000), "marketplace pays the artist in full");
 
-  const registered = artistSettlementOf(artistPrice, "marketplace", rates, { isGstRegistered: true });
-  assert.equal(registered.tdsDeduction, R(100), "0.1% TDS once GST-registered");
-  assert.equal(registered.paymentBeforeDelivery, R(99_900));
-  assert.equal(registered.deliveryDeduction, 0, "marketplace delivery is the customer's, not the artist's");
-  assert.equal(registered.net, R(99_900));
+  const pastTheLine = artistSettlementOf(artistPrice, "marketplace", rates, { tdsApplies: true });
+  assert.equal(pastTheLine.tdsDeduction, R(100), "0.1% TDS once past the threshold");
+  assert.equal(pastTheLine.paymentBeforeDelivery, R(99_900));
+  assert.equal(pastTheLine.deliveryDeduction, 0, "marketplace delivery is the customer's, not the artist's");
+  assert.equal(pastTheLine.net, R(99_900));
+  assert.equal(pastTheLine.technologyDeduction, 0, "no technology charge on the marketplace");
 
-  const galleryZoneKeeps = checkout.total - checkout.gstIncluded - checkout.deliveryCharge - unregistered.net;
+  const galleryZoneKeeps = checkout.total - checkout.gstIncluded - checkout.deliveryCharge - underTheLine.net;
   assert.equal(galleryZoneKeeps, R(30_000));
 }
 
-// --- Aggregator payout sheet (artist price ₹1,00,000) ----------------------
-// Delivery ₹2,000 and "other charges (e.g. tech)" ₹500 are the sheet's own
-// per-sale figures, passed in rather than taken from the flat defaults.
+// --- Aggregator payout (artist price ₹1,00,000) ----------------------------
+// Client, 30 Sep 2026: convenience 2%, technology 1%, "others if happens",
+// 18% GST on all of them, then the ₹2,000 delivery leg. The old sheet's ₹500
+// "example tech" line is replaced by the 1% technology charge.
 {
   const artistPrice = R(100_000);
-  const perSale = { otherChargesPaise: R(500), deliveryChargePaise: R(2_000) };
+  const perSale = { deliveryChargePaise: R(2_000) };
 
-  const unregistered = artistSettlementOf(artistPrice, "aggregator", rates, perSale);
-  assert.equal(unregistered.tdsDeduction, 0);
-  assert.equal(unregistered.convenienceDeduction, R(2_000), "2% of the artist price");
-  assert.equal(unregistered.otherChargesDeduction, R(500));
-  assert.equal(unregistered.serviceGstDeduction, R(450), "18% on (2,000 + 500)");
-  assert.equal(unregistered.chargesTotal, R(2_950));
-  assert.equal(unregistered.paymentBeforeDelivery, R(97_050));
-  assert.equal(unregistered.net, R(95_050), "final bank payout");
+  const underTheLine = artistSettlementOf(artistPrice, "aggregator", rates, perSale);
+  assert.equal(underTheLine.tdsDeduction, 0);
+  assert.equal(underTheLine.convenienceDeduction, R(2_000), "2% of the artist price");
+  assert.equal(underTheLine.technologyDeduction, R(1_000), "1% of the artist price");
+  assert.equal(underTheLine.otherChargesDeduction, 0, "real costs only, none yet");
+  assert.equal(underTheLine.serviceGstDeduction, R(540), "18% on (2,000 + 1,000)");
+  assert.equal(underTheLine.chargesTotal, R(3_540));
+  assert.equal(underTheLine.paymentBeforeDelivery, R(96_460));
+  assert.equal(underTheLine.net, R(94_460), "final bank payout");
 
-  const registered = artistSettlementOf(artistPrice, "aggregator", rates, { ...perSale, isGstRegistered: true });
-  assert.equal(registered.tdsDeduction, R(100));
-  assert.equal(registered.chargesTotal, R(3_050));
-  assert.equal(registered.paymentBeforeDelivery, R(96_950));
-  assert.equal(registered.net, R(94_950), "final bank payout");
+  const pastTheLine = artistSettlementOf(artistPrice, "aggregator", rates, { ...perSale, tdsApplies: true });
+  assert.equal(pastTheLine.tdsDeduction, R(100));
+  assert.equal(pastTheLine.chargesTotal, R(3_640));
+  assert.equal(pastTheLine.paymentBeforeDelivery, R(96_360));
+  assert.equal(pastTheLine.net, R(94_360), "final bank payout");
 
-  // Defaults, with no per-sale figures: other charges are zero until a real
-  // trigger exists, and delivery falls back to the flat ₹2,500.
+  // A real "other" cost, when one happens, is charged with its own 18% GST.
+  const withOther = artistSettlementOf(artistPrice, "aggregator", rates, { ...perSale, otherChargesPaise: R(500) });
+  assert.equal(withOther.otherChargesDeduction, R(500));
+  assert.equal(withOther.serviceGstDeduction, R(630), "18% on (2,000 + 1,000 + 500)");
+  assert.equal(withOther.net, R(100_000) - R(3_500) - R(630) - R(2_000));
+
+  // Defaults, with no per-sale figures: no other charges, flat ₹2,500 delivery.
   const defaults = artistSettlementOf(artistPrice, "aggregator", rates);
   assert.equal(defaults.otherChargesDeduction, 0);
   assert.equal(defaults.deliveryDeduction, R(2_500));
-  assert.equal(defaults.net, R(100_000) - R(2_000) - R(360) - R(2_500));
+  assert.equal(defaults.net, R(100_000) - R(3_000) - R(540) - R(2_500));
 }
 
 // --- Customer invoice sheet ------------------------------------------------
@@ -184,58 +194,61 @@ function displayPriceOfHelper(preTax: number, r: typeof rates): number {
 }
 
 // --- 5-month cycle offer prices ------------------------------------------------
+// The drop is ₹2,000 a month. If the month-1 aggregator priced above the
+// offer ("appreciated"), month 2 resets to ₹1,30,000 and the drops start a
+// month later (client, 30 Sep 2026).
 {
   const artistPrice = R(100_000);
-  const expected = [R(130_000), R(128_000), R(126_000), R(124_000), R(122_000)];
+  const notAppreciated = [R(130_000), R(128_000), R(126_000), R(124_000), R(122_000)];
+  const appreciated = [R(130_000), R(130_000), R(128_000), R(126_000), R(124_000)];
   for (let month = 1; month <= 5; month++) {
-    assert.equal(aggregatorOfferPriceOf(artistPrice, month, rates), expected[month - 1]);
+    assert.equal(aggregatorOfferPriceOf(artistPrice, month, rates), notAppreciated[month - 1], `month ${month}, not appreciated`);
+    assert.equal(
+      aggregatorOfferPriceOf(artistPrice, month, rates, { appreciated: true }),
+      appreciated[month - 1],
+      `month ${month}, appreciated`,
+    );
   }
   assert.equal(aggregatorOfferPriceOf(artistPrice, 6, rates), R(122_000), "month 6 holds at month 5's rate");
   assert.equal(aggregatorOfferPriceOf(artistPrice, 9, rates), R(122_000));
   assert.equal(displayPriceOf(artistPrice, rates), R(136_500), "marketplace price never moves with the cycle");
 }
 
-// --- Advance by month ---------------------------------------------------------
+// --- Aggregator price warning ---------------------------------------------------
 {
-  const month1 = aggregatorAdvanceForMonth({
-    month: 1,
-    displayPrice: R(150_000),
-    artistPrice: R(100_000),
-    rates,
-  });
-  assert.equal(month1.advance, R(7_500));
-  assert.equal(month1.basis, "display_price");
-  assert.equal(month1.payable, R(10_000), "advance + flat delivery deposit");
+  const offer = R(130_000);
+  assert.equal(isPriceWarning(R(130_000), offer, rates), false, "keeping the offer");
+  assert.equal(isPriceWarning(R(150_000), offer, rates), false, "the client's own ₹1,50,000 example");
+  assert.equal(isPriceWarning(R(259_999), offer, rates), false, "just under double");
+  assert.equal(isPriceWarning(R(260_000), offer, rates), true, "doubled: +100%");
+  assert.equal(isPriceWarning(R(500_000), offer, rates), true);
+  assert.equal(isPriceWarning(R(150_000), offer, { ...rates, aggregatorPriceWarnRate: 0.1 }), true, "the threshold is a rate");
+}
 
-  const month2Changed = aggregatorAdvanceForMonth({
-    month: 2,
-    displayPrice: R(150_000),
-    artistPrice: R(100_000),
-    rates,
-    previousAggregatorChangedPrice: true,
-  });
-  assert.equal(month2Changed.advance, R(5_000));
+// --- Advance by month ---------------------------------------------------------
+// Month 1: 5% of the price the aggregator sets, before GST. Month 2: 5% of the
+// artist price. Months 3 to 5: 3% of the artist price. (Client, 30 Sep 2026.)
+{
+  const artistPrice = R(100_000);
 
-  const month2Unchanged = aggregatorAdvanceForMonth({
-    month: 2,
-    displayPrice: R(150_000),
-    artistPrice: R(100_000),
-    rates,
-    previousAggregatorChangedPrice: false,
-  });
-  assert.equal(month2Unchanged.advance, R(3_000));
+  const kept = aggregatorAdvanceForMonth({ month: 1, sellingPrice: R(130_000), artistPrice, rates });
+  assert.equal(kept.advance, R(6_500), "5% of ₹1,30,000");
+  assert.equal(kept.basis, "selling_price");
+
+  const raised = aggregatorAdvanceForMonth({ month: 1, sellingPrice: R(150_000), artistPrice, rates });
+  assert.equal(raised.advance, R(7_500), "5% of ₹1,50,000, before GST");
+  assert.equal(raised.rate, 0.05);
+  assert.equal(raised.payable, R(10_000), "advance + flat delivery deposit");
+
+  const month2 = aggregatorAdvanceForMonth({ month: 2, sellingPrice: R(130_000), artistPrice, rates });
+  assert.equal(month2.advance, R(5_000), "5% of the artist price");
+  assert.equal(month2.basis, "artist_price");
+  assert.equal(month2.rate, 0.05);
 
   for (const month of [3, 4, 5]) {
-    for (const changed of [true, false]) {
-      const advance = aggregatorAdvanceForMonth({
-        month,
-        displayPrice: R(150_000),
-        artistPrice: R(100_000),
-        rates,
-        previousAggregatorChangedPrice: changed,
-      });
-      assert.equal(advance.advance, R(3_000), `month ${month} always 3%`);
-    }
+    const later = aggregatorAdvanceForMonth({ month, sellingPrice: R(130_000), artistPrice, rates });
+    assert.equal(later.advance, R(3_000), `month ${month}: 3% of the artist price`);
+    assert.equal(later.basis, "artist_price");
   }
 }
 
@@ -328,7 +341,9 @@ function displayPriceOfHelper(preTax: number, r: typeof rates): number {
     assert.ok(value !== undefined && value !== null, `${key} is defined`);
     if (typeof value === "number") assert.ok(Number.isFinite(value), `${key} is a real number`);
   }
-  const settlement = artistSettlementOf(R(100_000), "aggregator", legacy, { isGstRegistered: true });
+  assert.equal(legacy.artistTechnologyRate, rates.artistTechnologyRate, "an older version gets the technology charge from the seed");
+  assert.equal(legacy.aggregatorPriceWarnRate, rates.aggregatorPriceWarnRate);
+  const settlement = artistSettlementOf(R(100_000), "aggregator", legacy, { tdsApplies: true });
   assert.ok(Number.isFinite(settlement.net), "an older version still settles to a real number");
 }
 

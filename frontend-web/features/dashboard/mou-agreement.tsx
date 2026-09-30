@@ -24,6 +24,7 @@ export function MouAgreement() {
       document={ARTIST_MOU}
       signerName={profile.fullName}
       acceptance={profile.mouAcceptance}
+      draft={profile.mouDraft}
       onSign={(input) => acceptMutation.mutate(input)}
       isPending={acceptMutation.isPending}
       error={acceptMutation.error}

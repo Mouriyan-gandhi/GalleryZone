@@ -34,9 +34,11 @@ export interface PricingRates {
    */
   serviceGstRate: number;
   /**
-   * Income-tax TDS on the artist's own price (§194-O). Deducted only once
-   * the artist is GST-registered; an unregistered artist is outside scope
-   * and has nothing withheld. Separate from GST in every direction.
+   * Income-tax TDS on the artist's own price (§194-O). Withheld from the sale
+   * that takes the artist's financial-year sales past
+   * `earningsAbove5LThresholdPaise`, and from every sale after it (client,
+   * 30 Sep 2026: "only when the artist's sales this year cross ₹5 lakh").
+   * GST registration does not decide it. Separate from GST in every direction.
    */
   artistTdsRate: number;
   /** Aggregator MOU §7 — security deposit paid before taking possession. */
@@ -46,9 +48,15 @@ export interface PricingRates {
   /** Deducted from the artist's settlement on aggregator sales only. */
   artistConvenienceRate: number;
   /**
-   * The payout sheet's "other charges (if incurred) — example tech" line.
-   * Default charge applied to an aggregator settlement when the caller does
-   * not pass a real, per-sale figure. Zero until a real trigger exists.
+   * Technology charge, of the artist's price, on aggregator sales only (+ service
+   * GST). Client, 30 Sep 2026: "convenience 2%, technology 1%, others if happens".
+   */
+  artistTechnologyRate: number;
+  /**
+   * The payout sheet's "other charges (if incurred)" line: real costs that
+   * actually happen on a sale. Default charge applied to an aggregator
+   * settlement when the caller does not pass a real, per-sale figure. Zero
+   * until a real trigger exists.
    */
   artistOtherChargePaise: number;
   /**
@@ -73,6 +81,11 @@ export interface PricingRates {
   aggregatorPlacementDays: number;
   /** Percent-off-artist-price ladder applied to the next aggregator's offer, index 0 = month 1. */
   aggregatorMonthlyDiscountRates: readonly number[];
+  /**
+   * An aggregator pricing a piece this far above GalleryZone's offer (1 = +100%,
+   * i.e. doubled) is allowed, but GalleryZone is sent a warning.
+   */
+  aggregatorPriceWarnRate: number;
   /** Rate card per delivery zone. */
   deliveryZoneRates: Record<DeliveryZone, DeliveryZoneRate>;
   /** Base weight slab (kg) included in a zone's base rate. */
@@ -89,7 +102,10 @@ export interface PricingRates {
   minCustomerWithdrawalPaise: number;
   /** Artwork price at/above which transit insurance is recommended. */
   insuranceThresholdPaise: number;
-  /** Threshold (in paise, annual) at which TDS §194-O tracking flags an artist. */
+  /**
+   * Financial-year (April to March) sales, in paise, past which §194-O TDS is
+   * withheld from an artist. ₹5,00,000. See policies.ts tdsAppliesOnSale.
+   */
   earningsAbove5LThresholdPaise: number;
 }
 
@@ -110,6 +126,7 @@ export const DEFAULT_RATE_SEED: PricingRates = {
   aggregatorAdvanceRate: 0.05,
   aggregatorCommissionRate: 0.2,
   artistConvenienceRate: 0.02,
+  artistTechnologyRate: 0.01,
   artistOtherChargePaise: 0,
   customerConvenienceRate: 0,
   nfcTagChargePaise: 10_000, // ₹100
@@ -120,6 +137,7 @@ export const DEFAULT_RATE_SEED: PricingRates = {
   aggregatorListingDays: 180,
   aggregatorPlacementDays: 30,
   aggregatorMonthlyDiscountRates: [0, 0.02, 0.04, 0.06, 0.08],
+  aggregatorPriceWarnRate: 1,
   deliveryZoneRates: {
     local: { base: 40_000, perExtraKg: 5_500 },
     regional: { base: 62_000, perExtraKg: 8_000 },
@@ -278,11 +296,12 @@ export type SaleChannel = "marketplace" | "aggregator";
 export interface ArtistSettlement {
   /** The artist's own price — GalleryZone's markup is never theirs. */
   gross: number;
-  /** §194-O income-tax TDS, 0 unless the artist is GST-registered. */
+  /** §194-O income-tax TDS, 0 until the artist's financial-year sales pass the threshold. */
   tdsDeduction: number;
   convenienceDeduction: number;
+  technologyDeduction: number;
   otherChargesDeduction: number;
-  /** 18% GST on (convenience + other charges) — a service, not the artwork. */
+  /** 18% GST on (convenience + technology + other charges) — a service, not the artwork. */
   serviceGstDeduction: number;
   /** The sheet's "Total of charges" line. */
   chargesTotal: number;
@@ -294,33 +313,40 @@ export interface ArtistSettlement {
 }
 
 export interface ArtistSettlementOptions {
-  /** TDS applies only once the artist is GST-registered (gstStatus approved). */
-  isGstRegistered?: boolean;
+  /**
+   * True once this sale takes the artist's financial-year sales past the
+   * §194-O threshold (policies.ts tdsAppliesOnSale). The caller knows the
+   * year's sales; this function only prices a sale.
+   */
+  tdsApplies?: boolean;
   /** Real "other charges (if incurred)" for this sale; defaults to the configured rate. */
   otherChargesPaise?: number;
   /** The actual artist→aggregator delivery leg, when it has been quoted. */
   deliveryChargePaise?: number;
 }
 
-// The client's payout sheets, reproduced line for line.
+// The client's payout sheets, updated with their answers of 30 Sep 2026
+// (convenience 2%, technology 1%, "others if happens"; TDS only past ₹5 lakh
+// of sales in the financial year).
 //
-//   MARKETPLACE            unregistered   GST-registered
+//   MARKETPLACE            under the line    past it
 //   Artist price              1,00,000        1,00,000
 //   0.1% TDS                         0             100
-//   convenience / other / service GST 0               0
+//   convenience / technology / service GST   0       0
 //   delivery                         0               0
 //   Final bank payout         1,00,000          99,900
 //
-//   AGGREGATOR             unregistered   GST-registered
+//   AGGREGATOR             under the line    past it
 //   Artist price              1,00,000        1,00,000
 //   0.1% TDS                         0             100
 //   2% convenience               2,000           2,000
-//   other charges (e.g. tech)      500             500
-//   18% GST on those charges       450             450
-//   Total of charges             2,950           3,050
-//   Payment before delivery     97,050          96,950
+//   1% technology                1,000           1,000
+//   other charges (real costs)       0               0
+//   18% GST on those charges       540             540
+//   Total of charges             3,540           3,640
+//   Payment before delivery     96,460          96,360
 //   delivery                     2,000           2,000
-//   Final bank payout           95,050          94,950
+//   Final bank payout           94,460          94,360
 //
 // Marketplace takes nothing off the artist's price ("in the marketplace we
 // pay 100% of the artist quoted price", 25 Aug) — TDS is the one exception,
@@ -331,13 +357,14 @@ export function artistSettlementOf(
   rates: PricingRates,
   options: ArtistSettlementOptions = {},
 ): ArtistSettlement {
-  const tdsDeduction = options.isGstRegistered ? Math.round(artistPrice * rates.artistTdsRate) : 0;
+  const tdsDeduction = options.tdsApplies ? Math.round(artistPrice * rates.artistTdsRate) : 0;
 
   if (channel === "marketplace") {
     return {
       gross: artistPrice,
       tdsDeduction,
       convenienceDeduction: 0,
+      technologyDeduction: 0,
       otherChargesDeduction: 0,
       serviceGstDeduction: 0,
       chargesTotal: tdsDeduction,
@@ -348,16 +375,20 @@ export function artistSettlementOf(
   }
 
   const convenienceDeduction = Math.round(artistPrice * rates.artistConvenienceRate);
+  const technologyDeduction = Math.round(artistPrice * rates.artistTechnologyRate);
   const otherChargesDeduction = options.otherChargesPaise ?? rates.artistOtherChargePaise;
-  const serviceGstDeduction = Math.round((convenienceDeduction + otherChargesDeduction) * rates.serviceGstRate);
+  const serviceGstDeduction = Math.round(
+    (convenienceDeduction + technologyDeduction + otherChargesDeduction) * rates.serviceGstRate,
+  );
   const deliveryDeduction = options.deliveryChargePaise ?? rates.deliveryChargePaise;
-  const chargesTotal = tdsDeduction + convenienceDeduction + otherChargesDeduction + serviceGstDeduction;
+  const chargesTotal = tdsDeduction + convenienceDeduction + technologyDeduction + otherChargesDeduction + serviceGstDeduction;
   const paymentBeforeDelivery = artistPrice - chargesTotal;
 
   return {
     gross: artistPrice,
     tdsDeduction,
     convenienceDeduction,
+    technologyDeduction,
     otherChargesDeduction,
     serviceGstDeduction,
     chargesTotal,
@@ -377,9 +408,13 @@ export function aggregatorCommissionOf(
   return Math.round(markup * rates.aggregatorCommissionRate);
 }
 
-/** Aggregator MOU §7 — a rate of the price the piece is being displayed at. */
-export function aggregatorAdvanceOf(displayPrice: number, rates: PricingRates): number {
-  return Math.round(displayPrice * rates.aggregatorAdvanceRate);
+/**
+ * True when the aggregator's price is at least `aggregatorPriceWarnRate` above
+ * GalleryZone's offer (1 = doubled). Both prices before GST. Never blocks a
+ * reservation: it tells GalleryZone.
+ */
+export function isPriceWarning(sellingPrice: number, offerPrice: number, rates: PricingRates): boolean {
+  return offerPrice > 0 && sellingPrice >= offerPrice * (1 + rates.aggregatorPriceWarnRate);
 }
 
 // --- The aggregator cycle ---------------------------------------------------
@@ -458,12 +493,24 @@ export function aggregatorDiscountRateOf(month: number, rates: PricingRates): nu
   return rate;
 }
 
+// The ladder steps down ₹2,000 a month (2% of the artist's price). When the
+// month-1 aggregator priced above GalleryZone's offer ("appreciated"), the
+// next aggregator's price resets to the offer and the drops start a month
+// later. Client, 30 Sep 2026: "2000 less in each month as per earlier plan; if
+// appreciated by aggregator then 3rd month, if not then drop starts from
+// 2nd month itself". On ₹1,00,000:
+//
+//   month                     1          2          3          4          5
+//   month 1 not appreciated  1,30,000   1,28,000   1,26,000   1,24,000   1,22,000
+//   month 1 appreciated      1,30,000   1,30,000   1,28,000   1,26,000   1,24,000
 export function aggregatorOfferPriceOf(
   artistPrice: number,
   month: number,
   rates: PricingRates,
+  { appreciated = false }: { appreciated?: boolean } = {},
 ): number {
-  const reduction = Math.round(artistPrice * aggregatorDiscountRateOf(month, rates));
+  const steps = appreciated ? Math.max(1, month - 1) : month;
+  const reduction = Math.round(artistPrice * aggregatorDiscountRateOf(steps, rates));
   return basePriceOf(artistPrice, rates) - reduction;
 }
 
@@ -471,50 +518,42 @@ export interface AggregatorAdvance {
   month: number;
   rate: number;
   base: number;
-  basis: "display_price" | "artist_price";
+  basis: "selling_price" | "artist_price";
   advance: number;
   deliveryCharge: number;
   payable: number;
 }
 
-// Month 1 is charged on the display price; every later month is charged on
-// the artist price. Month 2 is the only month whose rate can vary: it stays
-// at the full advance rate when the previous aggregator exercised their one
-// price change, and drops to 3% when they did not. Months 3 onward are
-// always 3%. (The 3% figure and the "always" are intentionally left as
-// literals matching the client's sheet exactly, mirroring
-// frontend-web/lib/pricing.ts's own choice not to generalize this table
-// beyond what was actually specified — see that file's comment above the
-// equivalent function.)
+// Client, 30 Sep 2026. Month 1: 5% of the price the aggregator sets, before
+// GST (₹7,500 on ₹1,50,000; ₹6,500 if they keep ₹1,30,000). Month 2: 5% of the
+// artist's price. Months 3 to 5: 3% of the artist's price. (The 3% is left as
+// a literal, matching frontend-web/lib/pricing.ts, until the client wants it
+// tuned.)
 export function aggregatorAdvanceForMonth({
   month,
-  displayPrice,
+  sellingPrice,
   artistPrice,
   rates,
-  previousAggregatorChangedPrice = false,
   deliveryCharge,
 }: {
   month: number;
-  displayPrice: number;
+  /** What the aggregator sells at, before GST. Only month 1 uses it. */
+  sellingPrice: number;
   artistPrice: number;
   rates: PricingRates;
-  previousAggregatorChangedPrice?: boolean;
   deliveryCharge?: number;
 }): AggregatorAdvance {
   const resolvedDeliveryCharge = deliveryCharge ?? rates.deliveryChargePaise;
   const firstMonth = month <= 1;
-  const rate =
-    firstMonth || (month === 2 && previousAggregatorChangedPrice)
-      ? rates.aggregatorAdvanceRate
-      : 0.03;
-  const base = firstMonth ? displayPrice : artistPrice;
+  const rate = month <= 2 ? rates.aggregatorAdvanceRate : 0.03;
+  const base = firstMonth ? sellingPrice : artistPrice;
   const advance = Math.round(base * rate);
 
   return {
     month,
     rate,
     base,
-    basis: firstMonth ? "display_price" : "artist_price",
+    basis: firstMonth ? "selling_price" : "artist_price",
     advance,
     deliveryCharge: resolvedDeliveryCharge,
     payable: advance + resolvedDeliveryCharge,

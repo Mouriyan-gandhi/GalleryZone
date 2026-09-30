@@ -21,6 +21,7 @@ import {
 import { RarityBadge } from "@/components/shared/rarity-badge";
 import { TransferRightsDialog } from "@/features/verify/transfer-rights-dialog";
 import { PullBackHoldingDialog } from "./pull-back-holding-dialog";
+import { HoldingExtensionPanel } from "./holding-extension-panel";
 import { useAdminAuditStore } from "@/store/useAdminAuditStore";
 import { formatINR } from "@/lib/utils";
 import { AGGREGATOR_CYCLE_MONTHS } from "@/lib/pricing";
@@ -423,7 +424,26 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
                   {activeHolding.cycleMonth} of {AGGREGATOR_CYCLE_MONTHS}
                 </dd>
               </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">
+                  Selling price (incl. GST)
+                </dt>
+                <dd className="tabular-nums text-foreground">
+                  {formatINR(activeHolding.displayPrice)}
+                </dd>
+              </div>
+              {activeHolding.cycleMonth === 1 && (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Priced</dt>
+                  <dd className="text-foreground">
+                    {activeHolding.appreciated
+                      ? "Above GalleryZone's price"
+                      : "At GalleryZone's price"}
+                  </dd>
+                </div>
+              )}
             </dl>
+            <HoldingExtensionPanel holding={activeHolding} />
             <Button
               variant="outline"
               onClick={() => setPullBackOpen(true)}

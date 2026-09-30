@@ -67,7 +67,6 @@ import {
 import { PAINTING_ART_FORMS } from "./painting-art-forms";
 import { InsuranceFaqChat } from "./insurance-faq-chat";
 import {
-  ARTIST_LISTING_FEE_RATE,
   GST_RATE,
   PLATFORM_MARKUP,
   SERVICE_GST_RATE,
@@ -237,12 +236,10 @@ function Requirement({
 function PriceRow({
   label,
   amount,
-  free,
   emphasized,
 }: {
   label: string;
   amount: number;
-  free?: boolean;
   emphasized?: boolean;
 }) {
   return (
@@ -259,7 +256,7 @@ function PriceRow({
             : "font-mono tabular-nums text-muted-foreground"
         }
       >
-        {free && amount === 0 ? "Free" : `₹${amount.toLocaleString("en-IN")}`}
+        {`₹${amount.toLocaleString("en-IN")}`}
       </span>
     </div>
   );
@@ -345,7 +342,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
 
   const { data: profile } = useArtistAccountProfile();
   // PAN, not GST, is what gates going live as of 9 Sep 2026 — GST is optional
-  // (see profile-kyc-form.tsx). GST-registration only affects TDS on payout.
+  // (see profile-kyc-form.tsx).
   const panProvided = Boolean(profile?.pan?.trim());
 
   const { data: penalties } = useArtistPenalties();
@@ -395,7 +392,6 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
   const markupRate = (rules?.platformMarkup as number | undefined) ?? PLATFORM_MARKUP;
   const gstRate = (rules?.gstRate as number | undefined) ?? GST_RATE;
   const serviceGstRate = (rules?.serviceGstRate as number | undefined) ?? SERVICE_GST_RATE;
-  const listingFeeRate = (rules?.artistListingFeeRate as number | undefined) ?? ARTIST_LISTING_FEE_RATE;
   const nfcCharge = rules?.nfcTagChargePaise === undefined ? NFC_TAG_CHARGE : (rules.nfcTagChargePaise as number) / 100;
   const insuranceThreshold =
     rules?.insuranceThresholdPaise === undefined
@@ -411,11 +407,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
     [basePrice, gstRate],
   );
   const gstIncluded = customerPrice - basePrice;
-  const listingFee = Math.round(artistPriceNumber * listingFeeRate);
-  const listingFeeGst = Math.round(listingFee * serviceGstRate);
   const gstPercent = +(gstRate * 100).toFixed(2);
-  const serviceGstPercent = +(serviceGstRate * 100).toFixed(2);
-  const listingFeePercent = +(listingFeeRate * 100).toFixed(2);
   const nfcChargeGst = Math.round(nfcCharge * serviceGstRate);
 
   function updateField<K extends keyof FormState>(
@@ -601,8 +593,7 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 Add your PAN on your Profile page — you can still save this as
-                a draft. GST is optional and only affects TDS on your payout,
-                it won&rsquo;t block this listing.{" "}
+                a draft. GST is optional and won&rsquo;t block this listing.{" "}
                 <Link
                   href="/dashboard/profile"
                   className="text-gold-bright hover:underline"
@@ -1148,11 +1139,6 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
             {artistPriceNumber > 0 && (
               <dl className="flex flex-col gap-1.5 rounded-md border border-gold/25 bg-gold/5 px-3 py-2.5 text-xs">
                 <PriceRow label="You receive" amount={artistPriceNumber} />
-                <PriceRow label={`Listing fee (${listingFeePercent}%)`} amount={listingFee} free />
-                <PriceRow
-                  label={`GST on listing fee (${serviceGstPercent}%)`}
-                  amount={listingFeeGst}
-                />
                 <PriceRow
                   label="GalleryZone margin"
                   amount={basePrice - artistPriceNumber}
@@ -1165,6 +1151,11 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
                   emphasized
                 />
               </dl>
+            )}
+            {artistPriceNumber > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Listing is free for your first 6 months.
+              </p>
             )}
           </div>
 

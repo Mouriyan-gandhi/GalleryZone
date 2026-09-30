@@ -22,6 +22,11 @@ import { DbError } from "./errors.ts";
 
 export class LedgerError extends DbError {}
 
+/** Firestore's ALREADY_EXISTS (gRPC code 6): a create() whose document is already there, i.e. a replayed posting. */
+export function isAlreadyExists(error: unknown): boolean {
+  return (error as { code?: unknown } | null)?.code === 6 || /ALREADY_EXISTS/.test(String(error));
+}
+
 function assertBalanced(postings: Posting[]): void {
   const sum = postings.reduce((total, p) => total + p.amountPaise, 0);
   if (sum !== 0) {
@@ -48,25 +53,34 @@ async function getOrCreateAccountId(
 }
 
 export interface PostLedgerEntriesInput {
-  postings: Posting[];
+  /**
+   * The postings, or a function that decides them from a read made inside the
+   * transaction (so the decision and the write see the same data, and a
+   * concurrent writer makes the transaction retry rather than both proceed).
+   */
+  postings: Posting[] | ((tx: Transaction) => Promise<Posting[]>);
   /** Prefix for each posting's idempotency key — must be unique per business event (e.g. an order id). */
   idempotencyPrefix: string;
   relatedOrderId?: string;
   relatedHoldingId?: string;
+  /** Extra writes that commit, or fail, with the postings. Runs once the postings are decided. */
+  alsoInTransaction?: (tx: Transaction, postings: Posting[]) => void;
 }
 
 export async function postLedgerEntries(db: Firestore, input: PostLedgerEntriesInput): Promise<{ transactionId: string }> {
-  assertBalanced(input.postings);
+  if (Array.isArray(input.postings)) assertBalanced(input.postings);
   const transactionId = db.collection(Collections.ledgerAccounts).doc().id; // any collection works — just need a random ID generator
 
   await db.runTransaction(async (tx) => {
-    // Firestore transactions require ALL reads before ANY writes — resolve
-    // every account first, then issue every entry write.
+    // Firestore transactions require ALL reads before ANY writes — decide the
+    // postings and resolve every account first, then issue every write.
+    const postings = typeof input.postings === "function" ? await input.postings(tx) : input.postings;
+    assertBalanced(postings);
     const accountIds = await Promise.all(
-      input.postings.map((posting) => getOrCreateAccountId(db, tx, posting.accountType, posting.ownerId)),
+      postings.map((posting) => getOrCreateAccountId(db, tx, posting.accountType, posting.ownerId)),
     );
 
-    input.postings.forEach((posting, index) => {
+    postings.forEach((posting, index) => {
       const idempotencyKey = `${input.idempotencyPrefix}:${index}`;
       const ref = db.collection(Collections.ledgerEntries).doc(idempotencyKey);
       const doc: LedgerEntryDoc = {
@@ -81,6 +95,7 @@ export async function postLedgerEntries(db: Firestore, input: PostLedgerEntriesI
       };
       tx.create(ref, doc);
     });
+    input.alsoInTransaction?.(tx, postings);
   });
 
   return { transactionId };
