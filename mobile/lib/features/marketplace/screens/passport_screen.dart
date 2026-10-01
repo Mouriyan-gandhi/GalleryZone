@@ -7,13 +7,19 @@ import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
-import '../../ownership/widgets/transfer_widgets.dart';
+import '../../../data/models/passport.dart';
+import '../../coa/coa_pdf.dart';
+import '../../coa/download_coa_button.dart';
+import '../../ownership/providers/ownership_providers.dart';
 import '../providers/marketplace_providers.dart';
+import '../widgets/artist_avatar.dart';
 import '../widgets/artwork_card.dart';
+import '../widgets/artwork_qr.dart';
 
-/// Port of `app/verify/[artworkId]` — the public page a physical NFC/QR tag
-/// resolves to (mirrors `GET /nfc/{artwork_id}`). Deliberately ceremonial:
-/// certificate card, then the append-only provenance record.
+/// Port of `app/verify/[artworkId]` - the public page a physical tag or a
+/// printed QR code resolves to, for someone who may never have signed in.
+/// A passport card, who owns and holds the piece and where, then the unbroken
+/// record of every hand-over, and the QR that points back here.
 class PassportScreen extends ConsumerWidget {
   const PassportScreen({super.key, required this.artworkId});
 
@@ -24,174 +30,272 @@ class PassportScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artwork = ref.watch(artworkProvider(artworkId));
+    final passport = ref.watch(passportProvider(artworkId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Artwork Passport')),
-      body: artwork.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
-          icon: LucideIcons.triangleAlert,
-          title: 'Something went wrong',
-          description: "We couldn't load this passport right now.",
-        ),
-        data: (data) => data == null
-            ? const EmptyState(
-                icon: LucideIcons.searchX,
-                title: 'No passport for this tag',
-                description:
-                    'This tag does not resolve to a registered artwork. If it came '
-                    'off a physical piece, contact GalleryZone support.',
-              )
-            : _PassportBody(artwork: data),
-      ),
+      body: _body(context, ref, artwork, passport),
     );
+  }
+
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<Artwork?> artwork,
+    AsyncValue<Passport?> passport,
+  ) {
+    if (artwork.isLoading || passport.isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 12),
+            Text('Loading passport…'),
+          ],
+        ),
+      );
+    }
+    if (artwork.hasError || passport.hasError) {
+      return EmptyState(
+        icon: LucideIcons.triangleAlert,
+        title: "The passport didn't load",
+        description: 'Check your connection and try again.',
+        action: OutlinedButton(
+          onPressed: () {
+            ref.invalidate(artworkProvider(artworkId));
+            ref.invalidate(passportProvider(artworkId));
+          },
+          child: const Text('Try again'),
+        ),
+      );
+    }
+    final piece = artwork.value;
+    if (piece == null) {
+      return const EmptyState(
+        icon: LucideIcons.searchX,
+        title: 'No passport for this tag',
+        description:
+            'This tag does not resolve to a registered artwork. If it came off a physical piece, contact '
+            'GalleryZone support.',
+      );
+    }
+    return PassportBody(artwork: piece, passport: passport.value);
   }
 }
 
-class _PassportBody extends ConsumerWidget {
-  const _PassportBody({required this.artwork});
+/// The passport itself, given the piece and (when the API has one) its public
+/// record. Public so the artist's board can show the same preview.
+class PassportBody extends ConsumerWidget {
+  const PassportBody({super.key, required this.artwork, required this.passport});
 
   final Artwork artwork;
+  final Passport? passport;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final artist = ref.watch(artistProfileProvider(artwork.artistId)).value;
     final sorted = [...artwork.images]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     final coverUrl = sorted.isEmpty ? artwork.thumbnailUrl : sorted.first.url;
+    final custody = resolveCustody(artwork);
+    // The passport names the owner; the piece's own custody is the fallback
+    // for a piece the record doesn't hold yet.
+    final ownerName = passport?.ownerName ?? custody.legalOwnerName ?? custodyPartyLabel[custody.legalOwner]!;
+    final coaNumber = passport?.coaCertificateNumber ?? '';
+    final coaIssued = passport?.coaIssuedAt ?? '';
+    final artist = ref.watch(artistProfileProvider(artwork.artistId)).value;
+
+    final entries = [
+      ...?passport?.events.where((e) => e.status != TransferStatus.cancelled),
+    ]..sort((a, b) => DateTime.parse(a.initiatedAt).compareTo(DateTime.parse(b.initiatedAt)));
 
     return ContentWidth(
       maxWidth: 620,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
-          TextButton.icon(
-            onPressed: () => context.push('/marketplace/${artwork.id}'),
-            icon: const Icon(LucideIcons.arrowLeft, size: 14),
-            label: const Text('Back to listing'),
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+          if (artwork.nfcTagId != null) const _NfcVerifiedBanner(),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => context.push('/marketplace/${artwork.id}'),
+              icon: const Icon(LucideIcons.arrowLeft, size: 14),
+              label: const Text('Back to listing'),
+              style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: theme.textTheme.bodySmall?.color),
+            ),
           ),
           const SizedBox(height: 12),
-          _PassportCard(artwork: artwork, coverUrl: coverUrl),
-          if (artwork.nfcTagId != null) ...[
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+          _PassportCard(
+            artwork: artwork,
+            coverUrl: coverUrl,
+            coaNumber: coaNumber,
+            nfcLinked: artwork.nfcTagId != null,
+          ),
+          const SizedBox(height: 20),
+          // IntrinsicHeight: a list gives its children unbounded height, and a
+          // row that stretches its cells to equal height needs a bound to stretch to.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(LucideIcons.nfc, size: 14, color: theme.colorScheme.tertiary),
-                const SizedBox(width: 8),
-                Text('Physical tag ', style: theme.textTheme.labelSmall),
-                Text(
-                  artwork.nfcTagId!,
-                  style: theme.textTheme.labelSmall?.copyWith(fontFamily: 'monospace'),
+                Expanded(child: _FactCard(icon: LucideIcons.user, label: 'Owner', value: ownerName)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _FactCard(
+                    icon: LucideIcons.warehouse,
+                    label: 'Held by',
+                    value: custodyPartyLabel[custody.custodian]!,
+                  ),
                 ),
+                const SizedBox(width: 10),
+                Expanded(child: _FactCard(icon: LucideIcons.mapPin, label: 'Location', value: custody.locationLabel)),
               ],
             ),
-          ],
-          const SizedBox(height: 28),
-          _CustodyTrio(custody: resolveCustody(artwork)),
-          const SizedBox(height: 32),
-          OwnershipHistory(artworkId: artwork.id, artistName: artwork.artistName),
-          const SizedBox(height: 36),
-          ProvenanceTimeline(history: artwork.statusHistory),
-          if (artist != null) ...[
-            const SizedBox(height: 36),
-            Center(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
+          ),
+          if (coaIssued.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: theme.colorScheme.outline),
+              ),
+              child: Row(
                 children: [
-                  Text('Registered to ', style: theme.textTheme.labelSmall),
-                  InkWell(
-                    onTap: () => context.push('/artists/${artist.id}'),
-                    child: Text(
-                      artist.name,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.tertiary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  Text(', a verified GalleryZone artist.', style: theme.textTheme.labelSmall),
+                  Icon(LucideIcons.clock, size: 14, color: theme.textTheme.bodySmall?.color),
+                  const SizedBox(width: 8),
+                  Text('COA issued ${formatLongDate(coaIssued)}', style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
           ],
+          if (entries.isNotEmpty) ...[
+            const SizedBox(height: 36),
+            _ProvenanceTimeline(entries: entries),
+          ],
+          const SizedBox(height: 36),
+          Center(child: ArtworkQr(artworkId: artwork.id, size: 128, showUrl: true)),
+          const SizedBox(height: 16),
+          Center(
+            child: DownloadCoaButton(
+              certificate: CoaPdfInput(
+                artworkId: artwork.id,
+                productCode: passport?.productCode,
+                title: artwork.title,
+                artistName: artwork.artistName,
+                category: humanize(artwork.category),
+                medium: humanize(artwork.medium),
+                dimensions: dimensionsLabel(artwork.dimensions),
+                yearCreated: artwork.yearCreated,
+                coaCertificateNumber: coaNumber,
+                coaIssueDate: coaIssued,
+                ownerName: ownerName,
+              ),
+            ),
+          ),
+          if (artwork.artistId.isNotEmpty) ...[
+            const SizedBox(height: 40),
+            Divider(color: theme.colorScheme.outline),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                ArtistAvatar(name: artist?.name ?? artwork.artistName, imageUrl: artist?.profileImageUrl ?? '', size: 40),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        artist?.name ?? artwork.artistName,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                      ),
+                      Text('Verified GalleryZone artist', style: theme.textTheme.labelSmall),
+                    ],
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: () => context.push('/artists/${artwork.artistId}'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.tertiary,
+                    side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                  ),
+                  child: const Text('View portfolio'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(LucideIcons.shieldCheck, size: 14, color: theme.colorScheme.tertiary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Authenticated by GalleryZone · One tag. One artwork. One unbroken record.',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// Ownership, custody and location are three independent facts about a
-/// physical artwork — the passport shows all three rather than one collapsed
-/// "owner". Port of the trio in `features/verify/artwork-passport-view.tsx`.
-class _CustodyTrio extends StatelessWidget {
-  const _CustodyTrio({required this.custody});
-
-  final ArtworkCustody custody;
-
-  @override
-  Widget build(BuildContext context) {
-    final cells = [
-      ('Owner', custody.legalOwnerName ?? custodyPartyLabel[custody.legalOwner]!),
-      ('Held by', custodyPartyLabel[custody.custodian]!),
-      ('Location', custody.locationLabel),
-    ];
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final (index, (label, value)) in cells.indexed) ...[
-          if (index > 0) const SizedBox(width: 10),
-          Expanded(
-            child: _CustodyCell(label: label, value: value),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _CustodyCell extends StatelessWidget {
-  const _CustodyCell({required this.label, required this.value});
-
-  final String label;
-  final String value;
+/// Shown only when the piece has a linked tag: immediate confirmation that the
+/// tap resolved to a live passport.
+class _NfcVerifiedBanner extends StatelessWidget {
+  const _NfcVerifiedBanner();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: theme.colorScheme.outline),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.6),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
-          ),
-        ],
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.nfc, size: 16, color: theme.colorScheme.tertiary),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text(
+                'Verified via NFC scan',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.tertiary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(LucideIcons.circleCheck, size: 16, color: theme.colorScheme.tertiary),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _PassportCard extends StatelessWidget {
-  const _PassportCard({required this.artwork, required this.coverUrl});
+  const _PassportCard({
+    required this.artwork,
+    required this.coverUrl,
+    required this.coaNumber,
+    required this.nfcLinked,
+  });
 
   final Artwork artwork;
   final String coverUrl;
+  final String coaNumber;
+  final bool nfcLinked;
 
   @override
   Widget build(BuildContext context) {
@@ -202,13 +306,8 @@ class _PassportCard extends StatelessWidget {
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(AppRadius.xl2),
         border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
-        // The web's gold bloom, as a soft glow rather than a blurred layer.
         boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withValues(alpha: 0.15),
-            blurRadius: 40,
-            spreadRadius: -8,
-          ),
+          BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.15), blurRadius: 40, spreadRadius: -8),
         ],
       ),
       child: Column(
@@ -236,43 +335,125 @@ class _PassportCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: SizedBox(width: 176, height: 176, child: ArtworkImageView(url: coverUrl)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           Text(
             artwork.title,
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
-          Text('by ${artwork.artistName}', style: theme.textTheme.bodySmall),
-          const SizedBox(height: 20),
-          Container(height: 1, width: 64, color: theme.colorScheme.primary.withValues(alpha: 0.5)),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _Field(
-                  label: 'CERTIFICATE NO.',
-                  value: artwork.coaCertificateNumber,
-                  gold: true,
+          Text.rich(
+            TextSpan(
+              style: theme.textTheme.bodySmall,
+              children: [
+                const TextSpan(text: 'by '),
+                TextSpan(
+                  text: artwork.artistName,
+                  style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: FontWeight.w500),
                 ),
-              ),
-              Expanded(
-                child: _Field(label: 'ISSUED', value: formatLongDate(artwork.coaIssueDate)),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.badgeCheck, size: 16, color: theme.colorScheme.tertiary),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'CERTIFICATE OF AUTHENTICITY',
+                        style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, letterSpacing: 0.8),
+                      ),
+                      Text(
+                        coaNumber.isEmpty ? 'Pending issuance' : coaNumber,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: theme.colorScheme.tertiary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // That a physical tag is linked is public; which chip it is stays
+          // between the artist and GalleryZone - a cloned tag is only as good
+          // as the identifier it can copy.
+          if (nfcLinked) ...[
+            const SizedBox(height: 12),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.nfc, size: 14, color: theme.colorScheme.tertiary),
+                const SizedBox(width: 6),
+                Text('NFC tag linked', style: theme.textTheme.labelSmall),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FactCard extends StatelessWidget {
+  const _FactCard({required this.icon, required this.label, required this.value});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color?.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: theme.colorScheme.outline),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Icon(icon, size: 14, color: theme.colorScheme.tertiary),
+          ),
+          const SizedBox(height: 8),
           Text(
-            'This digital passport confirms the piece above as an original, '
-            'authenticated work registered with GalleryZone. It resolves the same '
-            'NFC/QR tag physically attached to the artwork.',
+            label.toUpperCase(),
             textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall?.copyWith(height: 1.6),
+            style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, letterSpacing: 1.2),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500, height: 1.25),
           ),
         ],
       ),
@@ -280,12 +461,13 @@ class _PassportCard extends StatelessWidget {
   }
 }
 
-class _Field extends StatelessWidget {
-  const _Field({required this.label, required this.value, this.gold = false});
+/// Every hand-over of ownership and every loan of display rights, oldest
+/// first, from the public record - never from the artwork's own status log.
+/// A hand-over that was cancelled never happened, so it is not shown.
+class _ProvenanceTimeline extends StatelessWidget {
+  const _ProvenanceTimeline({required this.entries});
 
-  final String label;
-  final String value;
-  final bool gold;
+  final List<PassportEvent> entries;
 
   @override
   Widget build(BuildContext context) {
@@ -293,55 +475,12 @@ class _Field extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, letterSpacing: 1.2)),
-        const SizedBox(height: 4),
         Text(
-          value,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            color: gold ? theme.colorScheme.tertiary : null,
-          ),
+          'PROVENANCE',
+          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.5),
         ),
-      ],
-    );
-  }
-}
-
-/// `artwork.statusHistory` oldest-first — the append-only provenance record
-/// behind the certificate, straight from `artwork_status_history`.
-class ProvenanceTimeline extends StatelessWidget {
-  const ProvenanceTimeline({super.key, required this.history});
-
-  final List<ArtworkStatusEvent> history;
-
-  static const _labels = <ArtworkStatus, String>{
-    ArtworkStatus.draft: 'Listing created',
-    ArtworkStatus.pendingApproval: 'Submitted for review',
-    ArtworkStatus.marketplace: 'Listed on the marketplace',
-    ArtworkStatus.reserved: 'Reserved by an aggregator',
-    ArtworkStatus.preparingDispatch: 'Preparing for dispatch',
-    ArtworkStatus.inTransit: 'In transit',
-    ArtworkStatus.withAggregator: 'In aggregator display',
-    ArtworkStatus.sold: 'Sold',
-    ArtworkStatus.settlementComplete: 'Settlement complete',
-    ArtworkStatus.delivered: 'Delivered',
-    ArtworkStatus.completed: 'Sale completed',
-    ArtworkStatus.returned: 'Returned',
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    if (history.isEmpty) return const SizedBox.shrink();
-    final theme = Theme.of(context);
-    final ordered = [...history]
-      ..sort((a, b) => DateTime.parse(a.changedAt).compareTo(DateTime.parse(b.changedAt)));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Provenance', style: theme.textTheme.titleLarge),
-        const SizedBox(height: 18),
-        for (var i = 0; i < ordered.length; i++)
+        const SizedBox(height: 16),
+        for (var i = 0; i < entries.length; i++)
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,33 +488,61 @@ class ProvenanceTimeline extends StatelessWidget {
                 Column(
                   children: [
                     Container(
-                      width: 23,
-                      height: 23,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: theme.cardTheme.color,
-                        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                        color: i == entries.length - 1 ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.cardTheme.color,
+                        border: Border.all(
+                          color: i == entries.length - 1
+                              ? theme.colorScheme.primary.withValues(alpha: 0.6)
+                              : theme.colorScheme.outline,
+                        ),
                       ),
-                      child: Icon(LucideIcons.check, size: 12, color: theme.colorScheme.tertiary),
+                      child: Icon(
+                        i == entries.length - 1 ? LucideIcons.sparkles : LucideIcons.circleCheck,
+                        size: 14,
+                        color: i == entries.length - 1 ? theme.colorScheme.tertiary : theme.textTheme.bodySmall?.color,
+                      ),
                     ),
-                    if (i != ordered.length - 1)
-                      Expanded(child: Container(width: 1, color: theme.colorScheme.outline)),
+                    if (i != entries.length - 1) Expanded(child: Container(width: 1, color: theme.colorScheme.outline)),
                   ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: i == ordered.length - 1 ? 0 : 24),
+                    padding: EdgeInsets.only(bottom: i == entries.length - 1 ? 0 : 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _labels[ordered[i].status] ?? ordered[i].status.name,
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            Text(entries[i].fromName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color)),
+                            Icon(LucideIcons.arrowRight, size: 12, color: theme.colorScheme.tertiary),
+                            Text(entries[i].toName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+                            if (entries[i].kind == TransferKind.display)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                                ),
+                                child: Text(
+                                  'Display',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.tertiary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          formatShortDate(ordered[i].changedAt),
+                          formatShortDate(entries[i].acceptedAt ?? entries[i].initiatedAt),
                           style: theme.textTheme.labelSmall,
                         ),
                       ],

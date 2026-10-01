@@ -68,7 +68,8 @@ class _ArtworkDetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artist = ref.watch(artistProfileProvider(artwork.artistId)).value;
-    final siblings = ref.watch(artworksByArtistProvider(artwork.artistId)).value ?? [];
+    final siblings =
+        ref.watch(artworksByArtistProvider(artwork.artistId)).value ?? [];
     final related = siblings.where((a) => a.id != artwork.id).take(4).toList();
     final isWishlisted = ref.watch(wishlistProvider).contains(artwork.id);
     final isAvailable = artwork.status == ArtworkStatus.marketplace;
@@ -84,7 +85,7 @@ class _ArtworkDetailBody extends ConsumerWidget {
           _Gallery(images: artwork.images, fallbackUrl: artwork.thumbnailUrl),
           const SizedBox(height: 24),
           Text(
-            artwork.category.toUpperCase(),
+            humanize(artwork.category).toUpperCase(),
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.tertiary,
               letterSpacing: 1.6,
@@ -94,7 +95,9 @@ class _ArtworkDetailBody extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             artwork.title,
-            style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 10),
           Row(
@@ -112,7 +115,10 @@ class _ArtworkDetailBody extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              VerifiedBadge(verification: artist?.verification ?? _noVerification, small: true),
+              VerifiedBadge(
+                verification: artist?.verification ?? _noVerification,
+                small: true,
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -122,7 +128,10 @@ class _ArtworkDetailBody extends ConsumerWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  PriceTag(amount: artwork.customerPrice, style: theme.textTheme.headlineSmall),
+                  PriceTag(
+                    amount: artwork.customerPrice,
+                    style: theme.textTheme.headlineSmall,
+                  ),
                   const SizedBox(height: 2),
                   Text('incl. GST', style: theme.textTheme.labelSmall),
                 ],
@@ -132,15 +141,81 @@ class _ArtworkDetailBody extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 20),
+          // Buying sits with the price, as on the website: at the end of the
+          // page it was a screen and a half below the fold.
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: isAvailable
+                        ? () =>
+                              context.push('/checkout?artworkId=${artwork.id}')
+                        : null,
+                    child: Text(_buyLabel(artwork.status)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      ref.read(wishlistProvider.notifier).toggle(artwork.id),
+                  icon: Icon(
+                    isWishlisted ? Icons.favorite : Icons.favorite_border,
+                    size: 18,
+                  ),
+                  label: Text(isWishlisted ? 'Wishlisted' : 'Wishlist'),
+                ),
+              ),
+            ],
+          ),
+          if (artwork.verifiedArtist) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.badgeCheck,
+                  size: 14,
+                  color: theme.colorScheme.tertiary,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Sold by a verified GalleryZone artist.',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
           const Divider(),
           _SpecGrid(artwork: artwork),
           const Divider(),
           const SizedBox(height: 16),
-          Text(artwork.description, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
-          const SizedBox(height: 24),
-          _AuthenticityCard(artwork: artwork),
+          Text(
+            artwork.description,
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => context.push('/verify/${artwork.id}'),
+              icon: const Icon(LucideIcons.scrollText, size: 14),
+              label: const Text("View this artwork's digital passport"),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                foregroundColor: theme.colorScheme.tertiary,
+                textStyle: theme.textTheme.labelLarge,
+              ),
+            ),
+          ),
           if (artwork.socialProofLinks.isNotEmpty) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Text('Process & provenance', style: theme.textTheme.bodySmall),
             const SizedBox(height: 8),
             Wrap(
@@ -155,54 +230,26 @@ class _ArtworkDetailBody extends ConsumerWidget {
               ],
             ),
           ],
-          const SizedBox(height: 28),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: isAvailable
-                        ? () => context.push('/checkout?artworkId=${artwork.id}')
-                        : null,
-                    child: Text(_buyLabel(artwork.status)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: () => ref.read(wishlistProvider.notifier).toggle(artwork.id),
-                  icon: Icon(isWishlisted ? Icons.favorite : Icons.favorite_border, size: 18),
-                  label: Text(isWishlisted ? 'Wishlisted' : 'Wishlist'),
-                ),
-              ),
-            ],
-          ),
-          if (artwork.verifiedArtist) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Icon(LucideIcons.badgeCheck, size: 14, color: theme.colorScheme.tertiary),
-                const SizedBox(width: 6),
-                Text('Sold by a verified GalleryZone artist.', style: theme.textTheme.labelSmall),
-              ],
-            ),
-          ],
           if (related.isNotEmpty) ...[
             const SizedBox(height: 32),
             const Divider(),
             const SizedBox(height: 16),
-            Text('More from ${artwork.artistName}', style: theme.textTheme.titleLarge),
+            Text(
+              'More from ${artwork.artistName}',
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
             SizedBox(
-              height: 320,
+              height:
+                  200 * 1.25 +
+                  ArtworkGridDelegate.textHeight *
+                      ArtworkGridDelegate.textScaleOf(context),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: related.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
-                itemBuilder: (context, index) => ArtworkCard(artwork: related[index], width: 200),
+                itemBuilder: (context, index) =>
+                    ArtworkCard(artwork: related[index], width: 200),
               ),
             ),
           ],
@@ -237,31 +284,39 @@ class _GalleryState extends State<_Gallery> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sorted = [...widget.images]..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
-    final activeUrl = sorted.isEmpty ? widget.fallbackUrl : sorted[_activeIndex].url;
+    final sorted = [...widget.images]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final activeUrl = sorted.isEmpty
+        ? widget.fallbackUrl
+        : sorted[_activeIndex].url;
 
     return Column(
       children: [
         GestureDetector(
-          onTap: () => showDialog<void>(
-            context: context,
-            builder: (context) => Dialog.fullscreen(
-              backgroundColor: Colors.black,
-              child: Stack(
-                children: [
-                  Center(
-                    child: ArtworkImageView(url: activeUrl, fit: BoxFit.contain),
-                  ),
-                  SafeArea(
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+          onTap: activeUrl.isEmpty
+              ? null
+              : () => showDialog<void>(
+                  context: context,
+                  builder: (context) => Dialog.fullscreen(
+                    backgroundColor: Colors.black,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: ArtworkImageView(
+                            url: activeUrl,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        SafeArea(
+                          child: IconButton(
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             child: AspectRatio(
@@ -270,25 +325,34 @@ class _GalleryState extends State<_Gallery> {
                 fit: StackFit.expand,
                 children: [
                   ArtworkImageView(url: activeUrl),
-                  Positioned(
-                    right: 12,
-                    bottom: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withValues(alpha: 0.85),
-                        borderRadius: BorderRadius.circular(AppRadius.xl4),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(LucideIcons.expand, size: 12),
-                          const SizedBox(width: 6),
-                          Text('View full size', style: theme.textTheme.labelSmall),
-                        ],
+                  if (activeUrl.isNotEmpty)
+                    Positioned(
+                      right: 12,
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface.withValues(
+                            alpha: 0.85,
+                          ),
+                          borderRadius: BorderRadius.circular(AppRadius.xl4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.expand, size: 12),
+                            const SizedBox(width: 6),
+                            Text(
+                              'View full size',
+                              style: theme.textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -334,10 +398,11 @@ class _SpecGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dimensions = dimensionsLabel(artwork.dimensions);
     final specs = {
-      'Category': titleCase(artwork.category),
-      'Medium': artwork.medium,
-      'Dimensions': artwork.dimensions ?? 'Not specified',
+      'Category': humanize(artwork.category),
+      'Medium': humanize(artwork.medium),
+      'Dimensions': dimensions.isEmpty ? 'Not specified' : dimensions,
       'Year': artwork.yearCreated?.toString() ?? 'Not specified',
     };
     final theme = Theme.of(context);
@@ -351,11 +416,16 @@ class _SpecGrid extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(width: 110, child: Text(entry.key, style: theme.textTheme.bodySmall)),
+                  SizedBox(
+                    width: 110,
+                    child: Text(entry.key, style: theme.textTheme.bodySmall),
+                  ),
                   Expanded(
                     child: Text(
                       entry.value,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -374,7 +444,11 @@ class _InsuranceChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ActionChip(
-      avatar: Icon(LucideIcons.shieldCheck, size: 14, color: theme.colorScheme.tertiary),
+      avatar: Icon(
+        LucideIcons.shieldCheck,
+        size: 14,
+        color: theme.colorScheme.tertiary,
+      ),
       label: const Text('Insured'),
       onPressed: () => showDialog<void>(
         context: context,
@@ -386,80 +460,13 @@ class _InsuranceChip extends StatelessWidget {
             'covered.',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Got it'),
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _AuthenticityCard extends StatelessWidget {
-  const _AuthenticityCard({required this.artwork});
-
-  final Artwork artwork;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.sparkles, size: 16, color: theme.colorScheme.tertiary),
-              const SizedBox(width: 8),
-              Text(
-                'Authenticity',
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _Row(label: 'Certificate number', value: artwork.coaCertificateNumber),
-          const SizedBox(height: 6),
-          _Row(label: 'Issued', value: formatLongDate(artwork.coaIssueDate)),
-          const SizedBox(height: 12),
-          Text(
-            'Hand-signed by the artist and shipped with full chain-of-custody '
-            'documentation confirming its origin.',
-            style: theme.textTheme.labelSmall?.copyWith(height: 1.5),
-          ),
-          const SizedBox(height: 10),
-          TextButton.icon(
-            onPressed: () => context.push('/verify/${artwork.id}'),
-            icon: const Icon(LucideIcons.scrollText, size: 14),
-            label: const Text("View this artwork's digital passport"),
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Row extends StatelessWidget {
-  const _Row({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: theme.textTheme.bodySmall),
-        Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-      ],
     );
   }
 }

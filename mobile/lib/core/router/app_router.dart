@@ -34,6 +34,7 @@ import '../../features/artist/screens/artist_account_screens.dart';
 import '../../features/artist/screens/artist_artworks_screen.dart';
 import '../../features/artist/screens/artist_catalog_screens.dart';
 import '../../features/artist/screens/artist_dashboard_screen.dart';
+import '../../features/artist/screens/coa_nfc_screen.dart';
 import '../../features/artist/screens/artist_more_screen.dart';
 import '../../features/artist/screens/artist_sales_screen.dart';
 import '../../features/artist/screens/artwork_upload_screen.dart';
@@ -45,6 +46,7 @@ import '../../features/legal/screens/faq_screen.dart';
 import '../../features/legal/screens/legal_document_screen.dart';
 import '../../features/marketing/screens/about_screen.dart';
 import '../../features/marketplace/screens/artist_profile_screen.dart';
+import '../../features/marketplace/screens/artists_directory_screen.dart';
 import '../../features/marketplace/screens/artwork_detail_screen.dart';
 import '../../features/marketplace/screens/marketplace_screen.dart';
 import '../../features/marketplace/screens/passport_screen.dart';
@@ -173,6 +175,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: ArtworkDetailScreen.path,
         builder: (context, state) =>
             ArtworkDetailScreen(artworkId: state.pathParameters['artworkId']!),
+      ),
+      GoRoute(
+        path: ArtistsDirectoryScreen.path,
+        builder: (context, state) => const ArtistsDirectoryScreen(),
       ),
       GoRoute(
         path: ArtistProfileScreen.path,

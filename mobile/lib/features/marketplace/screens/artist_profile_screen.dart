@@ -7,10 +7,14 @@ import '../../../core/launch.dart';
 import '../../../data/mock/seed/artist_seed.dart' show currentArtistId;
 import '../../../data/models/artist.dart';
 import '../../../data/models/artist_network.dart';
+import '../../../data/models/artwork.dart' show SocialProofPlatform;
 import '../../../data/models/auth.dart';
 import '../../artist/providers/artist_network_providers.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../artist_stats.dart';
 import '../providers/marketplace_providers.dart';
+import '../widgets/artist_avatar.dart';
+import '../widgets/artist_stat_strip.dart';
 import '../widgets/artwork_card.dart';
 import '../widgets/social_glyphs.dart';
 
@@ -78,13 +82,7 @@ class _ArtistProfileBody extends ConsumerWidget {
         children: [
           Column(
             children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 96,
-                  height: 96,
-                  child: ArtworkImageView(url: artist.profileImageUrl),
-                ),
-              ),
+              ArtistAvatar(name: artist.name, imageUrl: artist.profileImageUrl, size: 96),
               const SizedBox(height: 14),
               Text(
                 artist.name,
@@ -93,6 +91,22 @@ class _ArtistProfileBody extends ConsumerWidget {
               ),
               const SizedBox(height: 8),
               VerifiedBadge(verification: artist.verification),
+              // What they make, before anything about GalleryZone.
+              if (artist.headline.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(artist.headline, textAlign: TextAlign.center, style: theme.textTheme.bodyLarge),
+              ],
+              if (artist.location.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.mapPin, size: 14, color: theme.textTheme.bodySmall?.color),
+                    const SizedBox(width: 6),
+                    Flexible(child: Text(artist.location, style: theme.textTheme.bodySmall)),
+                  ],
+                ),
+              ],
               const SizedBox(height: 10),
               Text(
                 _verificationSummary(artist),
@@ -104,22 +118,32 @@ class _ArtistProfileBody extends ConsumerWidget {
               // Artist-to-artist connect. Renders nothing unless the viewer is
               // a signed-in artist looking at someone else's profile.
               _ConnectButton(artistId: artist.id),
-              if (artist.socialLinks.isNotEmpty) ...[
+              // Instagram is collected for GalleryZone's own verification and
+              // never shown publicly, unlike the other platforms.
+              if (artist.socialLinks.any((link) => link.platform != SocialProofPlatform.instagram)) ...[
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
                   alignment: WrapAlignment.center,
                   children: [
                     for (final link in artist.socialLinks)
-                      ActionChip(
-                        avatar: SocialGlyph(platform: link.platform, size: 14),
-                        label: Text(SocialGlyph.label(link.platform)),
-                        onPressed: () => openExternal(context, link.url),
-                      ),
+                      if (link.platform != SocialProofPlatform.instagram)
+                        ActionChip(
+                          avatar: SocialGlyph(platform: link.platform, size: 14),
+                          label: Text(SocialGlyph.label(link.platform)),
+                          onPressed: () => openExternal(context, link.url),
+                        ),
                   ],
                 ),
               ],
             ],
+          ),
+          // Before the bio: how much work there is and what it costs. A
+          // collector decides on these and reads the story afterwards.
+          const SizedBox(height: 24),
+          ArtistStatStrip(
+            stats: ArtistPublicStats.of(artist, listings.value ?? const []),
+            rating: ref.watch(artistRatingProvider(artist.id)).value,
           ),
           const SizedBox(height: 24),
           const Divider(),
@@ -243,7 +267,7 @@ class _ConnectButtonState extends ConsumerState<_ConnectButton> {
       await ref
           .read(artistNetworkRepositoryProvider)
           .sendConnectionRequest(
-            requesterId: currentArtistId,
+            requesterId: ref.read(accountProvider).value?.uid ?? currentArtistId,
             recipientId: widget.artistId,
             message: _messageController.text,
           );
@@ -299,7 +323,9 @@ class _ConnectButtonState extends ConsumerState<_ConnectButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final role = ref.watch(sessionProvider);
-    if (role != Role.artist || widget.artistId == currentArtistId) {
+    // The mock has one demo artist; with the real backend "me" is the account.
+    final myId = ref.watch(accountProvider).value?.uid ?? currentArtistId;
+    if (role != Role.artist || widget.artistId == myId) {
       return const SizedBox.shrink();
     }
 
@@ -320,7 +346,7 @@ class _ConnectButtonState extends ConsumerState<_ConnectButton> {
     }
 
     if (connection?.status == ConnectionStatus.pending) {
-      final waitingOnMe = connection!.recipientId == currentArtistId;
+      final waitingOnMe = connection!.recipientId == myId;
       return Padding(
         padding: const EdgeInsets.only(top: 10),
         child: Text(

@@ -19,7 +19,11 @@ import '../providers/marketplace_providers.dart';
 /// Anything already absolute (http/https) loads over the network, which is
 /// what a real backend's image URLs will be.
 class ArtworkImageView extends StatelessWidget {
-  const ArtworkImageView({super.key, required this.url, this.fit = BoxFit.cover});
+  const ArtworkImageView({
+    super.key,
+    required this.url,
+    this.fit = BoxFit.cover,
+  });
 
   final String url;
   final BoxFit fit;
@@ -79,7 +83,8 @@ class ImageComingSoon extends StatelessWidget {
                   'assets/brand/gz-logo.png',
                   width: 40,
                   height: 40,
-                  errorBuilder: (context, error, stack) => const SizedBox(width: 40, height: 40),
+                  errorBuilder: (context, error, stack) =>
+                      const SizedBox(width: 40, height: 40),
                 ),
               ),
             ),
@@ -124,7 +129,11 @@ class PriceTag extends StatelessWidget {
 /// `Artwork.verifiedArtist` (a boolean lower bound) pass
 /// [VerifiedBadge.minimumVerification] — never a synthesized all-true state.
 class VerifiedBadge extends StatelessWidget {
-  const VerifiedBadge({super.key, required this.verification, this.small = false});
+  const VerifiedBadge({
+    super.key,
+    required this.verification,
+    this.small = false,
+  });
 
   static const minimumVerification = ArtistVerificationState(
     tier1SocialMedia: true,
@@ -141,8 +150,9 @@ class VerifiedBadge extends StatelessWidget {
     final tiers = verifiedTierCount(verification);
     if (tiers == 0) return const SizedBox.shrink();
 
-    final textStyle = (small ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)
-        ?.copyWith(fontWeight: FontWeight.w500);
+    final textStyle =
+        (small ? theme.textTheme.labelSmall : theme.textTheme.labelMedium)
+            ?.copyWith(fontWeight: FontWeight.w500);
 
     if (tiers == 3) {
       return Container(
@@ -150,7 +160,9 @@ class VerifiedBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: theme.colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppRadius.xl4),
-          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.4),
+          ),
         ),
         child: Text(
           'Gold ✦ Verified',
@@ -162,7 +174,11 @@ class VerifiedBadge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(LucideIcons.badgeCheck, size: small ? 12 : 14, color: theme.colorScheme.tertiary),
+        Icon(
+          LucideIcons.badgeCheck,
+          size: small ? 12 : 14,
+          color: theme.colorScheme.tertiary,
+        ),
         const SizedBox(width: 4),
         Text('Verified', style: textStyle),
       ],
@@ -197,7 +213,9 @@ class ArtworkCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final isWishlisted = ref.watch(wishlistProvider).contains(artwork.id);
     final isAvailable = artwork.status == ArtworkStatus.marketplace;
-    final status = isAvailable ? null : (_statusLabels[artwork.status] ?? 'Unavailable');
+    final status = isAvailable
+        ? null
+        : (_statusLabels[artwork.status] ?? 'Unavailable');
     final details = [
       if (artwork.medium.isNotEmpty) humanize(artwork.medium),
       if (artwork.yearCreated != null) '${artwork.yearCreated}',
@@ -240,7 +258,9 @@ class ArtworkCard extends ConsumerWidget {
                           artwork.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Row(
@@ -272,7 +292,12 @@ class ArtworkCard extends ConsumerWidget {
                           ),
                         ],
                         if (size.isNotEmpty)
-                          Text(size, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall),
+                          Text(
+                            size,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall,
+                          ),
                         const SizedBox(height: 8),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -311,21 +336,30 @@ class ArtworkCard extends ConsumerWidget {
               Positioned(
                 top: 8,
                 left: 8,
-                child: IgnorePointer(child: RarityBadge(rarity: artwork.rarityType!, stamp: true)),
+                child: IgnorePointer(
+                  child: RarityBadge(rarity: artwork.rarityType!, stamp: true),
+                ),
               ),
             Positioned(
               top: 4,
               right: 4,
               child: IconButton(
-                onPressed: () => ref.read(wishlistProvider.notifier).toggle(artwork.id),
-                tooltip: isWishlisted ? 'Remove from wishlist' : 'Add to wishlist',
+                onPressed: () =>
+                    ref.read(wishlistProvider.notifier).toggle(artwork.id),
+                tooltip: isWishlisted
+                    ? 'Remove from wishlist'
+                    : 'Add to wishlist',
                 icon: Icon(
                   isWishlisted ? Icons.favorite : Icons.favorite_border,
                   size: 18,
-                  color: isWishlisted ? theme.colorScheme.tertiary : theme.colorScheme.onSurface,
+                  color: isWishlisted
+                      ? theme.colorScheme.tertiary
+                      : theme.colorScheme.onSurface,
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.85),
+                  backgroundColor: theme.colorScheme.surface.withValues(
+                    alpha: 0.85,
+                  ),
                 ),
               ),
             ),
@@ -336,12 +370,21 @@ class ArtworkCard extends ConsumerWidget {
                 right: 8,
                 bottom: 8,
                 child: IconButton(
-                  onPressed: () => context.push('/checkout?artworkId=${artwork.id}'),
+                  onPressed: () =>
+                      context.push('/checkout?artworkId=${artwork.id}'),
                   tooltip: 'Buy ${artwork.title}',
-                  icon: Icon(LucideIcons.shoppingBag, size: 16, color: theme.colorScheme.tertiary),
+                  icon: Icon(
+                    LucideIcons.shoppingBag,
+                    size: 16,
+                    color: theme.colorScheme.tertiary,
+                  ),
                   style: IconButton.styleFrom(
-                    side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    side: BorderSide(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
                     minimumSize: const Size(36, 36),
                   ),
                 ),
@@ -360,11 +403,19 @@ class ArtworkCard extends ConsumerWidget {
 /// the width instead of a ratio that suits one screen size and clips on
 /// another. The text part grows with the person's text size setting.
 class ArtworkGridDelegate extends SliverGridDelegate {
-  const ArtworkGridDelegate({this.maxCrossAxisExtent = 240, this.spacing = 16, this.textScale = 1});
+  const ArtworkGridDelegate({
+    this.maxCrossAxisExtent = 240,
+    this.spacing = 16,
+    this.textScale = 1,
+  });
 
   /// Reads the text size setting from [context].
   factory ArtworkGridDelegate.of(BuildContext context) =>
-      ArtworkGridDelegate(textScale: MediaQuery.textScalerOf(context).scale(14) / 14);
+      ArtworkGridDelegate(textScale: textScaleOf(context));
+
+  /// How much bigger than default the person has set their text.
+  static double textScaleOf(BuildContext context) =>
+      MediaQuery.textScalerOf(context).scale(14) / 14;
 
   final double maxCrossAxisExtent;
   final double spacing;
@@ -376,8 +427,13 @@ class ArtworkGridDelegate extends SliverGridDelegate {
 
   @override
   SliverGridLayout getLayout(SliverConstraints constraints) {
-    final columns = math.max(1, (constraints.crossAxisExtent / (maxCrossAxisExtent + spacing)).ceil());
-    final width = math.max(0.0, constraints.crossAxisExtent - spacing * (columns - 1)) / columns;
+    final columns = math.max(
+      1,
+      (constraints.crossAxisExtent / (maxCrossAxisExtent + spacing)).ceil(),
+    );
+    final width =
+        math.max(0.0, constraints.crossAxisExtent - spacing * (columns - 1)) /
+        columns;
     final height = width * 1.25 + textHeight * textScale;
     return SliverGridRegularTileLayout(
       crossAxisCount: columns,
@@ -405,12 +461,15 @@ class ArtworkCardSkeleton extends StatelessWidget {
     final theme = Theme.of(context);
     final block = theme.colorScheme.surfaceContainerHighest;
     Widget bar(double widthFactor, double height) => FractionallySizedBox(
-          widthFactor: widthFactor,
-          child: Container(
-            height: height,
-            decoration: BoxDecoration(color: block, borderRadius: BorderRadius.circular(4)),
-          ),
-        );
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: block,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
     return Semantics(
       label: 'Loading artwork',
       child: ExcludeSemantics(
@@ -424,7 +483,10 @@ class ArtworkCardSkeleton extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AspectRatio(aspectRatio: 4 / 5, child: ColoredBox(color: block)),
+              AspectRatio(
+                aspectRatio: 4 / 5,
+                child: ColoredBox(color: block),
+              ),
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -455,18 +517,25 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = gold ? theme.colorScheme.tertiary : theme.colorScheme.onSurface;
+    final color = gold
+        ? theme.colorScheme.tertiary
+        : theme.colorScheme.onSurface;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadius.xl4),
         border: Border.all(
-          color: gold ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.outline,
+          color: gold
+              ? theme.colorScheme.primary.withValues(alpha: 0.5)
+              : theme.colorScheme.outline,
         ),
       ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -503,7 +572,9 @@ class EmptyState extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -539,7 +610,10 @@ class RarityBadge extends StatelessWidget {
     return switch (rank) {
       ArtworkRarity.rare => (AppColors.destructive, Colors.white),
       ArtworkRarity.unique => (const Color(0xFF059669), Colors.white),
-      ArtworkRarity.original => (dark ? AppColors.darkGoldDeep : AppColors.lightGoldDeep, Colors.white),
+      ArtworkRarity.original => (
+        dark ? AppColors.darkGoldDeep : AppColors.lightGoldDeep,
+        Colors.white,
+      ),
       ArtworkRarity.standard => (
         dark ? AppColors.darkMutedForeground : AppColors.lightMutedForeground,
         dark ? AppColors.darkBackground : AppColors.lightBackground,
@@ -557,7 +631,13 @@ class RarityBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(AppRadius.md),
-          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 2, offset: Offset(0, 1))],
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x33000000),
+              blurRadius: 2,
+              offset: Offset(0, 1),
+            ),
+          ],
         ),
         child: Text(
           artworkRarityCode[rarity]!,
@@ -573,7 +653,9 @@ class RarityBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface.withValues(alpha: 0.85),
-        border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: theme.colorScheme.tertiary.withValues(alpha: 0.5),
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

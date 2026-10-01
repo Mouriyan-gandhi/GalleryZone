@@ -14,6 +14,7 @@ import '../../marketing/screens/about_screen.dart';
 import '../filter_options.dart';
 import '../providers/marketplace_providers.dart';
 import '../widgets/artwork_card.dart';
+import 'artists_directory_screen.dart';
 import 'marketplace_filter_sheet.dart';
 
 /// Port of `app/marketplace/page.tsx` + `marketplace-grid.tsx`: the hero with
@@ -170,6 +171,11 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
       appBar: AppBar(
         title: const Text('The Marketplace'),
         actions: [
+          IconButton(
+            onPressed: () => context.push(ArtistsDirectoryScreen.path),
+            tooltip: 'Artists',
+            icon: const Icon(LucideIcons.users),
+          ),
           IconButton(
             onPressed: () => context.push(AboutScreen.path),
             tooltip: 'About',
