@@ -35,6 +35,10 @@ Future<void> main() async {
   }
   runApp(
     ProviderScope(
+      // A failed read shows its error and a "Try again" straight away. The
+      // default would quietly retry for most of a minute first, and a screen
+      // sitting on a spinner that long looks hung.
+      retry: (retryCount, error) => null,
       overrides: [initialRoleProvider.overrideWithValue(role), ...overrides],
       child: const GalleryZoneApp(),
     ),

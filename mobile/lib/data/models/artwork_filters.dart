@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'artwork.dart';
+import 'marketplace.dart' show marketplacePageSize;
 
 enum ArtworkSortBy { newest, priceAsc, priceDesc }
 
@@ -22,6 +23,7 @@ class ArtworkFilters {
     this.query,
     this.sortBy,
     this.page = 1,
+    this.pageSize = marketplacePageSize,
   });
 
   final List<String> categories;
@@ -39,6 +41,10 @@ class ArtworkFilters {
   final String? query;
   final ArtworkSortBy? sortBy;
   final int page;
+
+  /// How many pieces one page holds. The default is the listing's own size;
+  /// the filter sheet asks once for the API's largest page to count options.
+  final int pageSize;
 
   /// Whether anything beyond the default view is applied (sort and page do
   /// not count: they reorder and slice, they do not narrow).
@@ -69,6 +75,7 @@ class ArtworkFilters {
     Object? query = _unset,
     Object? sortBy = _unset,
     int? page,
+    int? pageSize,
   }) {
     return ArtworkFilters(
       categories: categories ?? this.categories,
@@ -82,6 +89,7 @@ class ArtworkFilters {
       query: query == _unset ? this.query : query as String?,
       sortBy: sortBy == _unset ? this.sortBy : sortBy as ArtworkSortBy?,
       page: page ?? 1,
+      pageSize: pageSize ?? this.pageSize,
     );
   }
 
@@ -101,7 +109,8 @@ class ArtworkFilters {
       other.maxPrice == maxPrice &&
       other.query == query &&
       other.sortBy == sortBy &&
-      other.page == page;
+      other.page == page &&
+      other.pageSize == pageSize;
 
   @override
   int get hashCode => Object.hash(
@@ -116,6 +125,7 @@ class ArtworkFilters {
         query,
         sortBy,
         page,
+        pageSize,
       );
 }
 

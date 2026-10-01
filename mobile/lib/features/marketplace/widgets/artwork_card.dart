@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -28,6 +31,9 @@ class ArtworkImageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No photo yet reads as exactly that — never a shared stock picture, so
+    // unrelated listings don't look like duplicates of each other.
+    if (url.isEmpty) return const ImageComingSoon();
     final placeholder = ColoredBox(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: const SizedBox.expand(),
@@ -43,6 +49,51 @@ class ArtworkImageView extends StatelessWidget {
       _assetFor(url),
       fit: fit,
       errorBuilder: (context, error, stack) => placeholder,
+    );
+  }
+}
+
+/// The honest "no image yet" state for a piece with no uploaded photo.
+class ImageComingSoon extends StatelessWidget {
+  const ImageComingSoon({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ColoredBox(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Opacity(
+              opacity: 0.25,
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  0.2126, 0.7152, 0.0722, 0, 0, //
+                  0.2126, 0.7152, 0.0722, 0, 0,
+                  0.2126, 0.7152, 0.0722, 0, 0,
+                  0, 0, 0, 1, 0,
+                ]),
+                child: Image.asset(
+                  'assets/brand/gz-logo.png',
+                  width: 40,
+                  height: 40,
+                  errorBuilder: (context, error, stack) => const SizedBox(width: 40, height: 40),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Image coming soon',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -119,30 +170,26 @@ class VerifiedBadge extends StatelessWidget {
   }
 }
 
-/// Grid/rail tile. Taps through to the artwork detail route; the heart is a
-/// nested tap target that must not trigger the card's own navigation.
+/// Grid/rail tile. Taps through to the artwork detail route; the heart and the
+/// buy button are nested tap targets that must not trigger the card's own
+/// navigation.
+///
+/// What it shows follows the website's card: GalleryZone's rank as a stamp
+/// over the photo, the title, the artist, medium and year, size, the price —
+/// with "Reserved" / "Sold" beside it when it is not on sale — and an
+/// "Insured" tag only when the piece is. There is no certificate or passport
+/// tag: the marketplace carries none (1 Oct 2026).
 class ArtworkCard extends ConsumerWidget {
-  const ArtworkCard({
-    super.key,
-    required this.artwork,
-    this.width,
-    this.showRarity = false,
-  });
+  const ArtworkCard({super.key, required this.artwork, this.width});
 
   final Artwork artwork;
   final double? width;
 
-  /// The artist's own Portfolio marks R/U/O/N over the image; the public
-  /// marketplace does not — a buyer browsing has no use for the artist's
-  /// edition shorthand.
-  final bool showRarity;
-
-  // Only `reserved` and `sold` ever occur as a *current* status on a
-  // marketplace fixture; every other value appears solely in statusHistory.
-  // The fallback keeps this honest if that changes.
-  static const _statusBadges = <ArtworkStatus, (String, IconData)>{
-    ArtworkStatus.reserved: ('Reserved', LucideIcons.bookmarkCheck),
-    ArtworkStatus.sold: ('Sold', LucideIcons.circleCheckBig),
+  // Only `reserved` and `sold` ever occur as the *current* status of a listed
+  // piece; any other off-market status reads "Unavailable" instead of breaking.
+  static const _statusLabels = <ArtworkStatus, String>{
+    ArtworkStatus.reserved: 'Reserved',
+    ArtworkStatus.sold: 'Sold',
   };
 
   @override
@@ -150,13 +197,223 @@ class ArtworkCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final isWishlisted = ref.watch(wishlistProvider).contains(artwork.id);
     final isAvailable = artwork.status == ArtworkStatus.marketplace;
-    final badge = isAvailable ? null : (_statusBadges[artwork.status] ?? ('Unavailable', LucideIcons.lock));
+    final status = isAvailable ? null : (_statusLabels[artwork.status] ?? 'Unavailable');
+    final details = [
+      if (artwork.medium.isNotEmpty) humanize(artwork.medium),
+      if (artwork.yearCreated != null) '${artwork.yearCreated}',
+    ].join(', ');
+    final size = dimensionsLabel(artwork.dimensions);
 
     return SizedBox(
       width: width,
-      child: InkWell(
-        onTap: () => context.push('/marketplace/${artwork.id}'),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: theme.colorScheme.outline),
+        ),
+        child: Stack(
+          children: [
+            InkWell(
+              onTap: () => context.push('/marketplace/${artwork.id}'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AspectRatio(
+                    aspectRatio: 4 / 5,
+                    // Unavailable pieces stay visible but visibly dimmed, like
+                    // the website's faded, part-greyscale treatment.
+                    child: Opacity(
+                      opacity: isAvailable ? 1 : 0.65,
+                      child: ArtworkImageView(url: artwork.thumbnailUrl),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          artwork.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                artwork.artistName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ),
+                            if (artwork.verifiedArtist) ...[
+                              const SizedBox(width: 6),
+                              const VerifiedBadge(
+                                verification: VerifiedBadge.minimumVerification,
+                                small: true,
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (details.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            details,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
+                        if (size.isNotEmpty)
+                          Text(size, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            PriceTag(amount: artwork.customerPrice),
+                            if (status != null)
+                              Flexible(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Text(
+                                    status,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelSmall,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        if (artwork.insured) ...[
+                          const SizedBox(height: 8),
+                          // Clear of the buy button that sits in this corner.
+                          const Padding(
+                            padding: EdgeInsets.only(right: 40),
+                            child: _Pill(label: 'Insured', gold: true),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (artwork.rarityType != null)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IgnorePointer(child: RarityBadge(rarity: artwork.rarityType!, stamp: true)),
+              ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                onPressed: () => ref.read(wishlistProvider.notifier).toggle(artwork.id),
+                tooltip: isWishlisted ? 'Remove from wishlist' : 'Add to wishlist',
+                icon: Icon(
+                  isWishlisted ? Icons.favorite : Icons.favorite_border,
+                  size: 18,
+                  color: isWishlisted ? theme.colorScheme.tertiary : theme.colorScheme.onSurface,
+                ),
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.85),
+                ),
+              ),
+            ),
+            // One tap from the grid to buying, as on the website - only while
+            // the piece is actually on sale.
+            if (isAvailable)
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: IconButton(
+                  onPressed: () => context.push('/checkout?artworkId=${artwork.id}'),
+                  tooltip: 'Buy ${artwork.title}',
+                  icon: Icon(LucideIcons.shoppingBag, size: 16, color: theme.colorScheme.tertiary),
+                  style: IconButton.styleFrom(
+                    side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                    minimumSize: const Size(36, 36),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Lays [ArtworkCard]s out two across on a phone and wider on a tablet.
+///
+/// Each row is as tall as its cards need: the photo is a fixed 4:5 of the
+/// card's width and the text under it a fixed height, so the height follows
+/// the width instead of a ratio that suits one screen size and clips on
+/// another. The text part grows with the person's text size setting.
+class ArtworkGridDelegate extends SliverGridDelegate {
+  const ArtworkGridDelegate({this.maxCrossAxisExtent = 240, this.spacing = 16, this.textScale = 1});
+
+  /// Reads the text size setting from [context].
+  factory ArtworkGridDelegate.of(BuildContext context) =>
+      ArtworkGridDelegate(textScale: MediaQuery.textScalerOf(context).scale(14) / 14);
+
+  final double maxCrossAxisExtent;
+  final double spacing;
+  final double textScale;
+
+  /// Title, artist, medium and year, size, price and the "Insured" tag, with
+  /// the card's padding and border — at the default text size.
+  static const textHeight = 170.0;
+
+  @override
+  SliverGridLayout getLayout(SliverConstraints constraints) {
+    final columns = math.max(1, (constraints.crossAxisExtent / (maxCrossAxisExtent + spacing)).ceil());
+    final width = math.max(0.0, constraints.crossAxisExtent - spacing * (columns - 1)) / columns;
+    final height = width * 1.25 + textHeight * textScale;
+    return SliverGridRegularTileLayout(
+      crossAxisCount: columns,
+      mainAxisStride: height + spacing,
+      crossAxisStride: width + spacing,
+      childMainAxisExtent: height,
+      childCrossAxisExtent: width,
+      reverseCrossAxis: axisDirectionIsReversed(constraints.crossAxisDirection),
+    );
+  }
+
+  @override
+  bool shouldRelayout(ArtworkGridDelegate oldDelegate) =>
+      oldDelegate.maxCrossAxisExtent != maxCrossAxisExtent ||
+      oldDelegate.spacing != spacing ||
+      oldDelegate.textScale != textScale;
+}
+
+/// What a card looks like while its page is on the way.
+class ArtworkCardSkeleton extends StatelessWidget {
+  const ArtworkCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final block = theme.colorScheme.surfaceContainerHighest;
+    Widget bar(double widthFactor, double height) => FractionallySizedBox(
+          widthFactor: widthFactor,
+          child: Container(
+            height: height,
+            decoration: BoxDecoration(color: block, borderRadius: BorderRadius.circular(4)),
+          ),
+        );
+    return Semantics(
+      label: 'Loading artwork',
+      child: ExcludeSemantics(
         child: Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -166,98 +423,18 @@ class ArtworkCard extends ConsumerWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              AspectRatio(
-                aspectRatio: 4 / 5,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Unavailable pieces stay visible but visibly dimmed,
-                    // same treatment as the web's grayscale + opacity.
-                    Opacity(
-                      opacity: isAvailable ? 1 : 0.6,
-                      child: ArtworkImageView(url: artwork.thumbnailUrl),
-                    ),
-                    if (badge != null)
-                      Positioned(
-                        top: 10,
-                        left: 10,
-                        child: _Pill(icon: badge.$2, label: badge.$1),
-                      ),
-                    // Top-right belongs to the wishlist heart, so the rarity
-                    // mark sits directly under it rather than fighting it.
-                    if (showRarity && artwork.rarityType != null)
-                      Positioned(
-                        top: 44,
-                        right: 10,
-                        child: RarityBadge(rarity: artwork.rarityType!),
-                      ),
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: IconButton(
-                        onPressed: () => ref.read(wishlistProvider.notifier).toggle(artwork.id),
-                        tooltip: isWishlisted ? 'Remove from wishlist' : 'Add to wishlist',
-                        icon: Icon(
-                          isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          size: 18,
-                          color: isWishlisted
-                              ? theme.colorScheme.tertiary
-                              : theme.colorScheme.onSurface,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ),
-                    if (artwork.insured)
-                      Positioned(
-                        bottom: 10,
-                        left: 10,
-                        child: _Pill(
-                          icon: LucideIcons.shieldCheck,
-                          label: 'Insured',
-                          gold: true,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              AspectRatio(aspectRatio: 4 / 5, child: ColoredBox(color: block)),
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      artwork.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            artwork.artistName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                        if (artwork.verifiedArtist) ...[
-                          const SizedBox(width: 6),
-                          const VerifiedBadge(
-                            verification: VerifiedBadge.minimumVerification,
-                            small: true,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    PriceTag(amount: artwork.customerPrice),
+                    bar(0.8, 14),
+                    const SizedBox(height: 8),
+                    bar(0.5, 12),
+                    const SizedBox(height: 12),
+                    bar(0.4, 16),
                   ],
                 ),
               ),
@@ -270,9 +447,8 @@ class ArtworkCard extends ConsumerWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label, this.gold = false});
+  const _Pill({required this.label, this.gold = false});
 
-  final IconData icon;
   final String label;
   final bool gold;
 
@@ -281,26 +457,16 @@ class _Pill extends StatelessWidget {
     final theme = Theme.of(context);
     final color = gold ? theme.colorScheme.tertiary : theme.colorScheme.onSurface;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(AppRadius.xl4),
         border: Border.all(
-          color: gold
-              ? theme.colorScheme.primary.withValues(alpha: 0.4)
-              : theme.colorScheme.outline,
+          color: gold ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.outline,
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
-          ),
-        ],
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -352,16 +518,57 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// The rarity mark shown over an artwork image: the word, not a bare letter.
+/// The rank mark shown over an artwork image: the word, not a bare letter —
 /// "R" means nothing to someone seeing it for the first time.
+///
+/// Two looks, as on the website. The pill (default) is the translucent gold
+/// outline used wherever a rank is named; the [stamp] is a solid, per-rank
+/// colour for the marketplace card corner, where four ranks have to be told
+/// apart at a glance over a busy photo.
 class RarityBadge extends StatelessWidget {
-  const RarityBadge({super.key, required this.rarity});
+  const RarityBadge({super.key, required this.rarity, this.stamp = false});
 
   final ArtworkRarity rarity;
+  final bool stamp;
+
+  /// The stamp's solid colour for each rank, with the text colour that reads
+  /// on it. Red, green, gold, grey — distinct for colour-blind viewers too,
+  /// since the letter is always printed on it.
+  static (Color, Color) stampTone(BuildContext context, ArtworkRarity rank) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return switch (rank) {
+      ArtworkRarity.rare => (AppColors.destructive, Colors.white),
+      ArtworkRarity.unique => (const Color(0xFF059669), Colors.white),
+      ArtworkRarity.original => (dark ? AppColors.darkGoldDeep : AppColors.lightGoldDeep, Colors.white),
+      ArtworkRarity.standard => (
+        dark ? AppColors.darkMutedForeground : AppColors.lightMutedForeground,
+        dark ? AppColors.darkBackground : AppColors.lightBackground,
+      ),
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    if (stamp) {
+      final (background, foreground) = stampTone(context, rarity);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 2, offset: Offset(0, 1))],
+        ),
+        child: Text(
+          artworkRarityCode[rarity]!,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: foreground,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.4,
+          ),
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -370,7 +577,7 @@ class RarityBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        '${artworkRarityCode[rarity]!} ${artworkRarityLabel[rarity]!.split(' ').first.toUpperCase()}',
+        '${artworkRarityCode[rarity]!} ${artworkRarityLabel[rarity]!.toUpperCase()}',
         style: theme.textTheme.labelSmall?.copyWith(
           color: theme.colorScheme.tertiary,
           fontWeight: FontWeight.w600,

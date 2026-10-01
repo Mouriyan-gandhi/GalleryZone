@@ -155,7 +155,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       // The artwork just went to `sold`; drop the cached reads so the
       // marketplace grid and its detail page don't show it as available.
       ref.invalidate(artworkProvider);
-      ref.invalidate(artworksProvider);
+      ref.invalidate(marketplaceFeedProvider);
+      ref.invalidate(marketplaceOverviewProvider);
       ref.invalidate(artworksByArtistProvider);
     } catch (error) {
       if (!mounted) return;

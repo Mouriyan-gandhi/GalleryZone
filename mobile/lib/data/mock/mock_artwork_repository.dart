@@ -211,13 +211,13 @@ class MockArtworkRepository implements ArtworkRepository {
         results.sort((a, b) => _createdAt(b).compareTo(_createdAt(a)));
     }
 
-    final start = (filters.page - 1) * marketplacePageSize;
-    final page = results.skip(start).take(marketplacePageSize).toList();
+    final start = (filters.page - 1) * filters.pageSize;
+    final page = results.skip(start).take(filters.pageSize).toList();
     return MarketplacePage(
       artworks: page,
       total: results.length,
       page: filters.page,
-      pageSize: marketplacePageSize,
+      pageSize: filters.pageSize,
       facets: _facetsOf(live),
     );
   });

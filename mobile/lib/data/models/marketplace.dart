@@ -4,6 +4,9 @@ import 'artwork.dart';
 /// The marketplace listing pages in twenties — the same as the website.
 const marketplacePageSize = 20;
 
+/// The most the API will return in one page.
+const marketplaceMaxPageSize = 60;
+
 /// An artist offered as a filter choice.
 class FacetArtist {
   const FacetArtist({required this.id, required this.name});

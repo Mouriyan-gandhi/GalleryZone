@@ -19,11 +19,8 @@ class RemoteArtworkRepository implements ArtworkRepository {
 
   final ApiClient api;
 
-  /// The API's cap on a page (`artworks.controller.ts`).
-  static const maxPageSize = 60;
-
-  static Map<String, dynamic> queryOf(ArtworkFilters filters, {int pageSize = marketplacePageSize}) {
-    final query = <String, dynamic>{'pageSize': '$pageSize'};
+  static Map<String, dynamic> queryOf(ArtworkFilters filters) {
+    final query = <String, dynamic>{'pageSize': '${filters.pageSize}'};
     if (filters.categories.isNotEmpty) query['category'] = filters.categories.join(',');
     if (filters.mediums.isNotEmpty) query['medium'] = filters.mediums.join(',');
     if (filters.rarity != null) query['rarity'] = artworkRarityCode[filters.rarity]!;

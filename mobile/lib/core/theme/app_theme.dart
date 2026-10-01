@@ -19,16 +19,18 @@ class AppColors {
   static const darkGoldDeep = Color(0xFF8A6423);
   static const darkBorder = Color(0xFF211F1B); // foreground ~10% over background
 
-  static const lightBackground = Color(0xFFF7F3E9);
-  static const lightForeground = Color(0xFF201C13);
-  static const lightCard = Color(0xFFFDFBF5);
-  static const lightSecondary = Color(0xFFEFEAD9);
-  static const lightMuted = Color(0xFFF1ECDE);
-  static const lightMutedForeground = Color(0xFF6B6656);
+  // Warm Greige (website, 10 Sep 2026): the light palette moved from cream to
+  // a calmer stone, with the card now a shade darker than the page.
+  static const lightBackground = Color(0xFFF3EFE9);
+  static const lightForeground = Color(0xFF211E18);
+  static const lightCard = Color(0xFFEAE6DF);
+  static const lightSecondary = Color(0xFFE2DDD6);
+  static const lightMuted = Color(0xFFE5E0D9);
+  static const lightMutedForeground = Color(0xFF867E74);
   static const lightGold = Color(0xFFA9782C);
   static const lightGoldBright = Color(0xFF8A6423);
   static const lightGoldDeep = Color(0xFF6E4F1B);
-  static const lightBorder = Color(0xFFE3DDCE); // foreground ~12% over background
+  static const lightBorder = Color(0xFFD8D4CE); // foreground ~13% over background
 
   static const destructive = Color(0xFFDC5B4A); // oklch(0.577 0.245 27.325), same both themes
 }

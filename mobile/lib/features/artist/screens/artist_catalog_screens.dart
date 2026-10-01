@@ -503,15 +503,9 @@ class PortfolioScreen extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
                   sliver: SliverGrid(
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 240,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.56,
-                    ),
+                    gridDelegate: ArtworkGridDelegate.of(context),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          ArtworkCard(artwork: visible[index], showRarity: true),
+                      (context, index) => ArtworkCard(artwork: visible[index]),
                       childCount: visible.length,
                     ),
                   ),

@@ -193,7 +193,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No artworks match your filters'), findsOneWidget);
-    expect(find.text('Clear filters'), findsOneWidget);
+    expect(find.text('No artworks match these filters'), findsOneWidget);
+    expect(find.text('Clear all filters'), findsOneWidget);
   });
 }

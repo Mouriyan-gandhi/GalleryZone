@@ -156,12 +156,7 @@ class _ArtistProfileBody extends ConsumerWidget {
                 : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 240,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.56,
-                    ),
+                    gridDelegate: ArtworkGridDelegate.of(context),
                     itemCount: results.length,
                     itemBuilder: (context, index) => ArtworkCard(artwork: results[index]),
                   ),

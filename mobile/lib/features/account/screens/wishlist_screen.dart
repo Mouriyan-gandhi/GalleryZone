@@ -105,12 +105,7 @@ class _SavedArtworks extends ConsumerWidget {
         }
         return GridView.builder(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 240,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 0.56,
-          ),
+          gridDelegate: ArtworkGridDelegate.of(context),
           itemCount: saved.length,
           itemBuilder: (context, index) => ArtworkCard(artwork: saved[index]),
         );
