@@ -1,75 +1,79 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { dismissCookieConsent } from '../support/settle';
 
-// Phase 6 functional testing: the marketplace filter sidebar and search —
-// client-side filter state, no URL sync (confirmed against
-// ROUTE_INVENTORY.md's note on this). Assertions poll via a toPass() count
-// check rather than a flat wait — the result grid updates on the
-// mockDelay-backed data path (same 600ms-class race as everywhere else in
-// this app), and polling resolves as soon as it's actually done instead of
-// guessing a fixed delay.
-//
-// Does NOT assert a specific category has a specific non-zero count: the
-// mock artwork catalog is a shared, mutable, server-side in-memory store
-// (confirmed via aggregatorService.ts's own comment: "a live store, not a
-// frozen fixture"), not reset per test run or per browser context. Running
-// checkout-flow.spec.ts's purchase repeatedly across a session measurably
-// changes availability/counts over time — a hardcoded "Sculpture has 4
-// results" assumption here broke for exactly that reason on a later run.
-// The filter contract this asserts instead — a selected filter narrows or
-// holds the set, never grows it, and reset restores the original count —
-// holds regardless of which artworks currently exist.
+// The marketplace filter sidebar and search. Filtering, search and paging all
+// happen on the API (GET /v1/artworks), so the API is stubbed here with the same
+// contract: `category` (comma-separated) and `q` narrow the list. What this
+// pins is the page's side of it: choosing a filter or typing a search sends the
+// right request and the grid shows the answer, and Reset Filters brings the full
+// list back. There is no demo catalogue to lean on any more.
 
-const ARTWORK_LINKS = 'a[href^="/marketplace/"]';
+const cors = { 'access-control-allow-origin': '*' };
+const ok = (body: unknown) => ({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(body) });
 
-test('Art Type filter narrows the grid, Reset Filters restores it', async ({ page }) => {
+const piece = (id: string, title: string, artistName: string, category: string) => ({
+  id, productCode: `GZ${id}`, artistId: `art-${id}`, artistName, title, description: '', category, medium: 'Mixed', dimensions: null,
+  yearCreated: 2025, images: [], displayPricePaise: 2_500_000, insured: false, status: 'marketplace', listingType: 'marketplace_only',
+  rarityType: null, createdAt: '2026-01-01T00:00:00.000Z', artistLocation: 'Pune', sizeBand: 'medium',
+});
+const PIECES = [
+  piece('001', 'Monsoon Light', 'Devika Rao', 'painting'),
+  piece('002', 'Bronze Bull', 'Ravi Menon', 'sculpture'),
+  piece('003', 'Monsoon Study', 'Meera Rathore', 'painting'),
+];
+
+async function stubListing(page: Page) {
+  await page.route('**/v1/**', (route) => route.abort());
+  await page.route(/\/v1\/artworks(\?|$)/, (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const categories = params.get('category')?.split(',');
+    const q = params.get('q')?.toLowerCase();
+    const artworks = PIECES.filter(
+      (a) => (!categories || categories.includes(a.category)) && (!q || `${a.title} ${a.artistName}`.toLowerCase().includes(q)),
+    );
+    return route.fulfill(ok({
+      artworks, total: artworks.length, page: 1, pageSize: 20,
+      facets: {
+        categories: ['painting', 'sculpture'], mediums: ['Mixed'], rarities: [], rarityCounts: {}, locations: ['Pune'],
+        artists: PIECES.map((a) => ({ id: a.artistId, name: a.artistName })), priceRangePaise: { min: 2_500_000, max: 2_500_000 },
+      },
+    }));
+  });
+}
+
+/** The distinct artwork pages the grid links to. */
+async function listed(page: Page): Promise<string[]> {
+  const hrefs = await page.locator('a[href^="/marketplace/"]').evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
+  return [...new Set(hrefs.filter((h) => h !== '/marketplace/' && h !== '/marketplace'))].sort();
+}
+
+test('the Category filter narrows the grid, and clearing it restores the full list', async ({ page }) => {
+  await stubListing(page);
   await dismissCookieConsent(page);
   await page.goto('/marketplace');
 
-  const gridLocator = page.locator(ARTWORK_LINKS);
-  await expect(async () => {
-    expect(await gridLocator.count()).toBeGreaterThan(0);
-  }).toPass({ timeout: 5000 });
-  const fullCount = await gridLocator.count();
+  await expect.poll(async () => (await listed(page)).length).toBe(3);
 
-  await page.getByRole('button', { name: 'Art Type All Art Types' }).click();
-  // Not name-scoped to the region: the heading's accessible name IS the
-  // current selection state ("Art Type All Art Types" -> "Art Type
-  // Sculpture" once picked), so a name-based re-query goes stale the
-  // moment the value changes. Structural instead: Art Type's disclosure is
-  // the only one open, so it's the only combobox rendered in the sidebar.
-  const artTypeSelect = page.locator('aside').getByRole('combobox').first();
-  await artTypeSelect.click();
-  await page.getByRole('option', { name: 'Sculpture', exact: true }).click();
+  const sculpture = page.getByRole('region', { name: 'Category' }).getByText('Sculpture', { exact: true });
+  await sculpture.click();
+  await expect.poll(() => listed(page)).toEqual(['/marketplace/002']);
 
-  await expect(artTypeSelect).toContainText('sculpture', { ignoreCase: true });
-  const filteredLocator = page.locator(ARTWORK_LINKS);
-  await expect(async () => {
-    expect(await filteredLocator.count()).toBeLessThanOrEqual(fullCount);
-  }).toPass({ timeout: 5000 });
-
-  await page.getByRole('button', { name: 'Reset Filters' }).click();
-  await expect(async () => {
-    expect(await page.locator(ARTWORK_LINKS).count()).toBe(fullCount);
-  }).toPass({ timeout: 5000 });
+  await sculpture.click();
+  await expect.poll(async () => (await listed(page)).length).toBe(3);
 });
 
 test('search narrows results to actual title/artist matches', async ({ page }) => {
+  await stubListing(page);
   await dismissCookieConsent(page);
   await page.goto('/marketplace');
 
   const search = page.getByPlaceholder(/Search artworks/);
-  const gridLocator = page.locator(ARTWORK_LINKS);
 
   await search.fill('Monsoon');
-  await expect(async () => {
-    expect(await gridLocator.count()).toBe(2);
-  }).toPass({ timeout: 5000 });
-  await expect(page.getByText('Monsoon Over Madurai')).toBeVisible();
-  await expect(page.getByText('Monsoon Reverie')).toBeVisible();
+  await expect.poll(() => listed(page)).toEqual(['/marketplace/001', '/marketplace/003']);
+  await expect(page.getByText('Monsoon Light').first()).toBeVisible();
+  await expect(page.getByText('Monsoon Study').first()).toBeVisible();
 
   await search.fill('zzz-no-such-artwork-zzz');
-  await expect(async () => {
-    expect(await gridLocator.count()).toBe(0);
-  }).toPass({ timeout: 5000 });
+  await expect.poll(() => listed(page)).toEqual([]);
 });
