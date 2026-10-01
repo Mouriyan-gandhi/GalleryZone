@@ -1,10 +1,6 @@
 import type { Artwork, ArtworkFilters, ArtworkSummary, MarketplacePage } from "@/types/artwork";
 import type { ArtistProfile } from "@/types/artist";
 import { http, isApiError } from "@/lib/api";
-// Gate only — never the catalogue itself. The demo data is loaded with a
-// dynamic import inside each gated branch so it stays out of the production
-// bundle; see lib/demo-artworks-flag.ts.
-import { DEMO_ARTWORKS_ENABLED, isDemoId } from "@/lib/demo-artworks-flag";
 import {
   toArtistProfile,
   toArtwork,
@@ -42,13 +38,6 @@ function toQuery(filters: ArtworkFilters, pageSize: number): Record<string, stri
 
 export const artworkService = {
   async list(filters: ArtworkFilters, pageSize = PAGE_SIZE): Promise<MarketplacePage> {
-    if (DEMO_ARTWORKS_ENABLED) {
-      const { withDemoArtworks } = await import("@/lib/demo-artworks");
-      const real = await http.get<MarketplacePageDto>("/v1/artworks", {
-        params: toQuery({ ...filters, page: undefined }, MAX_PAGE_SIZE),
-      });
-      return withDemoArtworks(toMarketplacePage(real), filters, pageSize);
-    }
     const dto = await http.get<MarketplacePageDto>("/v1/artworks", { params: toQuery(filters, pageSize) });
     return toMarketplacePage(dto);
   },
@@ -56,9 +45,6 @@ export const artworkService = {
   // Full Artwork for the detail page; undefined when no artwork matches,
   // which callers (the Artwork Detail page) turn into notFound().
   async get(id: string): Promise<Artwork | undefined> {
-    if (DEMO_ARTWORKS_ENABLED && isDemoId(id)) {
-      return (await import("@/lib/demo-artworks")).demoArtwork(id);
-    }
     try {
       return toArtwork(await http.get<ArtworkDto>(`/v1/artworks/${encodeURIComponent(id)}`));
     } catch (error) {
@@ -70,9 +56,6 @@ export const artworkService = {
   // "More from this artist" rail + the Artist Public Profile's listings
   // grid — the public summary shape, never full Artwork records.
   async listByArtist(artistId: string): Promise<ArtworkSummary[]> {
-    if (DEMO_ARTWORKS_ENABLED && isDemoId(artistId)) {
-      return (await import("@/lib/demo-artworks")).demoArtworksByArtist(artistId);
-    }
     const { artworks } = await http.get<{ artworks: ArtworkDto[] }>(
       `/v1/artists/${encodeURIComponent(artistId)}/artworks`,
     );

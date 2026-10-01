@@ -3,36 +3,11 @@
 import { useAggregatorCollection } from "@/hooks/useAggregatorCollection";
 
 import { useMemo } from "react";
-import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
 import { useAggregatorAnalytics } from "@/hooks/useAggregatorAnalytics";
 import { useAggregatorSales } from "@/hooks/useAggregatorSales";
-import { ChartCard, ChartTooltipContent } from "@/features/admin/charts/chart-card";
 import { CategoryBarChart } from "@/features/admin/charts/category-bar-chart";
-import {
-  axisChrome,
-  CHART_HEIGHT,
-  CHART_MARGIN,
-  crosshairCursor,
-  gridChrome,
-  rampVar,
-  tickInterval,
-} from "@/features/admin/charts/chart-theme";
 import type { CategoryPerformance } from "@/types/admin-analytics";
 import { formatINR } from "@/lib/utils";
-
-// Pre-baked demonstration series, same honest posture as
-// lib/mock-data/admin-analytics.ts: a handful of real fixture rows can't
-// produce a believable 6-month trend on their own, so this one chart is
-// illustrative, not derived from live sales. Every other number on this
-// page (the summary tiles, the category breakdown) IS live.
-const SELL_THROUGH_DEMO_SERIES = [
-  { month: "Mar", rate: 38 },
-  { month: "Apr", rate: 44 },
-  { month: "May", rate: 41 },
-  { month: "Jun", rate: 52 },
-  { month: "Jul", rate: 58 },
-  { month: "Aug", rate: 61 },
-];
 
 export function AnalyticsView() {
   const { data: summary, isPending } = useAggregatorAnalytics();
@@ -82,58 +57,12 @@ export function AnalyticsView() {
         />
       </div>
 
-      <SellThroughChart />
-
       <CategoryBarChart
         data={categoryData}
         title="Top categories moved"
         description="Revenue from your recorded sales, by artwork category."
       />
     </div>
-  );
-}
-
-function SellThroughChart() {
-  const points = SELL_THROUGH_DEMO_SERIES;
-
-  return (
-    <ChartCard
-      title="Sell-through rate"
-      description="Demonstration trend — illustrative, not derived from live fixture data."
-      seriesCount={1}
-      height={CHART_HEIGHT.default}
-      ariaLabel={`Area chart of monthly sell-through rate, last 6 months, ending at ${points[points.length - 1]?.rate ?? 0}%.`}
-    >
-      <AreaChart data={points} margin={CHART_MARGIN} accessibilityLayer={false}>
-        <CartesianGrid {...gridChrome} vertical={false} />
-        <XAxis
-          {...axisChrome}
-          dataKey="month"
-          interval={tickInterval(points.length)}
-          minTickGap={16}
-        />
-        <YAxis {...axisChrome} width={40} tickFormatter={(v) => `${v}%`} />
-        <Tooltip
-          cursor={crosshairCursor}
-          content={
-            <ChartTooltipContent
-              formatValue={(v) => `${v}%`}
-              nameByKey={{ rate: "Sell-through" }}
-            />
-          }
-        />
-        <Area
-          type="monotone"
-          dataKey="rate"
-          name="Sell-through"
-          fill={rampVar(0)}
-          fillOpacity={0.25}
-          stroke={rampVar(0)}
-          strokeWidth={2}
-          isAnimationActive={false}
-        />
-      </AreaChart>
-    </ChartCard>
   );
 }
 
