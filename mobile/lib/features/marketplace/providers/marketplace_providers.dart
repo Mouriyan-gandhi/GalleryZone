@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock/mock_artwork_repository.dart';
@@ -117,6 +118,30 @@ final marketplaceFeedProvider = AsyncNotifierProvider.autoDispose
 final artworkProvider =
     FutureProvider.autoDispose.family<Artwork?, String>((ref, id) {
   return ref.watch(artworkRepositoryProvider).get(id);
+});
+
+/// A set of artwork ids, compared by content so it can key a provider family:
+/// the same ids in any order are the same question.
+class IdSet {
+  IdSet(Iterable<String> ids) : ids = List.unmodifiable({...ids}.toList()..sort());
+
+  final List<String> ids;
+
+  @override
+  bool operator ==(Object other) => other is IdSet && listEquals(other.ids, ids);
+
+  @override
+  int get hashCode => Object.hashAll(ids);
+}
+
+/// The pieces behind a list of ids - the wishlist - in any status. Asked for by
+/// id rather than by scanning the marketplace, so a piece that has since sold
+/// still shows, with its real status, instead of silently vanishing.
+final artworksByIdsProvider =
+    FutureProvider.autoDispose.family<Map<String, Artwork>, IdSet>((ref, ids) async {
+  if (ids.ids.isEmpty) return const {};
+  final found = await ref.watch(artworkRepositoryProvider).getMany(ids.ids);
+  return {for (final artwork in found) artwork.id: artwork};
 });
 
 final artworksByArtistProvider =

@@ -72,12 +72,30 @@ class MockCheckoutRepository implements CheckoutRepository {
     );
   }
 
+  /// The real API joins "what was bought" onto every order; the offline
+  /// fixtures do not store it, so it is joined here on the way out. Screens then
+  /// read `order.artwork` in both worlds and never look the piece up themselves.
+  Order _withSnapshot(Order order) {
+    if (order.artwork != null) return order;
+    final artwork = _readArtworks().where((a) => a.id == order.artworkId).firstOrNull;
+    if (artwork == null) return order;
+    return order.copyWith(
+      artwork: OrderArtwork(
+        title: artwork.title,
+        artistName: artwork.artistName,
+        artistId: artwork.artistId,
+        thumbnailUrl: artwork.thumbnailUrl,
+        productCode: artwork.productCode ?? '',
+      ),
+    );
+  }
+
   @override
-  Future<List<Order>> listOrders() => mockDelay(_readOrders);
+  Future<List<Order>> listOrders() => mockDelay(() => [for (final o in _readOrders()) _withSnapshot(o)]);
 
   @override
   Future<Order?> getOrder(String id) =>
-      mockDelay(() => _readOrders().where((o) => o.id == id).firstOrNull);
+      mockDelay(() => _readOrders().where((o) => o.id == id).map(_withSnapshot).firstOrNull);
 
   @override
   Future<Order> createOrder({
@@ -156,7 +174,7 @@ class MockCheckoutRepository implements CheckoutRepository {
       creditArtistForSale(artwork: artwork, orderId: order.id);
     }
 
-    return mockDelay(() => order);
+    return mockDelay(() => _withSnapshot(order));
   }
 
   /// The resale listing this order bought, if any. Matched on the pending

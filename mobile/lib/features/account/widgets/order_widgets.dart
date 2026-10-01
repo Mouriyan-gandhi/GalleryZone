@@ -4,7 +4,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/models/artwork.dart';
 import '../../../data/models/order.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../shell/price_breakdown.dart';
@@ -84,14 +83,16 @@ class OrderStatusChip extends StatelessWidget {
 /// One row in the order list — thumbnail, artwork, placed-on date, status,
 /// total. Tapping opens the order detail.
 class OrderRow extends StatelessWidget {
-  const OrderRow({super.key, required this.order, required this.artwork});
+  const OrderRow({super.key, required this.order});
 
   final Order order;
-  final Artwork? artwork;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // What was bought comes with the order, so a row needs no second lookup and
+    // still reads correctly once the piece has left the marketplace.
+    final artwork = order.artwork;
     return InkWell(
       onTap: () => context.push('/account/orders/${order.id}'),
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -111,7 +112,7 @@ class OrderRow extends StatelessWidget {
                 height: 56,
                 child: artwork == null
                     ? ColoredBox(color: theme.colorScheme.surfaceContainerHighest)
-                    : ArtworkImageView(url: artwork!.thumbnailUrl),
+                    : ArtworkImageView(url: artwork.thumbnailUrl),
               ),
             ),
             const SizedBox(width: 12),
@@ -127,7 +128,7 @@ class OrderRow extends StatelessWidget {
                   ),
                   if (artwork != null)
                     Text(
-                      artwork!.artistName,
+                      artwork.artistName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall,
@@ -254,6 +255,8 @@ class OrderPriceBreakdown extends StatelessWidget {
           displayPrice: order.amount,
           gstIncluded: order.gstAmount,
           deliveryCharge: order.deliveryCharge,
+          convenienceFee: order.convenienceFee,
+          convenienceGst: order.convenienceGst,
           totalLabel: 'Total paid',
         ),
       ],

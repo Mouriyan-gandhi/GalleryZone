@@ -804,7 +804,8 @@ class MockArtistRepository implements ArtistRepository {
 
   @override
   Future<List<ArtistOrder>> listOrders() => mockDelay(() {
-        final ids = _artistArtworks().map((a) => a.id).toSet();
+        final mine = {for (final a in _artistArtworks()) a.id: a};
+        final ids = mine.keys.toSet();
         final prices = _readPrices();
         final orders = MockDb.getCollection(
           _ordersKey,
@@ -816,7 +817,18 @@ class MockArtistRepository implements ArtistRepository {
           for (final order in orders)
             if (ids.contains(order.artworkId))
               ArtistOrder(
-                order: order,
+                // The real API joins what was bought onto every order.
+                order: order.artwork != null
+                    ? order
+                    : order.copyWith(
+                        artwork: OrderArtwork(
+                          title: mine[order.artworkId]!.title,
+                          artistName: mine[order.artworkId]!.artistName,
+                          artistId: mine[order.artworkId]!.artistId,
+                          thumbnailUrl: mine[order.artworkId]!.thumbnailUrl,
+                          productCode: mine[order.artworkId]!.productCode ?? '',
+                        ),
+                      ),
                 artistPayout: artistPayoutFor(
                   prices[order.artworkId] ?? artistPriceFrom(order.amount),
                 ),

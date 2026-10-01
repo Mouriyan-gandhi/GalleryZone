@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/format.dart';
-import '../../core/pricing.dart';
 import '../../core/theme/app_theme.dart';
 import '../marketplace/widgets/artwork_card.dart' show PriceTag;
 
@@ -12,7 +11,7 @@ import '../marketplace/widgets/artwork_card.dart' show PriceTag;
 ///
 /// The rule this widget exists to hold: GST is ALREADY part of [displayPrice].
 /// It is shown so the buyer can see the tax component, and it is never added
-/// to the total. Only delivery and the fees are additions.
+/// to the total. Only delivery and the fees (and the GST on a fee) are additions.
 class PriceBreakdown extends StatelessWidget {
   const PriceBreakdown({
     super.key,
@@ -20,7 +19,9 @@ class PriceBreakdown extends StatelessWidget {
     required this.gstIncluded,
     required this.deliveryCharge,
     this.convenienceFee = 0,
+    this.convenienceGst = 0,
     this.platformFee = 0,
+    this.gstRate,
     this.totalLabel = 'Total',
     this.priceLabel = 'Artwork price',
   });
@@ -32,7 +33,14 @@ class PriceBreakdown extends StatelessWidget {
   final double gstIncluded;
   final double deliveryCharge;
   final double convenienceFee;
+
+  /// 18% service GST on the convenience fee - shown only when that fee exists.
+  final double convenienceGst;
   final double platformFee;
+
+  /// The artwork GST rate in force, as a fraction, from the server's quote.
+  /// Null on a past order, where the rate is not known and not printed.
+  final double? gstRate;
 
   /// "Total" while deciding, "Total paid" on a completed order.
   final String totalLabel;
@@ -41,8 +49,19 @@ class PriceBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final total =
-        displayPrice + deliveryCharge + convenienceFee + platformFee;
+    final total = displayPrice + deliveryCharge + convenienceFee + convenienceGst + platformFee;
+    final rate = gstRate;
+
+    Widget subRow(String label, double amount) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(child: Text(label, style: theme.textTheme.labelSmall)),
+              Text(formatInr(amount), style: theme.textTheme.labelSmall),
+            ],
+          ),
+        );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -57,31 +76,16 @@ class PriceBreakdown extends StatelessWidget {
           _Row(label: priceLabel, amount: displayPrice),
           // Sits under the price, not beside the other rows, because it is a
           // component of the number above rather than another charge.
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Includes GST (${(gstRate * 100).round()}%)',
-                  style: theme.textTheme.labelSmall,
-                ),
-                Text(
-                  formatInr(gstIncluded),
-                  style: theme.textTheme.labelSmall,
-                ),
-              ],
-            ),
+          subRow(
+            rate == null ? 'Includes GST' : 'Includes GST (${_percent(rate)}%)',
+            gstIncluded,
           ),
           // Both fees are ₹0 for now and shown anyway: a fee that appears at
           // the payment step having never been mentioned is the thing buyers
           // hate.
           _Row(label: 'Platform fee', amount: platformFee, freeWhenZero: true),
-          _Row(
-            label: 'Convenience fee',
-            amount: convenienceFee,
-            freeWhenZero: true,
-          ),
+          _Row(label: 'Convenience fee', amount: convenienceFee, freeWhenZero: true),
+          if (convenienceGst > 0) subRow('GST on convenience fee (18%)', convenienceGst),
           _Row(label: 'Delivery', amount: deliveryCharge),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
@@ -91,6 +95,12 @@ class PriceBreakdown extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// 0.05 -> "5", 0.125 -> "12.5".
+  static String _percent(double fraction) {
+    final percent = double.parse((fraction * 100).toStringAsFixed(2));
+    return percent == percent.roundToDouble() ? '${percent.round()}' : '$percent';
   }
 }
 

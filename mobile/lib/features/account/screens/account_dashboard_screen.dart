@@ -26,7 +26,6 @@ class AccountDashboardScreen extends ConsumerWidget {
     final collection = ref.watch(collectionProvider).value;
     final wallet = ref.watch(walletProvider).value;
     final wishlistCount = ref.watch(wishlistProvider).length;
-    final artworks = ref.watch(artworksByIdProvider).value ?? const {};
 
     final stats = <({String label, String value, IconData icon})>[
       (label: 'Orders placed', value: '${orders?.length ?? 0}', icon: LucideIcons.shoppingBag),
@@ -109,7 +108,7 @@ class AccountDashboardScreen extends ConsumerWidget {
                     for (final order in orders.take(3))
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: OrderRow(order: order, artwork: artworks[order.artworkId]),
+                        child: OrderRow(order: order),
                       ),
                 ],
               ),

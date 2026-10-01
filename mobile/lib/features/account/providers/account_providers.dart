@@ -2,12 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/mock/mock_customer_repository.dart';
 import '../../../data/models/artwork.dart';
-import '../../../data/models/artwork_filters.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/order.dart';
 import '../../../data/repositories/customer_repository.dart';
 import '../../checkout/providers/checkout_providers.dart';
-import '../../marketplace/providers/marketplace_providers.dart';
 
 final customerRepositoryProvider = Provider<CustomerRepository>((ref) {
   return MockCustomerRepository();
@@ -34,15 +32,6 @@ final ordersProvider = FutureProvider.autoDispose<List<Order>>((ref) async {
 
 final orderProvider = FutureProvider.autoDispose.family<Order?, String>((ref, id) {
   return ref.watch(checkoutRepositoryProvider).getOrder(id);
-});
-
-/// Artwork records keyed by id. Orders, collection entries and resale
-/// listings all store an `artworkId` and need the piece behind it; one
-/// unfiltered read serves all of them, rather than each screen keying
-/// `artworksProvider` with its own throwaway `ArtworkFilters` instance.
-final artworksByIdProvider = FutureProvider.autoDispose<Map<String, Artwork>>((ref) async {
-  final page = await ref.watch(artworkRepositoryProvider).list(const ArtworkFilters());
-  return {for (final artwork in page.artworks) artwork.id: artwork};
 });
 
 final walletProvider = FutureProvider.autoDispose<WalletSummary>((ref) {

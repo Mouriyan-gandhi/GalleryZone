@@ -6,8 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artist.dart';
 import '../../marketplace/providers/marketplace_providers.dart';
+import '../../marketplace/widgets/artist_avatar.dart';
 import '../../marketplace/widgets/artwork_card.dart';
-import '../providers/account_providers.dart';
 
 /// Port of `app/account/wishlist/page.tsx`, widened: the collector keeps
 /// both saved artworks and followed artists here, on two segments, rather
@@ -75,14 +75,19 @@ class _SavedArtworks extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ids = ref.watch(wishlistProvider);
-    final artworks = ref.watch(artworksByIdProvider);
+    final key = IdSet(ids);
+    final artworks = ref.watch(artworksByIdsProvider(key));
 
     return artworks.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => const EmptyState(
+      error: (error, stack) => EmptyState(
         icon: LucideIcons.triangleAlert,
         title: "Couldn't load your saved work",
         description: 'Something went wrong. Try again in a moment.',
+        action: OutlinedButton(
+          onPressed: () => ref.invalidate(artworksByIdsProvider(key)),
+          child: const Text('Try again'),
+        ),
       ),
       data: (byId) {
         // Joined to the live records on every read, so a piece that sold
@@ -124,10 +129,14 @@ class _FollowedArtists extends ConsumerWidget {
 
     return artists.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => const EmptyState(
+      error: (error, stack) => EmptyState(
         icon: LucideIcons.triangleAlert,
         title: "Couldn't load the artists you follow",
         description: 'Something went wrong. Try again in a moment.',
+        action: OutlinedButton(
+          onPressed: () => ref.invalidate(artistsProvider),
+          child: const Text('Try again'),
+        ),
       ),
       data: (all) {
         final followed = [
@@ -181,13 +190,7 @@ class _ArtistRow extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              ClipOval(
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: ArtworkImageView(url: artist.profileImageUrl),
-                ),
-              ),
+              ArtistAvatar(name: artist.name, imageUrl: artist.profileImageUrl, size: 48),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -5,14 +5,17 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/artwork.dart';
 import '../../../data/models/customer.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../providers/account_providers.dart';
 
-/// Port of `features/account/resale-view.tsx`. Seller-side only: this shows
-/// that owned artwork can go back on the market, it is not a secondary
-/// checkout. Buyer matching and ownership transfer aren't modelled.
+/// Port of `features/account/resale-view.tsx`. Seller-side only: it lets a
+/// collector put a piece they own back on the market and take the listing down
+/// again. Buyer matching and the payout of a resale are not part of the app -
+/// the website's "Simulate sale" stand-in for a buyer is a demo control and
+/// deliberately has no counterpart here.
 class ResaleScreen extends ConsumerWidget {
   const ResaleScreen({super.key});
 
@@ -23,78 +26,101 @@ class ResaleScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final collection = ref.watch(collectionProvider);
     final listings = ref.watch(resaleListingsProvider);
-    final artworks = ref.watch(artworksByIdProvider).value ?? const {};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Resell artwork')),
-      body: (collection.isLoading || listings.isLoading)
+      body: (collection.isLoading || listings.isLoading) && !collection.hasValue && !listings.hasValue
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-              children: [
-                ContentWidth(
-                  child: Builder(
-                    builder: (context) {
-                      final active = {
-                        for (final listing in listings.value ?? const <ResaleListing>[])
-                          if (listing.status == ResaleListingStatus.active) listing.artworkId,
-                      };
-                      final eligible = [
-                        for (final item in collection.value ?? const <CollectionItem>[])
-                          if (!active.contains(item.artwork.id)) item,
-                      ];
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text('Eligible artworks', style: theme.textTheme.titleLarge),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Any artwork in your collection can be listed for resale.',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                          if (eligible.isEmpty)
-                            const EmptyState(
-                              icon: LucideIcons.repeat2,
-                              title: 'Nothing eligible right now',
-                              description:
-                                  "Artworks become eligible for resale once they're "
-                                  'delivered and part of your collection.',
-                            )
-                          else
-                            for (final item in eligible)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _EligibleRow(item: item),
-                              ),
-                          const SizedBox(height: 28),
-                          Text('Your listings', style: theme.textTheme.titleLarge),
-                          const SizedBox(height: 12),
-                          if ((listings.value ?? const []).isEmpty)
-                            const EmptyState(
-                              icon: LucideIcons.tag,
-                              title: 'No listings yet',
-                              description:
-                                  'List a piece above and it shows up here until you '
-                                  'withdraw it.',
-                            )
-                          else
-                            for (final listing in listings.value!)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _ListingRow(
-                                  listing: listing,
-                                  title: artworks[listing.artworkId]?.title ?? listing.artworkId,
-                                ),
-                              ),
-                        ],
-                      );
+          : (collection.hasError || listings.hasError) && !(collection.hasValue && listings.hasValue)
+              ? EmptyState(
+                  icon: LucideIcons.repeat2,
+                  title: "Couldn't load your resale options",
+                  description: 'Something went wrong. Try again in a moment.',
+                  action: OutlinedButton(
+                    onPressed: () {
+                      ref.invalidate(collectionProvider);
+                      ref.invalidate(resaleListingsProvider);
                     },
+                    child: const Text('Try again'),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(collectionProvider);
+                    ref.invalidate(resaleListingsProvider);
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    children: [
+                      ContentWidth(
+                        child: Builder(
+                          builder: (context) {
+                            final items = collection.value ?? const <CollectionItem>[];
+                            final all = listings.value ?? const <ResaleListing>[];
+                            final active = {
+                              for (final listing in all)
+                                if (listing.status == ResaleListingStatus.active) listing.artworkId,
+                            };
+                            final eligible = [
+                              for (final item in items)
+                                if (!active.contains(item.artwork.id)) item,
+                            ];
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text('Eligible artworks', style: theme.textTheme.titleLarge),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Any artwork in your collection can be listed for resale.',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 12),
+                                if (eligible.isEmpty)
+                                  const EmptyState(
+                                    icon: LucideIcons.repeat2,
+                                    title: 'Nothing eligible right now',
+                                    description:
+                                        "Artworks become eligible for resale once they're "
+                                        'delivered and part of your collection.',
+                                  )
+                                else
+                                  for (final item in eligible)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: _EligibleRow(item: item),
+                                    ),
+                                const SizedBox(height: 28),
+                                Text('Your listings', style: theme.textTheme.titleLarge),
+                                const SizedBox(height: 12),
+                                if (all.isEmpty)
+                                  const EmptyState(
+                                    icon: LucideIcons.tag,
+                                    title: 'No resale listings yet',
+                                    description: 'Artworks you list for resale will appear here.',
+                                  )
+                                else
+                                  for (final listing in all)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: _ListingRow(
+                                        listing: listing,
+                                        // The listing names the piece by id only; the
+                                        // collection is where its title and photo are.
+                                        artwork: items
+                                            .where((c) => c.artwork.id == listing.artworkId)
+                                            .firstOrNull
+                                            ?.artwork,
+                                      ),
+                                    ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
     );
   }
 }
@@ -137,7 +163,7 @@ class _EligibleRow extends ConsumerWidget {
                 ),
                 Text(
                   item.order != null
-                      ? 'Bought for ${formatInr(item.order!.amount)}'
+                      ? 'Acquired for ${formatInr(item.order!.amount)}'
                       : 'Received from ${item.fromName.isEmpty ? 'its previous owner' : item.fromName}',
                   style: theme.textTheme.labelSmall,
                 ),
@@ -145,9 +171,10 @@ class _EligibleRow extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 8),
-          FilledButton(
+          OutlinedButton.icon(
             onPressed: () => _openListingSheet(context, ref, item),
-            child: const Text('List'),
+            icon: const Icon(LucideIcons.tag, size: 14),
+            label: const Text('List for resale'),
           ),
         ],
       ),
@@ -175,19 +202,24 @@ class _EligibleRow extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('List "${item.artwork.title}"',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text('List "${item.artwork.title}"', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 16),
               TextFormField(
                 controller: controller,
                 keyboardType: TextInputType.number,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
-                decoration: const InputDecoration(labelText: 'Listing price (₹)'),
+                decoration: const InputDecoration(labelText: 'Asking price (₹)'),
                 validator: (value) {
                   final parsed = double.tryParse((value ?? '').trim());
                   if (parsed == null || parsed <= 0) return 'Enter a listing price';
                   return null;
                 },
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '${paid == null ? '' : 'Originally acquired for ${formatInr(paid)}. '}'
+                "Buyer inquiries and resale checkout aren't wired to a live marketplace yet.",
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(height: 1.5),
               ),
               const SizedBox(height: 16),
               FilledButton(
@@ -210,6 +242,8 @@ class _EligibleRow extends ConsumerWidget {
           .read(customerRepositoryProvider)
           .createResaleListing(artworkId: item.artwork.id, listedPrice: price);
       ref.invalidate(resaleListingsProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Listed for resale')));
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -220,15 +254,16 @@ class _EligibleRow extends ConsumerWidget {
 }
 
 class _ListingRow extends ConsumerWidget {
-  const _ListingRow({required this.listing, required this.title});
+  const _ListingRow({required this.listing, required this.artwork});
 
   final ResaleListing listing;
-  final String title;
+  final Artwork? artwork;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isActive = listing.status == ResaleListingStatus.active;
+    final piece = artwork;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -238,42 +273,86 @@ class _ListingRow extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Icon(LucideIcons.tag, size: 16, color: theme.colorScheme.tertiary),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: SizedBox(
+              width: 52,
+              height: 52,
+              child: piece == null
+                  ? ColoredBox(color: theme.colorScheme.surfaceContainerHighest)
+                  : ArtworkImageView(url: piece.thumbnailUrl),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  piece?.title ?? 'Artwork',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
-                Text(
-                  '${formatInr(listing.listedPrice)} · ${listing.status.name} · '
-                  'listed ${formatShortDate(listing.listedAt)}',
-                  style: theme.textTheme.labelSmall,
-                ),
+                PriceTag(amount: listing.listedPrice, style: theme.textTheme.bodyMedium),
+                Text('Listed ${formatShortDate(listing.listedAt)}', style: theme.textTheme.labelSmall),
               ],
             ),
           ),
-          if (isActive)
-            TextButton(
-              onPressed: () async {
-                try {
-                  await ref.read(customerRepositoryProvider).withdrawResaleListing(listing.id);
-                  ref.invalidate(resaleListingsProvider);
-                } catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(authErrorMessage(error))),
-                  );
-                }
-              },
-              child: const Text('Withdraw'),
-            ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _StatusPill(status: listing.status),
+              if (isActive)
+                TextButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ref.read(customerRepositoryProvider).withdrawResaleListing(listing.id);
+                      ref.invalidate(resaleListingsProvider);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Listing withdrawn')),
+                      );
+                    } catch (error) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(authErrorMessage(error))),
+                      );
+                    }
+                  },
+                  icon: const Icon(LucideIcons.x, size: 14),
+                  label: const Text('Withdraw'),
+                ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final ResaleListingStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = status == ResaleListingStatus.active;
+    const green = Color(0xFF34D399);
+    final color = active ? green : theme.textTheme.bodySmall?.color;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: active ? green.withValues(alpha: 0.1) : theme.colorScheme.secondary,
+        border: Border.all(color: active ? green.withValues(alpha: 0.3) : theme.colorScheme.outline),
+      ),
+      child: Text(
+        titleCase(status.name),
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
       ),
     );
   }

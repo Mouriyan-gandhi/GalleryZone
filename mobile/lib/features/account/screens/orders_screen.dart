@@ -23,18 +23,19 @@ class OrdersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orders = ref.watch(ordersProvider);
-    final artworks = ref.watch(artworksByIdProvider).value ?? const {};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Orders')),
       body: orders.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
+        error: (error, stack) => EmptyState(
           icon: LucideIcons.packageSearch,
           title: "Couldn't load your orders",
-          description:
-              'Something went wrong loading your order history. Pull to refresh '
-              'and try again.',
+          description: 'Something went wrong loading your order history.',
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(ordersProvider),
+            child: const Text('Try again'),
+          ),
         ),
         data: (list) => list.isEmpty
             ? EmptyState(
@@ -55,10 +56,7 @@ class OrdersScreen extends ConsumerWidget {
                   itemCount: list.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 10),
                   itemBuilder: (context, index) => ContentWidth(
-                    child: OrderRow(
-                      order: list[index],
-                      artwork: artworks[list[index].artworkId],
-                    ),
+                    child: OrderRow(order: list[index]),
                   ),
                 ),
               ),
@@ -98,7 +96,6 @@ class _AdvanceOrderControlState extends ConsumerState<_AdvanceOrderControl> {
       ref.invalidate(ordersProvider);
       // Delivery is what fills the collection and releases the artist's money.
       ref.invalidate(collectionProvider);
-      ref.invalidate(artworksByIdProvider);
       messenger.showSnackBar(
         SnackBar(content: Text('Order is now ${OrderStatusStyle.of(updated.status).label}')),
       );
@@ -111,6 +108,9 @@ class _AdvanceOrderControlState extends ConsumerState<_AdvanceOrderControl> {
 
   @override
   Widget build(BuildContext context) {
+    // A demo control for the offline build only: with the real backend an order
+    // moves when the warehouse and the courier move it, never from here.
+    if (ref.watch(remoteBackendProvider)) return const SizedBox.shrink();
     final theme = Theme.of(context);
     final index = orderProgression.indexOf(widget.order.status);
     if (index == -1 || index == orderProgression.length - 1) return const SizedBox.shrink();
@@ -141,17 +141,20 @@ class OrderDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final order = ref.watch(orderProvider(orderId));
-    final artworks = ref.watch(artworksByIdProvider).value ?? const {};
-    final addresses = ref.watch(addressesProvider).value ?? const [];
+    final addresses = ref.watch(addressesProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Order')),
       body: order.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
+        error: (error, stack) => EmptyState(
           icon: LucideIcons.packageSearch,
           title: "Couldn't load this order",
           description: 'Something went wrong. Try again in a moment.',
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(orderProvider(orderId)),
+            child: const Text('Try again'),
+          ),
         ),
         data: (data) {
           if (data == null) {
@@ -161,8 +164,8 @@ class OrderDetailScreen extends ConsumerWidget {
               description: 'This order is no longer in your history.',
             );
           }
-          final artwork = artworks[data.artworkId];
-          final address = addresses.where((a) => a.id == data.addressId).firstOrNull;
+          final artwork = data.artwork;
+          final address = addresses.value?.where((a) => a.id == data.addressId).firstOrNull;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
@@ -171,6 +174,11 @@ class OrderDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      'Order #${data.id.length > 8 ? data.id.substring(data.id.length - 8) : data.id}',
+                      style: theme.textTheme.labelMedium?.copyWith(letterSpacing: 0.6),
+                    ),
+                    const SizedBox(height: 10),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -214,12 +222,12 @@ class OrderDetailScreen extends ConsumerWidget {
                       Row(
                         children: [
                           TextButton.icon(
-                            onPressed: () => context.push('/marketplace/${artwork.id}'),
+                            onPressed: () => context.push('/marketplace/${data.artworkId}'),
                             icon: const Icon(LucideIcons.externalLink, size: 14),
                             label: const Text('View listing'),
                           ),
                           TextButton.icon(
-                            onPressed: () => context.push('/verify/${artwork.id}'),
+                            onPressed: () => context.push('/verify/${data.artworkId}'),
                             icon: const Icon(LucideIcons.scanLine, size: 14),
                             label: const Text('Passport'),
                           ),
@@ -232,19 +240,21 @@ class OrderDetailScreen extends ConsumerWidget {
                     _AdvanceOrderControl(order: data),
                     const SizedBox(height: 28),
                     OrderPriceBreakdown(order: data),
-                    if (address != null) ...[
-                      const SizedBox(height: 28),
-                      Text('Delivery address', style: theme.textTheme.titleLarge),
-                      const SizedBox(height: 10),
-                      Text(
-                        [
-                          address.line1,
-                          address.line2,
-                          '${address.city}, ${address.state} ${address.pincode}',
-                        ].whereType<String>().join('\n'),
-                        style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-                      ),
-                    ],
+                    const SizedBox(height: 28),
+                    Text('Delivery address', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    Text(
+                      address != null
+                          ? [
+                              address.line1,
+                              address.line2,
+                              '${address.city}, ${address.state} ${address.pincode}',
+                            ].whereType<String>().join('\n')
+                          : addresses.isLoading
+                              ? 'Loading address…'
+                              : 'This address is no longer on file.',
+                      style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                    ),
                   ],
                 ),
               ),
