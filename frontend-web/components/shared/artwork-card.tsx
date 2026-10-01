@@ -114,12 +114,11 @@ export function ArtworkCard({ artwork, className }: ArtworkCardProps) {
             <PriceTag amount={artwork.customerPrice} className="text-base" />
             {status && <span className="text-xs text-muted-foreground">{status}</span>}
           </p>
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-3 pr-10 pb-1">
-            <span className={cn(PILL, "border-border text-foreground/75")}>Digital Passport</span>
-            {artwork.insured && (
+          {artwork.insured && (
+            <div className="mt-auto flex flex-wrap gap-1.5 pt-3 pr-10 pb-1">
               <span className={cn(PILL, "border-gold/50 text-gold-bright")}>Insured</span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </Link>
 
