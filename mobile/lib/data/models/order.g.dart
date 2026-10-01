@@ -48,6 +48,38 @@ const _$OrderStatusEnumMap = {
   OrderStatus.cancelled: 'cancelled',
 };
 
+_OrderArtwork _$OrderArtworkFromJson(Map<String, dynamic> json) =>
+    _OrderArtwork(
+      title: json['title'] as String,
+      artistName: json['artistName'] as String,
+      artistId: json['artistId'] as String? ?? '',
+      thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+      productCode: json['productCode'] as String? ?? '',
+    );
+
+Map<String, dynamic> _$OrderArtworkToJson(_OrderArtwork instance) =>
+    <String, dynamic>{
+      'title': instance.title,
+      'artistName': instance.artistName,
+      'artistId': instance.artistId,
+      'thumbnailUrl': instance.thumbnailUrl,
+      'productCode': instance.productCode,
+    };
+
+_OrderPayment _$OrderPaymentFromJson(Map<String, dynamic> json) =>
+    _OrderPayment(
+      paymentId: json['paymentId'] as String? ?? '',
+      method: json['method'] as String? ?? '',
+      simulated: json['simulated'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$OrderPaymentToJson(_OrderPayment instance) =>
+    <String, dynamic>{
+      'paymentId': instance.paymentId,
+      'method': instance.method,
+      'simulated': instance.simulated,
+    };
+
 _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
   id: json['id'] as String,
   artworkId: json['artworkId'] as String,
@@ -64,6 +96,14 @@ _Order _$OrderFromJson(Map<String, dynamic> json) => _Order(
     _$PaymentMethodEnumMap,
     json['paymentMethod'],
   ),
+  convenienceFee: (json['convenienceFee'] as num?)?.toDouble() ?? 0,
+  convenienceGst: (json['convenienceGst'] as num?)?.toDouble() ?? 0,
+  artwork: json['artwork'] == null
+      ? null
+      : OrderArtwork.fromJson(json['artwork'] as Map<String, dynamic>),
+  payment: json['payment'] == null
+      ? null
+      : OrderPayment.fromJson(json['payment'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
@@ -77,6 +117,10 @@ Map<String, dynamic> _$OrderToJson(_Order instance) => <String, dynamic>{
   'createdAt': instance.createdAt,
   'statusHistory': instance.statusHistory,
   'paymentMethod': _$PaymentMethodEnumMap[instance.paymentMethod],
+  'convenienceFee': instance.convenienceFee,
+  'convenienceGst': instance.convenienceGst,
+  'artwork': instance.artwork,
+  'payment': instance.payment,
 };
 
 const _$PaymentMethodEnumMap = {

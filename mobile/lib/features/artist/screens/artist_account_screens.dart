@@ -9,6 +9,7 @@ import '../../../core/format.dart';
 import '../../../core/launch.dart';
 import '../../../data/mock/seed/artist_seed.dart';
 import '../../../data/models/artist_portal.dart';
+import '../../../data/models/artwork.dart' show ReviewStatus, reviewStatusLabel;
 import '../../account/widgets/delete_account.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
@@ -603,8 +604,8 @@ class _ArtistKycScreenState extends ConsumerState<ArtistKycScreen> {
                             children: [
                               PortalDetailRow(
                                 label: 'Aadhaar',
-                                value: '${loaded.aadhaarMasked} · ${loaded.aadhaarStatus.name}',
-                                gold: loaded.aadhaarStatus == AadhaarStatus.verified,
+                                value: '${loaded.aadhaarMasked} · ${reviewStatusLabel[loaded.aadhaarStatus]}',
+                                gold: loaded.aadhaarStatus == ReviewStatus.approved,
                               ),
                               const SizedBox(height: 10),
                               Text(

@@ -103,7 +103,7 @@ void main() {
 
     final collection = await repository.listCollection();
     expect(collection, hasLength(1));
-    expect(collection.single.order.status, OrderStatus.delivered);
+    expect(collection.single.order!.status, OrderStatus.delivered);
     expect(collection.single.artwork.id, 'monsoon-over-madurai');
   });
 

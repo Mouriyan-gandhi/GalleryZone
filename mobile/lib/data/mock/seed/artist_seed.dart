@@ -70,7 +70,7 @@ const _seeds = <({
     artistPrice: 22000,
     status: ArtworkStatus.draft,
     submittedDaysAgo: 5,
-    rarity: ArtworkRarity.normal,
+    rarity: ArtworkRarity.standard,
   ),
   (
     id: 'aw-4',
@@ -272,7 +272,7 @@ ArtistProfileDetails seedArtistProfile() => const ArtistProfileDetails(
       website: 'devikarao.com',
       bankAccountMasked: '•••• •••• •••• 6142',
       ifsc: 'HDFC0001234',
-      aadhaarStatus: AadhaarStatus.verified,
+      aadhaarStatus: ReviewStatus.approved,
       aadhaarMasked: '•••• •••• 4821',
     );
 

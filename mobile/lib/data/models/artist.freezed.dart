@@ -285,7 +285,10 @@ as bool,
 /// @nodoc
 mixin _$ArtistProfile {
 
- String get id; String get name; String get bio; String get profileImageUrl; ArtistVerificationState get verification; List<SocialProofLink> get socialLinks;
+ String get id; String get name; String get bio; String get profileImageUrl; ArtistVerificationState get verification; List<SocialProofLink> get socialLinks;/// One plain line of what they make, under the name.
+ String get headline;/// City and state — never a street address.
+ String get location;/// On GalleryZone since (ISO). Empty when the API doesn't say.
+ String get joinedAt;
 /// Create a copy of ArtistProfile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -298,16 +301,16 @@ $ArtistProfileCopyWith<ArtistProfile> get copyWith => _$ArtistProfileCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.verification, verification) || other.verification == verification)&&const DeepCollectionEquality().equals(other.socialLinks, socialLinks));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.verification, verification) || other.verification == verification)&&const DeepCollectionEquality().equals(other.socialLinks, socialLinks)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.location, location) || other.location == location)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,bio,profileImageUrl,verification,const DeepCollectionEquality().hash(socialLinks));
+int get hashCode => Object.hash(runtimeType,id,name,bio,profileImageUrl,verification,const DeepCollectionEquality().hash(socialLinks),headline,location,joinedAt);
 
 @override
 String toString() {
-  return 'ArtistProfile(id: $id, name: $name, bio: $bio, profileImageUrl: $profileImageUrl, verification: $verification, socialLinks: $socialLinks)';
+  return 'ArtistProfile(id: $id, name: $name, bio: $bio, profileImageUrl: $profileImageUrl, verification: $verification, socialLinks: $socialLinks, headline: $headline, location: $location, joinedAt: $joinedAt)';
 }
 
 
@@ -318,7 +321,7 @@ abstract mixin class $ArtistProfileCopyWith<$Res>  {
   factory $ArtistProfileCopyWith(ArtistProfile value, $Res Function(ArtistProfile) _then) = _$ArtistProfileCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String bio, String profileImageUrl, ArtistVerificationState verification, List<SocialProofLink> socialLinks
+ String id, String name, String bio, String profileImageUrl, ArtistVerificationState verification, List<SocialProofLink> socialLinks, String headline, String location, String joinedAt
 });
 
 
@@ -335,7 +338,7 @@ class _$ArtistProfileCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfile
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? bio = null,Object? profileImageUrl = null,Object? verification = null,Object? socialLinks = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? bio = null,Object? profileImageUrl = null,Object? verification = null,Object? socialLinks = null,Object? headline = null,Object? location = null,Object? joinedAt = null,}) {
   return _then(ArtistProfile(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -343,7 +346,10 @@ as String,bio: null == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nul
 as String,profileImageUrl: null == profileImageUrl ? _self.profileImageUrl : profileImageUrl // ignore: cast_nullable_to_non_nullable
 as String,verification: null == verification ? _self.verification : verification // ignore: cast_nullable_to_non_nullable
 as ArtistVerificationState,socialLinks: null == socialLinks ? _self.socialLinks : socialLinks // ignore: cast_nullable_to_non_nullable
-as List<SocialProofLink>,
+as List<SocialProofLink>,headline: null == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
+as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
+as String,joinedAt: null == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 /// Create a copy of ArtistProfile
@@ -437,10 +443,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks,  String headline,  String location,  String joinedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ArtistProfile() when $default != null:
-return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks);case _:
+return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks,_that.headline,_that.location,_that.joinedAt);case _:
   return orElse();
 
 }
@@ -458,10 +464,10 @@ return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verifi
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks,  String headline,  String location,  String joinedAt)  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfile():
-return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks);case _:
+return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks,_that.headline,_that.location,_that.joinedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -478,10 +484,10 @@ return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verifi
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String bio,  String profileImageUrl,  ArtistVerificationState verification,  List<SocialProofLink> socialLinks,  String headline,  String location,  String joinedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfile() when $default != null:
-return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks);case _:
+return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verification,_that.socialLinks,_that.headline,_that.location,_that.joinedAt);case _:
   return null;
 
 }
@@ -493,7 +499,7 @@ return $default(_that.id,_that.name,_that.bio,_that.profileImageUrl,_that.verifi
 @JsonSerializable()
 
 class _ArtistProfile implements ArtistProfile {
-  const _ArtistProfile({required this.id, required this.name, required this.bio, required this.profileImageUrl, required this.verification, required  List<SocialProofLink> socialLinks}): _socialLinks = socialLinks;
+  const _ArtistProfile({required this.id, required this.name, required this.bio, required this.profileImageUrl, required this.verification, required  List<SocialProofLink> socialLinks, this.headline = '', this.location = '', this.joinedAt = ''}): _socialLinks = socialLinks;
   factory _ArtistProfile.fromJson(Map<String, dynamic> json) => _$ArtistProfileFromJson(json);
 
 @override final  String id;
@@ -508,6 +514,12 @@ class _ArtistProfile implements ArtistProfile {
   return EqualUnmodifiableListView(_socialLinks);
 }
 
+/// One plain line of what they make, under the name.
+@override@JsonKey() final  String headline;
+/// City and state — never a street address.
+@override@JsonKey() final  String location;
+/// On GalleryZone since (ISO). Empty when the API doesn't say.
+@override@JsonKey() final  String joinedAt;
 
 /// Create a copy of ArtistProfile
 /// with the given fields replaced by the non-null parameter values.
@@ -522,16 +534,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.verification, verification) || other.verification == verification)&&const DeepCollectionEquality().equals(other._socialLinks, _socialLinks));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfile&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.profileImageUrl, profileImageUrl) || other.profileImageUrl == profileImageUrl)&&(identical(other.verification, verification) || other.verification == verification)&&const DeepCollectionEquality().equals(other._socialLinks, _socialLinks)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.location, location) || other.location == location)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,bio,profileImageUrl,verification,const DeepCollectionEquality().hash(_socialLinks));
+int get hashCode => Object.hash(runtimeType,id,name,bio,profileImageUrl,verification,const DeepCollectionEquality().hash(_socialLinks),headline,location,joinedAt);
 
 @override
 String toString() {
-  return 'ArtistProfile(id: $id, name: $name, bio: $bio, profileImageUrl: $profileImageUrl, verification: $verification, socialLinks: $socialLinks)';
+  return 'ArtistProfile(id: $id, name: $name, bio: $bio, profileImageUrl: $profileImageUrl, verification: $verification, socialLinks: $socialLinks, headline: $headline, location: $location, joinedAt: $joinedAt)';
 }
 
 
@@ -542,7 +554,7 @@ abstract mixin class _$ArtistProfileCopyWith<$Res> implements $ArtistProfileCopy
   factory _$ArtistProfileCopyWith(_ArtistProfile value, $Res Function(_ArtistProfile) _then) = __$ArtistProfileCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String bio, String profileImageUrl, ArtistVerificationState verification, List<SocialProofLink> socialLinks
+ String id, String name, String bio, String profileImageUrl, ArtistVerificationState verification, List<SocialProofLink> socialLinks, String headline, String location, String joinedAt
 });
 
 
@@ -559,7 +571,7 @@ class __$ArtistProfileCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfile
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? bio = null,Object? profileImageUrl = null,Object? verification = null,Object? socialLinks = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? bio = null,Object? profileImageUrl = null,Object? verification = null,Object? socialLinks = null,Object? headline = null,Object? location = null,Object? joinedAt = null,}) {
   return _then(_ArtistProfile(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -567,7 +579,10 @@ as String,bio: null == bio ? _self.bio : bio // ignore: cast_nullable_to_non_nul
 as String,profileImageUrl: null == profileImageUrl ? _self.profileImageUrl : profileImageUrl // ignore: cast_nullable_to_non_nullable
 as String,verification: null == verification ? _self.verification : verification // ignore: cast_nullable_to_non_nullable
 as ArtistVerificationState,socialLinks: null == socialLinks ? _self._socialLinks : socialLinks // ignore: cast_nullable_to_non_nullable
-as List<SocialProofLink>,
+as List<SocialProofLink>,headline: null == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
+as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
+as String,joinedAt: null == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

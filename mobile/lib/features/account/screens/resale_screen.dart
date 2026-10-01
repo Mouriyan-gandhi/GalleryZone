@@ -136,7 +136,9 @@ class _EligibleRow extends ConsumerWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  'Bought for ${formatInr(item.order.amount)}',
+                  item.order != null
+                      ? 'Bought for ${formatInr(item.order!.amount)}'
+                      : 'Received from ${item.fromName.isEmpty ? 'its previous owner' : item.fromName}',
                   style: theme.textTheme.labelSmall,
                 ),
               ],
@@ -153,7 +155,8 @@ class _EligibleRow extends ConsumerWidget {
   }
 
   Future<void> _openListingSheet(BuildContext context, WidgetRef ref, CollectionItem item) async {
-    final controller = TextEditingController(text: item.order.amount.toStringAsFixed(0));
+    final paid = item.order?.amount;
+    final controller = TextEditingController(text: paid == null ? '' : paid.toStringAsFixed(0));
     final formKey = GlobalKey<FormState>();
 
     final price = await showModalBottomSheet<double>(

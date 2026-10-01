@@ -12,6 +12,7 @@ _ArtworkImage _$ArtworkImageFromJson(Map<String, dynamic> json) =>
       thumbnailUrl: json['thumbnailUrl'] as String,
       sortOrder: (json['sortOrder'] as num).toInt(),
       altText: json['altText'] as String,
+      id: json['id'] as String?,
     );
 
 Map<String, dynamic> _$ArtworkImageToJson(_ArtworkImage instance) =>
@@ -20,6 +21,7 @@ Map<String, dynamic> _$ArtworkImageToJson(_ArtworkImage instance) =>
       'thumbnailUrl': instance.thumbnailUrl,
       'sortOrder': instance.sortOrder,
       'altText': instance.altText,
+      'id': instance.id,
     };
 
 _SocialProofLink _$SocialProofLinkFromJson(Map<String, dynamic> json) =>
@@ -88,8 +90,8 @@ _Artwork _$ArtworkFromJson(Map<String, dynamic> json) => _Artwork(
   images: (json['images'] as List<dynamic>)
       .map((e) => ArtworkImage.fromJson(e as Map<String, dynamic>))
       .toList(),
-  coaCertificateNumber: json['coaCertificateNumber'] as String,
-  coaIssueDate: json['coaIssueDate'] as String,
+  coaCertificateNumber: json['coaCertificateNumber'] as String? ?? '',
+  coaIssueDate: json['coaIssueDate'] as String? ?? '',
   socialProofLinks: (json['socialProofLinks'] as List<dynamic>)
       .map((e) => SocialProofLink.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -97,7 +99,18 @@ _Artwork _$ArtworkFromJson(Map<String, dynamic> json) => _Artwork(
       .map((e) => ArtworkStatusEvent.fromJson(e as Map<String, dynamic>))
       .toList(),
   nfcTagId: json['nfcTagId'] as String?,
-  rarityType: $enumDecodeNullable(_$ArtworkRarityEnumMap, json['rarityType']),
+  rarityType: const ArtworkRarityConverter().fromJson(
+    json['rarityType'] as String?,
+  ),
+  productCode: json['productCode'] as String?,
+  artworkType: json['artworkType'] as String?,
+  paintingStyle: json['paintingStyle'] as String?,
+  insuranceNumber: json['insuranceNumber'] as String?,
+  insuranceStatus:
+      $enumDecodeNullable(_$ReviewStatusEnumMap, json['insuranceStatus']) ??
+      ReviewStatus.notSubmitted,
+  artistLocation: json['artistLocation'] as String?,
+  sizeBand: $enumDecodeNullable(_$ArtworkSizeBandEnumMap, json['sizeBand']),
   physical: json['physical'] == null
       ? null
       : ArtworkPhysical.fromJson(json['physical'] as Map<String, dynamic>),
@@ -128,7 +141,14 @@ Map<String, dynamic> _$ArtworkToJson(_Artwork instance) => <String, dynamic>{
   'socialProofLinks': instance.socialProofLinks,
   'statusHistory': instance.statusHistory,
   'nfcTagId': instance.nfcTagId,
-  'rarityType': _$ArtworkRarityEnumMap[instance.rarityType],
+  'rarityType': const ArtworkRarityConverter().toJson(instance.rarityType),
+  'productCode': instance.productCode,
+  'artworkType': instance.artworkType,
+  'paintingStyle': instance.paintingStyle,
+  'insuranceNumber': instance.insuranceNumber,
+  'insuranceStatus': _$ReviewStatusEnumMap[instance.insuranceStatus]!,
+  'artistLocation': instance.artistLocation,
+  'sizeBand': _$ArtworkSizeBandEnumMap[instance.sizeBand],
   'physical': instance.physical,
   'custody': instance.custody,
 };
@@ -139,11 +159,17 @@ const _$ListingTypeEnumMap = {
   ListingType.marketplaceAndAggregator: 'marketplace_and_aggregator',
 };
 
-const _$ArtworkRarityEnumMap = {
-  ArtworkRarity.rare: 'R',
-  ArtworkRarity.unique: 'U',
-  ArtworkRarity.original: 'O',
-  ArtworkRarity.normal: 'N',
+const _$ReviewStatusEnumMap = {
+  ReviewStatus.notSubmitted: 'not_submitted',
+  ReviewStatus.submitted: 'submitted',
+  ReviewStatus.approved: 'approved',
+  ReviewStatus.rejected: 'rejected',
+};
+
+const _$ArtworkSizeBandEnumMap = {
+  ArtworkSizeBand.small: 'small',
+  ArtworkSizeBand.medium: 'medium',
+  ArtworkSizeBand.large: 'large',
 };
 
 _ArtworkPhysical _$ArtworkPhysicalFromJson(Map<String, dynamic> json) =>

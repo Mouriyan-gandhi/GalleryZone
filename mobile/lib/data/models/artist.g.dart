@@ -34,6 +34,9 @@ _ArtistProfile _$ArtistProfileFromJson(Map<String, dynamic> json) =>
       socialLinks: (json['socialLinks'] as List<dynamic>)
           .map((e) => SocialProofLink.fromJson(e as Map<String, dynamic>))
           .toList(),
+      headline: json['headline'] as String? ?? '',
+      location: json['location'] as String? ?? '',
+      joinedAt: json['joinedAt'] as String? ?? '',
     );
 
 Map<String, dynamic> _$ArtistProfileToJson(_ArtistProfile instance) =>
@@ -44,4 +47,7 @@ Map<String, dynamic> _$ArtistProfileToJson(_ArtistProfile instance) =>
       'profileImageUrl': instance.profileImageUrl,
       'verification': instance.verification,
       'socialLinks': instance.socialLinks,
+      'headline': instance.headline,
+      'location': instance.location,
+      'joinedAt': instance.joinedAt,
     };

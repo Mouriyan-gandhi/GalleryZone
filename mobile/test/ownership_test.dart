@@ -5,7 +5,6 @@ import 'package:gallery_zone/data/mock/mock_checkout_repository.dart';
 import 'package:gallery_zone/data/mock/mock_customer_repository.dart';
 import 'package:gallery_zone/data/mock/mock_ownership_repository.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
-import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/models/customer.dart';
 import 'package:gallery_zone/data/models/order.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
@@ -128,7 +127,7 @@ void main() {
       final artworkId = await ownAPiece();
       await customer.createResaleListing(artworkId: artworkId, listedPrice: 99000);
 
-      final listed = (await artworks.list(const ArtworkFilters()))
+      final listed = (await artworks.listAllLive())
           .firstWhere((a) => a.id == artworkId);
       expect(listed.status, ArtworkStatus.marketplace);
       expect(listed.customerPrice, 99000);

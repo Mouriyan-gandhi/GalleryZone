@@ -27,6 +27,9 @@ abstract class CustomerProfile with _$CustomerProfile {
     @Default('') String bankAccountName,
     @Default('') String bankAccountNumber,
     @Default('') String bankIfsc,
+
+    /// Collecting on GalleryZone since (ISO). Empty when the API doesn't say.
+    @Default('') String joinedAt,
   }) = _CustomerProfile;
 
   const CustomerProfile._();
@@ -104,14 +107,44 @@ abstract class SupportTicket with _$SupportTicket {
       _$SupportTicketFromJson(json);
 }
 
-/// Ownership isn't a separately-modeled event: a delivered order **is**
-/// ownership (the Onboarding Guide's Stage 9 "sale & ownership transfer"
-/// collapses into the order reaching `delivered`). So a collection entry is
-/// just that order joined to the live artwork record, for COA/NFC/provenance.
-/// Not persisted — derived on read, same as the web.
-class CollectionItem {
-  const CollectionItem({required this.order, required this.artwork});
+/// How a piece came to be in a collection.
+enum CollectionSource {
+  /// Bought on the marketplace — there is an order behind it.
+  marketplaceOrder,
 
-  final Order order;
+  /// Handed over by its previous owner (or bought from an aggregator in
+  /// person) — there is no GalleryZone order to point at.
+  transfer,
+}
+
+/// What a collector owns right now.
+///
+/// Ownership is the provenance ledger's call, not the order's: title passes on
+/// *payment*, a piece received by transfer has no order at all, and a resold
+/// piece has an order but is no longer theirs. So an entry is the live artwork
+/// plus — when one exists — the order that brought it here.
+class CollectionItem {
+  const CollectionItem({
+    required this.artwork,
+    this.order,
+    this.source = CollectionSource.marketplaceOrder,
+    this.acquiredAt,
+    this.fromName = '',
+  });
+
   final Artwork artwork;
+
+  /// Null for a piece received by transfer.
+  final Order? order;
+  final CollectionSource source;
+
+  /// When ownership arrived (ISO). Null on the offline mock, which only knows
+  /// the order's own dates.
+  final String? acquiredAt;
+
+  /// Who it came from.
+  final String fromName;
+
+  /// What was paid, GST and delivery included; zero for a transfer.
+  double get paidPrice => order?.total ?? 0;
 }

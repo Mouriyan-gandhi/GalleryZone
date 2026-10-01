@@ -7,7 +7,6 @@ import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
-import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/repositories/artist_repository.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
 import 'package:gallery_zone/features/artist/providers/artist_providers.dart';
@@ -51,7 +50,7 @@ void main() {
     final portal = await repository.listArtworks();
     expect(portal, hasLength(7));
 
-    final browsable = await MockArtworkRepository().list(const ArtworkFilters());
+    final browsable = await MockArtworkRepository().listAllLive();
     final ids = browsable.map((a) => a.id).toSet();
     // aw-3 and aw-7 are drafts, aw-2 is in review.
     expect(ids.contains('aw-1'), isTrue);
@@ -78,7 +77,7 @@ void main() {
       expect(artwork.customerPrice, displayPriceOf(20000));
       expect(artwork.coaCertificateNumber, startsWith('GZ-COA-'));
 
-      final browsable = await MockArtworkRepository().list(const ArtworkFilters());
+      final browsable = await MockArtworkRepository().listAllLive();
       expect(browsable.map((a) => a.id), isNot(contains(artwork.id)));
 
       final portal = await repository.listArtworks();

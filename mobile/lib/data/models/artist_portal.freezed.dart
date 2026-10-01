@@ -289,11 +289,295 @@ as String,
 
 
 /// @nodoc
+mixin _$FreeAccess {
+
+/// When the free period ends (ISO).
+ String get until; int get months; bool get surveyRespondent; bool get active;
+/// Create a copy of FreeAccess
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FreeAccessCopyWith<FreeAccess> get copyWith => _$FreeAccessCopyWithImpl<FreeAccess>(this as FreeAccess, _$identity);
+
+  /// Serializes this FreeAccess to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FreeAccess&&(identical(other.until, until) || other.until == until)&&(identical(other.months, months) || other.months == months)&&(identical(other.surveyRespondent, surveyRespondent) || other.surveyRespondent == surveyRespondent)&&(identical(other.active, active) || other.active == active));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,until,months,surveyRespondent,active);
+
+@override
+String toString() {
+  return 'FreeAccess(until: $until, months: $months, surveyRespondent: $surveyRespondent, active: $active)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $FreeAccessCopyWith<$Res>  {
+  factory $FreeAccessCopyWith(FreeAccess value, $Res Function(FreeAccess) _then) = _$FreeAccessCopyWithImpl;
+@useResult
+$Res call({
+ String until, int months, bool surveyRespondent, bool active
+});
+
+
+
+
+}
+/// @nodoc
+class _$FreeAccessCopyWithImpl<$Res>
+    implements $FreeAccessCopyWith<$Res> {
+  _$FreeAccessCopyWithImpl(this._self, this._then);
+
+  final FreeAccess _self;
+  final $Res Function(FreeAccess) _then;
+
+/// Create a copy of FreeAccess
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? until = null,Object? months = null,Object? surveyRespondent = null,Object? active = null,}) {
+  return _then(FreeAccess(
+until: null == until ? _self.until : until // ignore: cast_nullable_to_non_nullable
+as String,months: null == months ? _self.months : months // ignore: cast_nullable_to_non_nullable
+as int,surveyRespondent: null == surveyRespondent ? _self.surveyRespondent : surveyRespondent // ignore: cast_nullable_to_non_nullable
+as bool,active: null == active ? _self.active : active // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [FreeAccess].
+extension FreeAccessPatterns on FreeAccess {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _FreeAccess value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _FreeAccess() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _FreeAccess value)  $default,){
+final _that = this;
+switch (_that) {
+case _FreeAccess():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _FreeAccess value)?  $default,){
+final _that = this;
+switch (_that) {
+case _FreeAccess() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String until,  int months,  bool surveyRespondent,  bool active)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _FreeAccess() when $default != null:
+return $default(_that.until,_that.months,_that.surveyRespondent,_that.active);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String until,  int months,  bool surveyRespondent,  bool active)  $default,) {final _that = this;
+switch (_that) {
+case _FreeAccess():
+return $default(_that.until,_that.months,_that.surveyRespondent,_that.active);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String until,  int months,  bool surveyRespondent,  bool active)?  $default,) {final _that = this;
+switch (_that) {
+case _FreeAccess() when $default != null:
+return $default(_that.until,_that.months,_that.surveyRespondent,_that.active);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _FreeAccess implements FreeAccess {
+  const _FreeAccess({required this.until, required this.months, this.surveyRespondent = false, this.active = true});
+  factory _FreeAccess.fromJson(Map<String, dynamic> json) => _$FreeAccessFromJson(json);
+
+/// When the free period ends (ISO).
+@override final  String until;
+@override final  int months;
+@override@JsonKey() final  bool surveyRespondent;
+@override@JsonKey() final  bool active;
+
+/// Create a copy of FreeAccess
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$FreeAccessCopyWith<_FreeAccess> get copyWith => __$FreeAccessCopyWithImpl<_FreeAccess>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$FreeAccessToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FreeAccess&&(identical(other.until, until) || other.until == until)&&(identical(other.months, months) || other.months == months)&&(identical(other.surveyRespondent, surveyRespondent) || other.surveyRespondent == surveyRespondent)&&(identical(other.active, active) || other.active == active));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,until,months,surveyRespondent,active);
+
+@override
+String toString() {
+  return 'FreeAccess(until: $until, months: $months, surveyRespondent: $surveyRespondent, active: $active)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$FreeAccessCopyWith<$Res> implements $FreeAccessCopyWith<$Res> {
+  factory _$FreeAccessCopyWith(_FreeAccess value, $Res Function(_FreeAccess) _then) = __$FreeAccessCopyWithImpl;
+@override @useResult
+$Res call({
+ String until, int months, bool surveyRespondent, bool active
+});
+
+
+
+
+}
+/// @nodoc
+class __$FreeAccessCopyWithImpl<$Res>
+    implements _$FreeAccessCopyWith<$Res> {
+  __$FreeAccessCopyWithImpl(this._self, this._then);
+
+  final _FreeAccess _self;
+  final $Res Function(_FreeAccess) _then;
+
+/// Create a copy of FreeAccess
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? until = null,Object? months = null,Object? surveyRespondent = null,Object? active = null,}) {
+  return _then(_FreeAccess(
+until: null == until ? _self.until : until // ignore: cast_nullable_to_non_nullable
+as String,months: null == months ? _self.months : months // ignore: cast_nullable_to_non_nullable
+as int,surveyRespondent: null == surveyRespondent ? _self.surveyRespondent : surveyRespondent // ignore: cast_nullable_to_non_nullable
+as bool,active: null == active ? _self.active : active // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$ArtistProfileDetails {
 
- String get fullName; String get email; String get phone; String get bio; String get instagram; String get website; String get bankAccountMasked; String get ifsc; AadhaarStatus get aadhaarStatus; String get aadhaarMasked;/// Optional. Validated for shape only when one is entered — there is no
+ String get fullName; String get email; String get phone; String get bio; String get instagram; String get website; String get bankAccountMasked; String get ifsc; ReviewStatus get aadhaarStatus; String get aadhaarMasked;/// Mandatory for an artist to go live (client, 30 Aug 2026), reviewed by
+/// GalleryZone — see [gstStatus]. Validated for shape only: there is no
 /// GST portal integration, which the business deliberately does not want.
- String? get gstin;/// Where the courier collects. Private, and the one thing without which a
+ String? get gstin;/// Where the GST number stands with GalleryZone's reviewers. A new or
+/// changed number goes back to "submitted".
+ ReviewStatus get gstStatus;/// PAN, kept private (admin-only; never on the public profile).
+ String? get pan;/// One public line of what they make, and where they work. Mirrored onto
+/// the public artist page.
+ String? get headline; String? get location;/// A link to a short video that vouches for the work.
+ String? get socialProofVideoUrl;/// On GalleryZone since (ISO).
+ String get joinedAt;/// The Early Artist Program's free period. Null once it has no meaning
+/// (not an artist) or the API didn't say.
+ FreeAccess? get freeAccess;/// Where the courier collects. Private, and the one thing without which a
 /// delivery cannot be quoted at all: shipping is priced on the distance
 /// between two pincodes, and this is the origin for both the leg to an
 /// aggregator and the leg to a buyer.
@@ -310,16 +594,16 @@ $ArtistProfileDetailsCopyWith<ArtistProfileDetails> get copyWith => _$ArtistProf
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.gstStatus, gstStatus) || other.gstStatus == gstStatus)&&(identical(other.pan, pan) || other.pan == pan)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.location, location) || other.location == location)&&(identical(other.socialProofVideoUrl, socialProofVideoUrl) || other.socialProofVideoUrl == socialProofVideoUrl)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.freeAccess, freeAccess) || other.freeAccess == freeAccess)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode);
+int get hashCode => Object.hashAll([runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,gstStatus,pan,headline,location,socialProofVideoUrl,joinedAt,freeAccess,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode]);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, gstStatus: $gstStatus, pan: $pan, headline: $headline, location: $location, socialProofVideoUrl: $socialProofVideoUrl, joinedAt: $joinedAt, freeAccess: $freeAccess, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
 }
 
 
@@ -330,11 +614,11 @@ abstract mixin class $ArtistProfileDetailsCopyWith<$Res>  {
   factory $ArtistProfileDetailsCopyWith(ArtistProfileDetails value, $Res Function(ArtistProfileDetails) _then) = _$ArtistProfileDetailsCopyWithImpl;
 @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, ReviewStatus aadhaarStatus, String aadhaarMasked, String? gstin, ReviewStatus gstStatus, String? pan, String? headline, String? location, String? socialProofVideoUrl, String joinedAt, FreeAccess? freeAccess, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
 });
 
 
-
+$FreeAccessCopyWith<$Res>? get freeAccess;
 
 }
 /// @nodoc
@@ -347,7 +631,7 @@ class _$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? gstStatus = null,Object? pan = freezed,Object? headline = freezed,Object? location = freezed,Object? socialProofVideoUrl = freezed,Object? joinedAt = null,Object? freeAccess = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
   return _then(ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -358,9 +642,16 @@ as String,website: null == website ? _self.website : website // ignore: cast_nul
 as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked : bankAccountMasked // ignore: cast_nullable_to_non_nullable
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
-as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
+as ReviewStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
 as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
-as String?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
+as String?,gstStatus: null == gstStatus ? _self.gstStatus : gstStatus // ignore: cast_nullable_to_non_nullable
+as ReviewStatus,pan: freezed == pan ? _self.pan : pan // ignore: cast_nullable_to_non_nullable
+as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
+as String?,location: freezed == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
+as String?,socialProofVideoUrl: freezed == socialProofVideoUrl ? _self.socialProofVideoUrl : socialProofVideoUrl // ignore: cast_nullable_to_non_nullable
+as String?,joinedAt: null == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
+as String,freeAccess: freezed == freeAccess ? _self.freeAccess : freeAccess // ignore: cast_nullable_to_non_nullable
+as FreeAccess?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
 as String,pickupLine2: null == pickupLine2 ? _self.pickupLine2 : pickupLine2 // ignore: cast_nullable_to_non_nullable
 as String,pickupCity: null == pickupCity ? _self.pickupCity : pickupCity // ignore: cast_nullable_to_non_nullable
 as String,pickupState: null == pickupState ? _self.pickupState : pickupState // ignore: cast_nullable_to_non_nullable
@@ -368,7 +659,19 @@ as String,pickupPincode: null == pickupPincode ? _self.pickupPincode : pickupPin
 as String,
   ));
 }
+/// Create a copy of ArtistProfileDetails
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FreeAccessCopyWith<$Res>? get freeAccess {
+    if (_self.freeAccess == null) {
+    return null;
+  }
 
+  return $FreeAccessCopyWith<$Res>(_self.freeAccess!, (value) {
+    return _then(_self.copyWith(freeAccess: value));
+  });
+}
 }
 
 
@@ -450,10 +753,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  ReviewStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  ReviewStatus gstStatus,  String? pan,  String? headline,  String? location,  String? socialProofVideoUrl,  String joinedAt,  FreeAccess? freeAccess,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.gstStatus,_that.pan,_that.headline,_that.location,_that.socialProofVideoUrl,_that.joinedAt,_that.freeAccess,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   return orElse();
 
 }
@@ -471,10 +774,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  ReviewStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  ReviewStatus gstStatus,  String? pan,  String? headline,  String? location,  String? socialProofVideoUrl,  String joinedAt,  FreeAccess? freeAccess,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails():
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.gstStatus,_that.pan,_that.headline,_that.location,_that.socialProofVideoUrl,_that.joinedAt,_that.freeAccess,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -491,10 +794,10 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  AadhaarStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String fullName,  String email,  String phone,  String bio,  String instagram,  String website,  String bankAccountMasked,  String ifsc,  ReviewStatus aadhaarStatus,  String aadhaarMasked,  String? gstin,  ReviewStatus gstStatus,  String? pan,  String? headline,  String? location,  String? socialProofVideoUrl,  String joinedAt,  FreeAccess? freeAccess,  String pickupLine1,  String pickupLine2,  String pickupCity,  String pickupState,  String pickupPincode)?  $default,) {final _that = this;
 switch (_that) {
 case _ArtistProfileDetails() when $default != null:
-return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
+return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram,_that.website,_that.bankAccountMasked,_that.ifsc,_that.aadhaarStatus,_that.aadhaarMasked,_that.gstin,_that.gstStatus,_that.pan,_that.headline,_that.location,_that.socialProofVideoUrl,_that.joinedAt,_that.freeAccess,_that.pickupLine1,_that.pickupLine2,_that.pickupCity,_that.pickupState,_that.pickupPincode);case _:
   return null;
 
 }
@@ -506,7 +809,7 @@ return $default(_that.fullName,_that.email,_that.phone,_that.bio,_that.instagram
 @JsonSerializable()
 
 class _ArtistProfileDetails extends ArtistProfileDetails {
-  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked, this.gstin, this.pickupLine1 = '', this.pickupLine2 = '', this.pickupCity = '', this.pickupState = '', this.pickupPincode = ''}): super._();
+  const _ArtistProfileDetails({required this.fullName, required this.email, required this.phone, required this.bio, required this.instagram, required this.website, required this.bankAccountMasked, required this.ifsc, required this.aadhaarStatus, required this.aadhaarMasked, this.gstin, this.gstStatus = ReviewStatus.notSubmitted, this.pan, this.headline, this.location, this.socialProofVideoUrl, this.joinedAt = '', this.freeAccess, this.pickupLine1 = '', this.pickupLine2 = '', this.pickupCity = '', this.pickupState = '', this.pickupPincode = ''}): super._();
   factory _ArtistProfileDetails.fromJson(Map<String, dynamic> json) => _$ArtistProfileDetailsFromJson(json);
 
 @override final  String fullName;
@@ -517,11 +820,28 @@ class _ArtistProfileDetails extends ArtistProfileDetails {
 @override final  String website;
 @override final  String bankAccountMasked;
 @override final  String ifsc;
-@override final  AadhaarStatus aadhaarStatus;
+@override final  ReviewStatus aadhaarStatus;
 @override final  String aadhaarMasked;
-/// Optional. Validated for shape only when one is entered — there is no
+/// Mandatory for an artist to go live (client, 30 Aug 2026), reviewed by
+/// GalleryZone — see [gstStatus]. Validated for shape only: there is no
 /// GST portal integration, which the business deliberately does not want.
 @override final  String? gstin;
+/// Where the GST number stands with GalleryZone's reviewers. A new or
+/// changed number goes back to "submitted".
+@override@JsonKey() final  ReviewStatus gstStatus;
+/// PAN, kept private (admin-only; never on the public profile).
+@override final  String? pan;
+/// One public line of what they make, and where they work. Mirrored onto
+/// the public artist page.
+@override final  String? headline;
+@override final  String? location;
+/// A link to a short video that vouches for the work.
+@override final  String? socialProofVideoUrl;
+/// On GalleryZone since (ISO).
+@override@JsonKey() final  String joinedAt;
+/// The Early Artist Program's free period. Null once it has no meaning
+/// (not an artist) or the API didn't say.
+@override final  FreeAccess? freeAccess;
 /// Where the courier collects. Private, and the one thing without which a
 /// delivery cannot be quoted at all: shipping is priced on the distance
 /// between two pincodes, and this is the origin for both the leg to an
@@ -545,16 +865,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArtistProfileDetails&&(identical(other.fullName, fullName) || other.fullName == fullName)&&(identical(other.email, email) || other.email == email)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.instagram, instagram) || other.instagram == instagram)&&(identical(other.website, website) || other.website == website)&&(identical(other.bankAccountMasked, bankAccountMasked) || other.bankAccountMasked == bankAccountMasked)&&(identical(other.ifsc, ifsc) || other.ifsc == ifsc)&&(identical(other.aadhaarStatus, aadhaarStatus) || other.aadhaarStatus == aadhaarStatus)&&(identical(other.aadhaarMasked, aadhaarMasked) || other.aadhaarMasked == aadhaarMasked)&&(identical(other.gstin, gstin) || other.gstin == gstin)&&(identical(other.gstStatus, gstStatus) || other.gstStatus == gstStatus)&&(identical(other.pan, pan) || other.pan == pan)&&(identical(other.headline, headline) || other.headline == headline)&&(identical(other.location, location) || other.location == location)&&(identical(other.socialProofVideoUrl, socialProofVideoUrl) || other.socialProofVideoUrl == socialProofVideoUrl)&&(identical(other.joinedAt, joinedAt) || other.joinedAt == joinedAt)&&(identical(other.freeAccess, freeAccess) || other.freeAccess == freeAccess)&&(identical(other.pickupLine1, pickupLine1) || other.pickupLine1 == pickupLine1)&&(identical(other.pickupLine2, pickupLine2) || other.pickupLine2 == pickupLine2)&&(identical(other.pickupCity, pickupCity) || other.pickupCity == pickupCity)&&(identical(other.pickupState, pickupState) || other.pickupState == pickupState)&&(identical(other.pickupPincode, pickupPincode) || other.pickupPincode == pickupPincode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode);
+int get hashCode => Object.hashAll([runtimeType,fullName,email,phone,bio,instagram,website,bankAccountMasked,ifsc,aadhaarStatus,aadhaarMasked,gstin,gstStatus,pan,headline,location,socialProofVideoUrl,joinedAt,freeAccess,pickupLine1,pickupLine2,pickupCity,pickupState,pickupPincode]);
 
 @override
 String toString() {
-  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
+  return 'ArtistProfileDetails(fullName: $fullName, email: $email, phone: $phone, bio: $bio, instagram: $instagram, website: $website, bankAccountMasked: $bankAccountMasked, ifsc: $ifsc, aadhaarStatus: $aadhaarStatus, aadhaarMasked: $aadhaarMasked, gstin: $gstin, gstStatus: $gstStatus, pan: $pan, headline: $headline, location: $location, socialProofVideoUrl: $socialProofVideoUrl, joinedAt: $joinedAt, freeAccess: $freeAccess, pickupLine1: $pickupLine1, pickupLine2: $pickupLine2, pickupCity: $pickupCity, pickupState: $pickupState, pickupPincode: $pickupPincode)';
 }
 
 
@@ -565,11 +885,11 @@ abstract mixin class _$ArtistProfileDetailsCopyWith<$Res> implements $ArtistProf
   factory _$ArtistProfileDetailsCopyWith(_ArtistProfileDetails value, $Res Function(_ArtistProfileDetails) _then) = __$ArtistProfileDetailsCopyWithImpl;
 @override @useResult
 $Res call({
- String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, AadhaarStatus aadhaarStatus, String aadhaarMasked, String? gstin, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
+ String fullName, String email, String phone, String bio, String instagram, String website, String bankAccountMasked, String ifsc, ReviewStatus aadhaarStatus, String aadhaarMasked, String? gstin, ReviewStatus gstStatus, String? pan, String? headline, String? location, String? socialProofVideoUrl, String joinedAt, FreeAccess? freeAccess, String pickupLine1, String pickupLine2, String pickupCity, String pickupState, String pickupPincode
 });
 
 
-
+@override $FreeAccessCopyWith<$Res>? get freeAccess;
 
 }
 /// @nodoc
@@ -582,7 +902,7 @@ class __$ArtistProfileDetailsCopyWithImpl<$Res>
 
 /// Create a copy of ArtistProfileDetails
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? fullName = null,Object? email = null,Object? phone = null,Object? bio = null,Object? instagram = null,Object? website = null,Object? bankAccountMasked = null,Object? ifsc = null,Object? aadhaarStatus = null,Object? aadhaarMasked = null,Object? gstin = freezed,Object? gstStatus = null,Object? pan = freezed,Object? headline = freezed,Object? location = freezed,Object? socialProofVideoUrl = freezed,Object? joinedAt = null,Object? freeAccess = freezed,Object? pickupLine1 = null,Object? pickupLine2 = null,Object? pickupCity = null,Object? pickupState = null,Object? pickupPincode = null,}) {
   return _then(_ArtistProfileDetails(
 fullName: null == fullName ? _self.fullName : fullName // ignore: cast_nullable_to_non_nullable
 as String,email: null == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
@@ -593,9 +913,16 @@ as String,website: null == website ? _self.website : website // ignore: cast_nul
 as String,bankAccountMasked: null == bankAccountMasked ? _self.bankAccountMasked : bankAccountMasked // ignore: cast_nullable_to_non_nullable
 as String,ifsc: null == ifsc ? _self.ifsc : ifsc // ignore: cast_nullable_to_non_nullable
 as String,aadhaarStatus: null == aadhaarStatus ? _self.aadhaarStatus : aadhaarStatus // ignore: cast_nullable_to_non_nullable
-as AadhaarStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
+as ReviewStatus,aadhaarMasked: null == aadhaarMasked ? _self.aadhaarMasked : aadhaarMasked // ignore: cast_nullable_to_non_nullable
 as String,gstin: freezed == gstin ? _self.gstin : gstin // ignore: cast_nullable_to_non_nullable
-as String?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
+as String?,gstStatus: null == gstStatus ? _self.gstStatus : gstStatus // ignore: cast_nullable_to_non_nullable
+as ReviewStatus,pan: freezed == pan ? _self.pan : pan // ignore: cast_nullable_to_non_nullable
+as String?,headline: freezed == headline ? _self.headline : headline // ignore: cast_nullable_to_non_nullable
+as String?,location: freezed == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
+as String?,socialProofVideoUrl: freezed == socialProofVideoUrl ? _self.socialProofVideoUrl : socialProofVideoUrl // ignore: cast_nullable_to_non_nullable
+as String?,joinedAt: null == joinedAt ? _self.joinedAt : joinedAt // ignore: cast_nullable_to_non_nullable
+as String,freeAccess: freezed == freeAccess ? _self.freeAccess : freeAccess // ignore: cast_nullable_to_non_nullable
+as FreeAccess?,pickupLine1: null == pickupLine1 ? _self.pickupLine1 : pickupLine1 // ignore: cast_nullable_to_non_nullable
 as String,pickupLine2: null == pickupLine2 ? _self.pickupLine2 : pickupLine2 // ignore: cast_nullable_to_non_nullable
 as String,pickupCity: null == pickupCity ? _self.pickupCity : pickupCity // ignore: cast_nullable_to_non_nullable
 as String,pickupState: null == pickupState ? _self.pickupState : pickupState // ignore: cast_nullable_to_non_nullable
@@ -604,7 +931,19 @@ as String,
   ));
 }
 
+/// Create a copy of ArtistProfileDetails
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$FreeAccessCopyWith<$Res>? get freeAccess {
+    if (_self.freeAccess == null) {
+    return null;
+  }
 
+  return $FreeAccessCopyWith<$Res>(_self.freeAccess!, (value) {
+    return _then(_self.copyWith(freeAccess: value));
+  });
+}
 }
 
 
@@ -873,277 +1212,6 @@ as bool,notifyNewSale: null == notifyNewSale ? _self.notifyNewSale : notifyNewSa
 as bool,notifyWithdrawalProcessed: null == notifyWithdrawalProcessed ? _self.notifyWithdrawalProcessed : notifyWithdrawalProcessed // ignore: cast_nullable_to_non_nullable
 as bool,notifyNewMessage: null == notifyNewMessage ? _self.notifyNewMessage : notifyNewMessage // ignore: cast_nullable_to_non_nullable
 as bool,
-  ));
-}
-
-
-}
-
-
-/// @nodoc
-mixin _$MouAcceptance {
-
- String get version; String get acceptedAt;/// Typed by the signer. Empty on records that predate the field.
- String get signatureName;
-/// Create a copy of MouAcceptance
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$MouAcceptanceCopyWith<MouAcceptance> get copyWith => _$MouAcceptanceCopyWithImpl<MouAcceptance>(this as MouAcceptance, _$identity);
-
-  /// Serializes this MouAcceptance to a JSON map.
-  Map<String, dynamic> toJson();
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.signatureName, signatureName) || other.signatureName == signatureName));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,version,acceptedAt,signatureName);
-
-@override
-String toString() {
-  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt, signatureName: $signatureName)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $MouAcceptanceCopyWith<$Res>  {
-  factory $MouAcceptanceCopyWith(MouAcceptance value, $Res Function(MouAcceptance) _then) = _$MouAcceptanceCopyWithImpl;
-@useResult
-$Res call({
- String version, String acceptedAt, String signatureName
-});
-
-
-
-
-}
-/// @nodoc
-class _$MouAcceptanceCopyWithImpl<$Res>
-    implements $MouAcceptanceCopyWith<$Res> {
-  _$MouAcceptanceCopyWithImpl(this._self, this._then);
-
-  final MouAcceptance _self;
-  final $Res Function(MouAcceptance) _then;
-
-/// Create a copy of MouAcceptance
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? version = null,Object? acceptedAt = null,Object? signatureName = null,}) {
-  return _then(MouAcceptance(
-version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
-as String,signatureName: null == signatureName ? _self.signatureName : signatureName // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-}
-
-
-/// Adds pattern-matching-related methods to [MouAcceptance].
-extension MouAcceptancePatterns on MouAcceptance {
-/// A variant of `map` that fallback to returning `orElse`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _MouAcceptance value)?  $default,{required TResult orElse(),}){
-final _that = this;
-switch (_that) {
-case _MouAcceptance() when $default != null:
-return $default(_that);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// Callbacks receives the raw object, upcasted.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case final Subclass2 value:
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _MouAcceptance value)  $default,){
-final _that = this;
-switch (_that) {
-case _MouAcceptance():
-return $default(_that);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `map` that fallback to returning `null`.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case final Subclass value:
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _MouAcceptance value)?  $default,){
-final _that = this;
-switch (_that) {
-case _MouAcceptance() when $default != null:
-return $default(_that);case _:
-  return null;
-
-}
-}
-/// A variant of `when` that fallback to an `orElse` callback.
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return orElse();
-/// }
-/// ```
-
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String version,  String acceptedAt,  String signatureName)?  $default,{required TResult orElse(),}) {final _that = this;
-switch (_that) {
-case _MouAcceptance() when $default != null:
-return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
-  return orElse();
-
-}
-}
-/// A `switch`-like method, using callbacks.
-///
-/// As opposed to `map`, this offers destructuring.
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case Subclass2(:final field2):
-///     return ...;
-/// }
-/// ```
-
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String version,  String acceptedAt,  String signatureName)  $default,) {final _that = this;
-switch (_that) {
-case _MouAcceptance():
-return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
-  throw StateError('Unexpected subclass');
-
-}
-}
-/// A variant of `when` that fallback to returning `null`
-///
-/// It is equivalent to doing:
-/// ```dart
-/// switch (sealedClass) {
-///   case Subclass(:final field):
-///     return ...;
-///   case _:
-///     return null;
-/// }
-/// ```
-
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String version,  String acceptedAt,  String signatureName)?  $default,) {final _that = this;
-switch (_that) {
-case _MouAcceptance() when $default != null:
-return $default(_that.version,_that.acceptedAt,_that.signatureName);case _:
-  return null;
-
-}
-}
-
-}
-
-/// @nodoc
-@JsonSerializable()
-
-class _MouAcceptance implements MouAcceptance {
-  const _MouAcceptance({required this.version, required this.acceptedAt, this.signatureName = ''});
-  factory _MouAcceptance.fromJson(Map<String, dynamic> json) => _$MouAcceptanceFromJson(json);
-
-@override final  String version;
-@override final  String acceptedAt;
-/// Typed by the signer. Empty on records that predate the field.
-@override@JsonKey() final  String signatureName;
-
-/// Create a copy of MouAcceptance
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$MouAcceptanceCopyWith<_MouAcceptance> get copyWith => __$MouAcceptanceCopyWithImpl<_MouAcceptance>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$MouAcceptanceToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MouAcceptance&&(identical(other.version, version) || other.version == version)&&(identical(other.acceptedAt, acceptedAt) || other.acceptedAt == acceptedAt)&&(identical(other.signatureName, signatureName) || other.signatureName == signatureName));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,version,acceptedAt,signatureName);
-
-@override
-String toString() {
-  return 'MouAcceptance(version: $version, acceptedAt: $acceptedAt, signatureName: $signatureName)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$MouAcceptanceCopyWith<$Res> implements $MouAcceptanceCopyWith<$Res> {
-  factory _$MouAcceptanceCopyWith(_MouAcceptance value, $Res Function(_MouAcceptance) _then) = __$MouAcceptanceCopyWithImpl;
-@override @useResult
-$Res call({
- String version, String acceptedAt, String signatureName
-});
-
-
-
-
-}
-/// @nodoc
-class __$MouAcceptanceCopyWithImpl<$Res>
-    implements _$MouAcceptanceCopyWith<$Res> {
-  __$MouAcceptanceCopyWithImpl(this._self, this._then);
-
-  final _MouAcceptance _self;
-  final $Res Function(_MouAcceptance) _then;
-
-/// Create a copy of MouAcceptance
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? version = null,Object? acceptedAt = null,Object? signatureName = null,}) {
-  return _then(_MouAcceptance(
-version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String,acceptedAt: null == acceptedAt ? _self.acceptedAt : acceptedAt // ignore: cast_nullable_to_non_nullable
-as String,signatureName: null == signatureName ? _self.signatureName : signatureName // ignore: cast_nullable_to_non_nullable
-as String,
   ));
 }
 
@@ -1732,6 +1800,288 @@ as String,
 
 
 /// @nodoc
+mixin _$HoldingExtensionRequest {
+
+ ExtensionStatus get status; String get assurance; String get requestedAt; String? get decidedAt;/// GalleryZone's note with its answer, if it left one.
+ String? get note;/// Where the window ended before this request.
+ String get previousExpiresAt;
+/// Create a copy of HoldingExtensionRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$HoldingExtensionRequestCopyWith<HoldingExtensionRequest> get copyWith => _$HoldingExtensionRequestCopyWithImpl<HoldingExtensionRequest>(this as HoldingExtensionRequest, _$identity);
+
+  /// Serializes this HoldingExtensionRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HoldingExtensionRequest&&(identical(other.status, status) || other.status == status)&&(identical(other.assurance, assurance) || other.assurance == assurance)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.decidedAt, decidedAt) || other.decidedAt == decidedAt)&&(identical(other.note, note) || other.note == note)&&(identical(other.previousExpiresAt, previousExpiresAt) || other.previousExpiresAt == previousExpiresAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,status,assurance,requestedAt,decidedAt,note,previousExpiresAt);
+
+@override
+String toString() {
+  return 'HoldingExtensionRequest(status: $status, assurance: $assurance, requestedAt: $requestedAt, decidedAt: $decidedAt, note: $note, previousExpiresAt: $previousExpiresAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $HoldingExtensionRequestCopyWith<$Res>  {
+  factory $HoldingExtensionRequestCopyWith(HoldingExtensionRequest value, $Res Function(HoldingExtensionRequest) _then) = _$HoldingExtensionRequestCopyWithImpl;
+@useResult
+$Res call({
+ ExtensionStatus status, String assurance, String requestedAt, String? decidedAt, String? note, String previousExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$HoldingExtensionRequestCopyWithImpl<$Res>
+    implements $HoldingExtensionRequestCopyWith<$Res> {
+  _$HoldingExtensionRequestCopyWithImpl(this._self, this._then);
+
+  final HoldingExtensionRequest _self;
+  final $Res Function(HoldingExtensionRequest) _then;
+
+/// Create a copy of HoldingExtensionRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? assurance = null,Object? requestedAt = null,Object? decidedAt = freezed,Object? note = freezed,Object? previousExpiresAt = null,}) {
+  return _then(HoldingExtensionRequest(
+status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as ExtensionStatus,assurance: null == assurance ? _self.assurance : assurance // ignore: cast_nullable_to_non_nullable
+as String,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
+as String,decidedAt: freezed == decidedAt ? _self.decidedAt : decidedAt // ignore: cast_nullable_to_non_nullable
+as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
+as String?,previousExpiresAt: null == previousExpiresAt ? _self.previousExpiresAt : previousExpiresAt // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [HoldingExtensionRequest].
+extension HoldingExtensionRequestPatterns on HoldingExtensionRequest {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _HoldingExtensionRequest value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _HoldingExtensionRequest value)  $default,){
+final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _HoldingExtensionRequest value)?  $default,){
+final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( ExtensionStatus status,  String assurance,  String requestedAt,  String? decidedAt,  String? note,  String previousExpiresAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest() when $default != null:
+return $default(_that.status,_that.assurance,_that.requestedAt,_that.decidedAt,_that.note,_that.previousExpiresAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( ExtensionStatus status,  String assurance,  String requestedAt,  String? decidedAt,  String? note,  String previousExpiresAt)  $default,) {final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest():
+return $default(_that.status,_that.assurance,_that.requestedAt,_that.decidedAt,_that.note,_that.previousExpiresAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( ExtensionStatus status,  String assurance,  String requestedAt,  String? decidedAt,  String? note,  String previousExpiresAt)?  $default,) {final _that = this;
+switch (_that) {
+case _HoldingExtensionRequest() when $default != null:
+return $default(_that.status,_that.assurance,_that.requestedAt,_that.decidedAt,_that.note,_that.previousExpiresAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _HoldingExtensionRequest implements HoldingExtensionRequest {
+  const _HoldingExtensionRequest({required this.status, required this.assurance, required this.requestedAt, this.decidedAt, this.note, this.previousExpiresAt = ''});
+  factory _HoldingExtensionRequest.fromJson(Map<String, dynamic> json) => _$HoldingExtensionRequestFromJson(json);
+
+@override final  ExtensionStatus status;
+@override final  String assurance;
+@override final  String requestedAt;
+@override final  String? decidedAt;
+/// GalleryZone's note with its answer, if it left one.
+@override final  String? note;
+/// Where the window ended before this request.
+@override@JsonKey() final  String previousExpiresAt;
+
+/// Create a copy of HoldingExtensionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$HoldingExtensionRequestCopyWith<_HoldingExtensionRequest> get copyWith => __$HoldingExtensionRequestCopyWithImpl<_HoldingExtensionRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$HoldingExtensionRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HoldingExtensionRequest&&(identical(other.status, status) || other.status == status)&&(identical(other.assurance, assurance) || other.assurance == assurance)&&(identical(other.requestedAt, requestedAt) || other.requestedAt == requestedAt)&&(identical(other.decidedAt, decidedAt) || other.decidedAt == decidedAt)&&(identical(other.note, note) || other.note == note)&&(identical(other.previousExpiresAt, previousExpiresAt) || other.previousExpiresAt == previousExpiresAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,status,assurance,requestedAt,decidedAt,note,previousExpiresAt);
+
+@override
+String toString() {
+  return 'HoldingExtensionRequest(status: $status, assurance: $assurance, requestedAt: $requestedAt, decidedAt: $decidedAt, note: $note, previousExpiresAt: $previousExpiresAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$HoldingExtensionRequestCopyWith<$Res> implements $HoldingExtensionRequestCopyWith<$Res> {
+  factory _$HoldingExtensionRequestCopyWith(_HoldingExtensionRequest value, $Res Function(_HoldingExtensionRequest) _then) = __$HoldingExtensionRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ ExtensionStatus status, String assurance, String requestedAt, String? decidedAt, String? note, String previousExpiresAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$HoldingExtensionRequestCopyWithImpl<$Res>
+    implements _$HoldingExtensionRequestCopyWith<$Res> {
+  __$HoldingExtensionRequestCopyWithImpl(this._self, this._then);
+
+  final _HoldingExtensionRequest _self;
+  final $Res Function(_HoldingExtensionRequest) _then;
+
+/// Create a copy of HoldingExtensionRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? assurance = null,Object? requestedAt = null,Object? decidedAt = freezed,Object? note = freezed,Object? previousExpiresAt = null,}) {
+  return _then(_HoldingExtensionRequest(
+status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as ExtensionStatus,assurance: null == assurance ? _self.assurance : assurance // ignore: cast_nullable_to_non_nullable
+as String,requestedAt: null == requestedAt ? _self.requestedAt : requestedAt // ignore: cast_nullable_to_non_nullable
+as String,decidedAt: freezed == decidedAt ? _self.decidedAt : decidedAt // ignore: cast_nullable_to_non_nullable
+as String?,note: freezed == note ? _self.note : note // ignore: cast_nullable_to_non_nullable
+as String?,previousExpiresAt: null == previousExpiresAt ? _self.previousExpiresAt : previousExpiresAt // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$AggregatorHolding {
 
  String get id; String get artworkId;/// 5% in month one, 3% from month two onwards — see `core/pricing.dart`.
@@ -1751,7 +2101,13 @@ mixin _$AggregatorHolding {
 /// would have been left of the artist's 180 days was too short to hand to
 /// anyone else. The last aggregator keeps it rather than the piece making
 /// one more journey for a fortnight.
- bool get windowExtended;
+ bool get windowExtended;/// Month 1: the aggregator priced above GalleryZone's offer, which starts
+/// the next aggregator's monthly drops a month later.
+ bool get appreciated;/// Priced far enough above the offer that GalleryZone was warned. It never
+/// blocks the reservation.
+ bool get priceWarning;/// The latest request to keep the piece past its window, and GalleryZone's
+/// answer.
+ HoldingExtensionRequest? get extensionRequest;
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1764,16 +2120,16 @@ $AggregatorHoldingCopyWith<AggregatorHolding> get copyWith => _$AggregatorHoldin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended)&&(identical(other.appreciated, appreciated) || other.appreciated == appreciated)&&(identical(other.priceWarning, priceWarning) || other.priceWarning == priceWarning)&&(identical(other.extensionRequest, extensionRequest) || other.extensionRequest == extensionRequest));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended);
+int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended,appreciated,priceWarning,extensionRequest);
 
 @override
 String toString() {
-  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended)';
+  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended, appreciated: $appreciated, priceWarning: $priceWarning, extensionRequest: $extensionRequest)';
 }
 
 
@@ -1784,11 +2140,11 @@ abstract mixin class $AggregatorHoldingCopyWith<$Res>  {
   factory $AggregatorHoldingCopyWith(AggregatorHolding value, $Res Function(AggregatorHolding) _then) = _$AggregatorHoldingCopyWithImpl;
 @useResult
 $Res call({
- String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended
+ String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended, bool appreciated, bool priceWarning, HoldingExtensionRequest? extensionRequest
 });
 
 
-
+$HoldingExtensionRequestCopyWith<$Res>? get extensionRequest;
 
 }
 /// @nodoc
@@ -1801,7 +2157,7 @@ class _$AggregatorHoldingCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,Object? appreciated = null,Object? priceWarning = null,Object? extensionRequest = freezed,}) {
   return _then(AggregatorHolding(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -1817,10 +2173,25 @@ as double,cycleMonth: null == cycleMonth ? _self.cycleMonth : cycleMonth // igno
 as int,displayPriceSetAt: freezed == displayPriceSetAt ? _self.displayPriceSetAt : displayPriceSetAt // ignore: cast_nullable_to_non_nullable
 as String?,returnedAt: freezed == returnedAt ? _self.returnedAt : returnedAt // ignore: cast_nullable_to_non_nullable
 as String?,windowExtended: null == windowExtended ? _self.windowExtended : windowExtended // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,appreciated: null == appreciated ? _self.appreciated : appreciated // ignore: cast_nullable_to_non_nullable
+as bool,priceWarning: null == priceWarning ? _self.priceWarning : priceWarning // ignore: cast_nullable_to_non_nullable
+as bool,extensionRequest: freezed == extensionRequest ? _self.extensionRequest : extensionRequest // ignore: cast_nullable_to_non_nullable
+as HoldingExtensionRequest?,
   ));
 }
+/// Create a copy of AggregatorHolding
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HoldingExtensionRequestCopyWith<$Res>? get extensionRequest {
+    if (_self.extensionRequest == null) {
+    return null;
+  }
 
+  return $HoldingExtensionRequestCopyWith<$Res>(_self.extensionRequest!, (value) {
+    return _then(_self.copyWith(extensionRequest: value));
+  });
+}
 }
 
 
@@ -1902,10 +2273,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended,  bool appreciated,  bool priceWarning,  HoldingExtensionRequest? extensionRequest)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AggregatorHolding() when $default != null:
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended,_that.appreciated,_that.priceWarning,_that.extensionRequest);case _:
   return orElse();
 
 }
@@ -1923,10 +2294,10 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended,  bool appreciated,  bool priceWarning,  HoldingExtensionRequest? extensionRequest)  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorHolding():
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended,_that.appreciated,_that.priceWarning,_that.extensionRequest);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1943,10 +2314,10 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String artworkId,  int advancePercent,  double advanceAmount,  double displayPrice,  String assignedAt,  String expiresAt,  HoldingStatus status,  AssignmentSource assignmentSource,  double deliveryDeposit,  int cycleMonth,  String? displayPriceSetAt,  String? returnedAt,  bool windowExtended,  bool appreciated,  bool priceWarning,  HoldingExtensionRequest? extensionRequest)?  $default,) {final _that = this;
 switch (_that) {
 case _AggregatorHolding() when $default != null:
-return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended);case _:
+return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmount,_that.displayPrice,_that.assignedAt,_that.expiresAt,_that.status,_that.assignmentSource,_that.deliveryDeposit,_that.cycleMonth,_that.displayPriceSetAt,_that.returnedAt,_that.windowExtended,_that.appreciated,_that.priceWarning,_that.extensionRequest);case _:
   return null;
 
 }
@@ -1958,7 +2329,7 @@ return $default(_that.id,_that.artworkId,_that.advancePercent,_that.advanceAmoun
 @JsonSerializable()
 
 class _AggregatorHolding implements AggregatorHolding {
-  const _AggregatorHolding({required this.id, required this.artworkId, required this.advancePercent, required this.advanceAmount, required this.displayPrice, required this.assignedAt, required this.expiresAt, required this.status, required this.assignmentSource, this.deliveryDeposit = 0.0, this.cycleMonth = 1, this.displayPriceSetAt, this.returnedAt, this.windowExtended = false});
+  const _AggregatorHolding({required this.id, required this.artworkId, required this.advancePercent, required this.advanceAmount, required this.displayPrice, required this.assignedAt, required this.expiresAt, required this.status, required this.assignmentSource, this.deliveryDeposit = 0.0, this.cycleMonth = 1, this.displayPriceSetAt, this.returnedAt, this.windowExtended = false, this.appreciated = false, this.priceWarning = false, this.extensionRequest});
   factory _AggregatorHolding.fromJson(Map<String, dynamic> json) => _$AggregatorHoldingFromJson(json);
 
 @override final  String id;
@@ -1992,6 +2363,15 @@ class _AggregatorHolding implements AggregatorHolding {
 /// anyone else. The last aggregator keeps it rather than the piece making
 /// one more journey for a fortnight.
 @override@JsonKey() final  bool windowExtended;
+/// Month 1: the aggregator priced above GalleryZone's offer, which starts
+/// the next aggregator's monthly drops a month later.
+@override@JsonKey() final  bool appreciated;
+/// Priced far enough above the offer that GalleryZone was warned. It never
+/// blocks the reservation.
+@override@JsonKey() final  bool priceWarning;
+/// The latest request to keep the piece past its window, and GalleryZone's
+/// answer.
+@override final  HoldingExtensionRequest? extensionRequest;
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
@@ -2006,16 +2386,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AggregatorHolding&&(identical(other.id, id) || other.id == id)&&(identical(other.artworkId, artworkId) || other.artworkId == artworkId)&&(identical(other.advancePercent, advancePercent) || other.advancePercent == advancePercent)&&(identical(other.advanceAmount, advanceAmount) || other.advanceAmount == advanceAmount)&&(identical(other.displayPrice, displayPrice) || other.displayPrice == displayPrice)&&(identical(other.assignedAt, assignedAt) || other.assignedAt == assignedAt)&&(identical(other.expiresAt, expiresAt) || other.expiresAt == expiresAt)&&(identical(other.status, status) || other.status == status)&&(identical(other.assignmentSource, assignmentSource) || other.assignmentSource == assignmentSource)&&(identical(other.deliveryDeposit, deliveryDeposit) || other.deliveryDeposit == deliveryDeposit)&&(identical(other.cycleMonth, cycleMonth) || other.cycleMonth == cycleMonth)&&(identical(other.displayPriceSetAt, displayPriceSetAt) || other.displayPriceSetAt == displayPriceSetAt)&&(identical(other.returnedAt, returnedAt) || other.returnedAt == returnedAt)&&(identical(other.windowExtended, windowExtended) || other.windowExtended == windowExtended)&&(identical(other.appreciated, appreciated) || other.appreciated == appreciated)&&(identical(other.priceWarning, priceWarning) || other.priceWarning == priceWarning)&&(identical(other.extensionRequest, extensionRequest) || other.extensionRequest == extensionRequest));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended);
+int get hashCode => Object.hash(runtimeType,id,artworkId,advancePercent,advanceAmount,displayPrice,assignedAt,expiresAt,status,assignmentSource,deliveryDeposit,cycleMonth,displayPriceSetAt,returnedAt,windowExtended,appreciated,priceWarning,extensionRequest);
 
 @override
 String toString() {
-  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended)';
+  return 'AggregatorHolding(id: $id, artworkId: $artworkId, advancePercent: $advancePercent, advanceAmount: $advanceAmount, displayPrice: $displayPrice, assignedAt: $assignedAt, expiresAt: $expiresAt, status: $status, assignmentSource: $assignmentSource, deliveryDeposit: $deliveryDeposit, cycleMonth: $cycleMonth, displayPriceSetAt: $displayPriceSetAt, returnedAt: $returnedAt, windowExtended: $windowExtended, appreciated: $appreciated, priceWarning: $priceWarning, extensionRequest: $extensionRequest)';
 }
 
 
@@ -2026,11 +2406,11 @@ abstract mixin class _$AggregatorHoldingCopyWith<$Res> implements $AggregatorHol
   factory _$AggregatorHoldingCopyWith(_AggregatorHolding value, $Res Function(_AggregatorHolding) _then) = __$AggregatorHoldingCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended
+ String id, String artworkId, int advancePercent, double advanceAmount, double displayPrice, String assignedAt, String expiresAt, HoldingStatus status, AssignmentSource assignmentSource, double deliveryDeposit, int cycleMonth, String? displayPriceSetAt, String? returnedAt, bool windowExtended, bool appreciated, bool priceWarning, HoldingExtensionRequest? extensionRequest
 });
 
 
-
+@override $HoldingExtensionRequestCopyWith<$Res>? get extensionRequest;
 
 }
 /// @nodoc
@@ -2043,7 +2423,7 @@ class __$AggregatorHoldingCopyWithImpl<$Res>
 
 /// Create a copy of AggregatorHolding
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? artworkId = null,Object? advancePercent = null,Object? advanceAmount = null,Object? displayPrice = null,Object? assignedAt = null,Object? expiresAt = null,Object? status = null,Object? assignmentSource = null,Object? deliveryDeposit = null,Object? cycleMonth = null,Object? displayPriceSetAt = freezed,Object? returnedAt = freezed,Object? windowExtended = null,Object? appreciated = null,Object? priceWarning = null,Object? extensionRequest = freezed,}) {
   return _then(_AggregatorHolding(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,artworkId: null == artworkId ? _self.artworkId : artworkId // ignore: cast_nullable_to_non_nullable
@@ -2059,11 +2439,26 @@ as double,cycleMonth: null == cycleMonth ? _self.cycleMonth : cycleMonth // igno
 as int,displayPriceSetAt: freezed == displayPriceSetAt ? _self.displayPriceSetAt : displayPriceSetAt // ignore: cast_nullable_to_non_nullable
 as String?,returnedAt: freezed == returnedAt ? _self.returnedAt : returnedAt // ignore: cast_nullable_to_non_nullable
 as String?,windowExtended: null == windowExtended ? _self.windowExtended : windowExtended // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,appreciated: null == appreciated ? _self.appreciated : appreciated // ignore: cast_nullable_to_non_nullable
+as bool,priceWarning: null == priceWarning ? _self.priceWarning : priceWarning // ignore: cast_nullable_to_non_nullable
+as bool,extensionRequest: freezed == extensionRequest ? _self.extensionRequest : extensionRequest // ignore: cast_nullable_to_non_nullable
+as HoldingExtensionRequest?,
   ));
 }
 
+/// Create a copy of AggregatorHolding
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$HoldingExtensionRequestCopyWith<$Res>? get extensionRequest {
+    if (_self.extensionRequest == null) {
+    return null;
+  }
 
+  return $HoldingExtensionRequestCopyWith<$Res>(_self.extensionRequest!, (value) {
+    return _then(_self.copyWith(extensionRequest: value));
+  });
+}
 }
 
 

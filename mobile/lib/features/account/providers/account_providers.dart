@@ -41,8 +41,8 @@ final orderProvider = FutureProvider.autoDispose.family<Order?, String>((ref, id
 /// unfiltered read serves all of them, rather than each screen keying
 /// `artworksProvider` with its own throwaway `ArtworkFilters` instance.
 final artworksByIdProvider = FutureProvider.autoDispose<Map<String, Artwork>>((ref) async {
-  final all = await ref.watch(artworkRepositoryProvider).list(const ArtworkFilters());
-  return {for (final artwork in all) artwork.id: artwork};
+  final page = await ref.watch(artworkRepositoryProvider).list(const ArtworkFilters());
+  return {for (final artwork in page.artworks) artwork.id: artwork};
 });
 
 final walletProvider = FutureProvider.autoDispose<WalletSummary>((ref) {

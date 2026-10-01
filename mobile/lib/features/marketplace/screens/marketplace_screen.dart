@@ -31,7 +31,7 @@ class MarketplaceScreen extends ConsumerStatefulWidget {
 
 class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   late ArtworkFilters _filters = MarketplaceScreen.defaultFilters.copyWith(
-    category: widget.initialCategory,
+    categories: widget.initialCategory == null ? const [] : [widget.initialCategory!],
     query: widget.initialQuery,
   );
   late final TextEditingController _search =
@@ -56,10 +56,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
   }
 
   bool get _hasStructuredFilters =>
-      _filters.category != null ||
-      _filters.medium != null ||
-      _filters.minPrice != null ||
-      _filters.maxPrice != null ||
+      _filters.isNarrowed ||
       (_filters.sortBy != null && _filters.sortBy != ArtworkSortBy.newest);
 
   Future<void> _openFilterSheet() async {
@@ -168,7 +165,8 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                   ),
                 ),
               ],
-              data: (results) {
+              data: (page) {
+                final results = page.artworks;
                 if (results.isEmpty) {
                   return [
                     SliverToBoxAdapter(
@@ -194,7 +192,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Text(
-                        '${results.length} ${results.length == 1 ? 'artwork' : 'artworks'}',
+                        '${page.total} ${page.total == 1 ? 'artwork' : 'artworks'}',
                         style: theme.textTheme.bodySmall,
                       ),
                     ),
@@ -286,18 +284,22 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                 children: [
                   _Dropdown<String>(
                     label: 'Category',
-                    value: _draft.category,
+                    value: _draft.categories.firstOrNull,
                     allLabel: 'All categories',
                     items: {for (final c in data.categories) c: titleCase(c)},
-                    onChanged: (value) => setState(() => _draft = _draft.copyWith(category: value)),
+                    onChanged: (value) => setState(
+                      () => _draft = _draft.copyWith(categories: value == null ? const [] : [value]),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   _Dropdown<String>(
                     label: 'Medium',
-                    value: _draft.medium,
+                    value: _draft.mediums.firstOrNull,
                     allLabel: 'All mediums',
                     items: {for (final m in data.mediums) m: m},
-                    onChanged: (value) => setState(() => _draft = _draft.copyWith(medium: value)),
+                    onChanged: (value) => setState(
+                      () => _draft = _draft.copyWith(mediums: value == null ? const [] : [value]),
+                    ),
                   ),
                 ],
               ),

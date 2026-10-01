@@ -1,5 +1,11 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'artwork.dart' show ReviewStatus;
+
+// MouAcceptance lives in mou.dart now; re-exported so every file that took it
+// from here keeps compiling.
+export 'mou.dart' show MouAcceptance;
+
 part 'artist_portal.freezed.dart';
 part 'artist_portal.g.dart';
 
@@ -33,7 +39,22 @@ abstract class ActivityEntry with _$ActivityEntry {
   factory ActivityEntry.fromJson(Map<String, dynamic> json) => _$ActivityEntryFromJson(json);
 }
 
-enum AadhaarStatus { verified, pending, unverified }
+/// The Early Artist Program: no charge for the first six months after joining,
+/// twelve for artists on the survey list. Nothing bills yet — this is a dated
+/// record and a message. Worked out on read from the join date, so adding
+/// emails to the survey list later upgrades accounts that already exist.
+@freezed
+abstract class FreeAccess with _$FreeAccess {
+  const factory FreeAccess({
+    /// When the free period ends (ISO).
+    required String until,
+    required int months,
+    @Default(false) bool surveyRespondent,
+    @Default(true) bool active,
+  }) = _FreeAccess;
+
+  factory FreeAccess.fromJson(Map<String, dynamic> json) => _$FreeAccessFromJson(json);
+}
 
 /// The artist's own KYC/payout record. Distinct from [ArtistProfile] in
 /// `artist.dart`, which is the *public* profile a collector sees — this one
@@ -50,12 +71,35 @@ abstract class ArtistProfileDetails with _$ArtistProfileDetails {
     required String website,
     required String bankAccountMasked,
     required String ifsc,
-    required AadhaarStatus aadhaarStatus,
+    required ReviewStatus aadhaarStatus,
     required String aadhaarMasked,
 
-    /// Optional. Validated for shape only when one is entered — there is no
+    /// Mandatory for an artist to go live (client, 30 Aug 2026), reviewed by
+    /// GalleryZone — see [gstStatus]. Validated for shape only: there is no
     /// GST portal integration, which the business deliberately does not want.
     String? gstin,
+
+    /// Where the GST number stands with GalleryZone's reviewers. A new or
+    /// changed number goes back to "submitted".
+    @Default(ReviewStatus.notSubmitted) ReviewStatus gstStatus,
+
+    /// PAN, kept private (admin-only; never on the public profile).
+    String? pan,
+
+    /// One public line of what they make, and where they work. Mirrored onto
+    /// the public artist page.
+    String? headline,
+    String? location,
+
+    /// A link to a short video that vouches for the work.
+    String? socialProofVideoUrl,
+
+    /// On GalleryZone since (ISO).
+    @Default('') String joinedAt,
+
+    /// The Early Artist Program's free period. Null once it has no meaning
+    /// (not an artist) or the API didn't say.
+    FreeAccess? freeAccess,
 
     /// Where the courier collects. Private, and the one thing without which a
     /// delivery cannot be quoted at all: shipping is priced on the distance
@@ -93,23 +137,6 @@ abstract class ArtistSettings with _$ArtistSettings {
   }) = _ArtistSettings;
 
   factory ArtistSettings.fromJson(Map<String, dynamic> json) => _$ArtistSettingsFromJson(json);
-}
-
-/// An artist's acceptance of one version of the MOU. Versioned so a later
-/// revision asks again rather than inheriting an acceptance of wording the
-/// artist never saw.
-@freezed
-abstract class MouAcceptance with _$MouAcceptance {
-  const factory MouAcceptance({
-    required String version,
-    required String acceptedAt,
-
-    /// Typed by the signer. Empty on records that predate the field.
-    @Default('') String signatureName,
-  }) = _MouAcceptance;
-
-  factory MouAcceptance.fromJson(Map<String, dynamic> json) =>
-      _$MouAcceptanceFromJson(json);
 }
 
 enum SettlementStatus { pending, processed, failed }
@@ -171,6 +198,29 @@ enum AssignmentSource {
   gzAssigned,
 }
 
+enum ExtensionStatus { pending, approved, declined }
+
+/// An aggregator's request to keep a piece past its thirty days, with their
+/// written assurance that it will sell. GalleryZone decides each time.
+@freezed
+abstract class HoldingExtensionRequest with _$HoldingExtensionRequest {
+  const factory HoldingExtensionRequest({
+    required ExtensionStatus status,
+    required String assurance,
+    required String requestedAt,
+    String? decidedAt,
+
+    /// GalleryZone's note with its answer, if it left one.
+    String? note,
+
+    /// Where the window ended before this request.
+    @Default('') String previousExpiresAt,
+  }) = _HoldingExtensionRequest;
+
+  factory HoldingExtensionRequest.fromJson(Map<String, dynamic> json) =>
+      _$HoldingExtensionRequestFromJson(json);
+}
+
 /// An artwork physically placed with an aggregator. The artist sees these on
 /// Gallery Spaces; the aggregator portal (Phase 6) writes them.
 @freezed
@@ -213,6 +263,18 @@ abstract class AggregatorHolding with _$AggregatorHolding {
     /// anyone else. The last aggregator keeps it rather than the piece making
     /// one more journey for a fortnight.
     @Default(false) bool windowExtended,
+
+    /// Month 1: the aggregator priced above GalleryZone's offer, which starts
+    /// the next aggregator's monthly drops a month later.
+    @Default(false) bool appreciated,
+
+    /// Priced far enough above the offer that GalleryZone was warned. It never
+    /// blocks the reservation.
+    @Default(false) bool priceWarning,
+
+    /// The latest request to keep the piece past its window, and GalleryZone's
+    /// answer.
+    HoldingExtensionRequest? extensionRequest,
   }) = _AggregatorHolding;
 
   factory AggregatorHolding.fromJson(Map<String, dynamic> json) =>

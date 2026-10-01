@@ -6,6 +6,7 @@ import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/models/artist.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/artwork_filters.dart';
+import 'package:gallery_zone/data/models/marketplace.dart';
 import 'package:gallery_zone/data/repositories/artwork_repository.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
 import 'package:gallery_zone/features/marketplace/providers/marketplace_providers.dart';
@@ -49,14 +50,26 @@ class _FakeArtworkRepository implements ArtworkRepository {
   final calls = <ArtworkFilters>[];
 
   @override
-  Future<List<Artwork>> list(ArtworkFilters filters) async {
+  Future<MarketplacePage> list(ArtworkFilters filters) async {
     calls.add(filters);
-    return artworks;
+    return MarketplacePage(
+      artworks: artworks,
+      total: artworks.length,
+      page: filters.page,
+      pageSize: marketplacePageSize,
+    );
   }
 
   @override
   Future<Artwork?> get(String id) async =>
       artworks.where((a) => a.id == id).firstOrNull;
+
+  @override
+  Future<List<Artwork>> getMany(Iterable<String> ids) async =>
+      artworks.where((a) => ids.contains(a.id)).toList();
+
+  @override
+  Future<List<ArtistCard>> listArtistCards() async => const [];
 
   @override
   Future<List<Artwork>> listByArtist(String artistId) async =>
@@ -94,21 +107,36 @@ void main() {
 
   group('ArtworkFilters', () {
     test('copyWith clears a field when passed null, keeps it when omitted', () {
-      const filters = ArtworkFilters(category: 'painting', sortBy: ArtworkSortBy.newest);
-      expect(filters.copyWith(query: 'rain').category, 'painting');
-      expect(filters.copyWith(category: null).category, isNull);
-      expect(filters.copyWith(category: null).sortBy, ArtworkSortBy.newest);
+      const filters = ArtworkFilters(location: 'Pune', sortBy: ArtworkSortBy.newest);
+      expect(filters.copyWith(query: 'rain').location, 'Pune');
+      expect(filters.copyWith(location: null).location, isNull);
+      expect(filters.copyWith(location: null).sortBy, ArtworkSortBy.newest);
+    });
+
+    test('category and medium are multi-select; clearing is an empty list', () {
+      const filters = ArtworkFilters(categories: ['painting', 'sculpture'], mediums: ['oil']);
+      expect(filters.copyWith(query: 'rain').categories, ['painting', 'sculpture']);
+      expect(filters.copyWith(categories: const []).categories, isEmpty);
+      expect(filters.activeCount, 3);
+      expect(const ArtworkFilters(sortBy: ArtworkSortBy.priceAsc).isNarrowed, isFalse);
+    });
+
+    test('any change to what is asked for starts again from page 1', () {
+      const filters = ArtworkFilters(page: 3);
+      expect(filters.copyWith(page: 4).page, 4);
+      expect(filters.copyWith(query: 'rain').page, 1);
     });
 
     test('value equality — the family key would refetch on every rebuild without it', () {
       expect(
-        const ArtworkFilters(category: 'painting'),
-        const ArtworkFilters(category: 'painting'),
+        const ArtworkFilters(categories: ['painting']),
+        const ArtworkFilters(categories: ['painting']),
       );
       expect(
-        const ArtworkFilters(category: 'painting'),
-        isNot(const ArtworkFilters(category: 'sculpture')),
+        const ArtworkFilters(categories: ['painting']),
+        isNot(const ArtworkFilters(categories: ['sculpture'])),
       );
+      expect(const ArtworkFilters(page: 2), isNot(const ArtworkFilters()));
     });
   });
 

@@ -4,6 +4,7 @@ import '../../../data/mock/mock_artwork_repository.dart';
 import '../../../data/models/artist.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/artwork_filters.dart';
+import '../../../data/models/marketplace.dart';
 import '../../../data/repositories/artwork_repository.dart';
 import '../../../data/storage/mock_db.dart';
 
@@ -18,7 +19,7 @@ final artworkRepositoryProvider = Provider<ArtworkRepository>((ref) {
 /// / sold) is exactly that — a stale grid showing a sold piece as available
 /// is the failure mode. Nothing here is pinned in app-wide state.
 final artworksProvider =
-    FutureProvider.autoDispose.family<List<Artwork>, ArtworkFilters>((ref, filters) {
+    FutureProvider.autoDispose.family<MarketplacePage, ArtworkFilters>((ref, filters) {
   return ref.watch(artworkRepositoryProvider).list(filters);
 });
 
@@ -42,19 +43,12 @@ final artistProfileProvider =
 /// whatever the repository currently returns, so an artwork added later
 /// (Phase 5's upload flow) shows up as a filter option without a code
 /// change.
-final artworkFacetsProvider =
-    FutureProvider.autoDispose<({List<String> categories, List<String> mediums})>((ref) async {
-  final all = await ref.watch(artworkRepositoryProvider).list(const ArtworkFilters());
-  final categories = all.map((a) => a.category).toSet().toList()..sort();
-  final mediums = all.map((a) => a.medium).toSet().toList()..sort();
-  return (categories: categories, mediums: mediums);
+/// The filter choices that exist right now, across the whole marketplace.
+final artworkFacetsProvider = FutureProvider.autoDispose<MarketplaceFacets>((ref) async {
+  final page = await ref.watch(artworkRepositoryProvider).list(const ArtworkFilters());
+  return page.facets;
 });
 
-/// Client-only wishlist, same scoped exception the web makes (SAD §5.5:
-/// server data never lives in client state — but there is no /wishlist API
-/// yet). Persisted under the same `gz-wishlist` key the web's zustand store
-/// uses, and deliberately shaped like the query-backed hook that replaces
-/// it later, so the swap is mechanical.
 class WishlistNotifier extends Notifier<Set<String>> {
   static const _key = 'wishlist';
 

@@ -43,6 +43,37 @@ abstract class OrderStatusEvent with _$OrderStatusEvent {
       _$OrderStatusEventFromJson(json);
 }
 
+/// What was bought, as it was when it was bought — the API joins this onto
+/// every order so a list needs no second lookup per row (and so an order
+/// still reads correctly after the piece has left the marketplace).
+@freezed
+abstract class OrderArtwork with _$OrderArtwork {
+  const factory OrderArtwork({
+    required String title,
+    required String artistName,
+    @Default('') String artistId,
+    @Default('') String thumbnailUrl,
+    @Default('') String productCode,
+  }) = _OrderArtwork;
+
+  factory OrderArtwork.fromJson(Map<String, dynamic> json) => _$OrderArtworkFromJson(json);
+}
+
+/// The gateway's record of how an order was paid.
+@freezed
+abstract class OrderPayment with _$OrderPayment {
+  const factory OrderPayment({
+    /// The gateway's payment id (empty when simulated).
+    @Default('') String paymentId,
+    @Default('') String method,
+
+    /// True when no money moved — a test-mode / simulated payment.
+    @Default(false) bool simulated,
+  }) = _OrderPayment;
+
+  factory OrderPayment.fromJson(Map<String, dynamic> json) => _$OrderPaymentFromJson(json);
+}
+
 @freezed
 abstract class Order with _$Order {
   const factory Order({
@@ -63,6 +94,17 @@ abstract class Order with _$Order {
 
     /// Null on the seeded fixture orders, which predate the payment step.
     PaymentMethod? paymentMethod,
+
+    /// GalleryZone's convenience fee on the order, and the 18% service GST on
+    /// that fee. Both are zero today (the sheet carries it "for future").
+    @Default(0) double convenienceFee,
+    @Default(0) double convenienceGst,
+
+    /// The piece as bought. Null on the offline fixtures.
+    OrderArtwork? artwork,
+
+    /// Null until the gateway has captured a payment.
+    OrderPayment? payment,
   }) = _Order;
 
   const Order._();
@@ -70,6 +112,39 @@ abstract class Order with _$Order {
   factory Order.fromJson(Map<String, dynamic> json) => _$OrderFromJson(json);
 
   /// GST is inside [amount], so adding [gstAmount] here would charge the
-  /// buyer for it twice — which is exactly what this used to do.
-  double get total => amount + deliveryCharge;
+  /// buyer for it twice — which is exactly what this used to do. The
+  /// convenience fee is a separate service charge (with its own GST), so it
+  /// does add on.
+  double get total => amount + deliveryCharge + convenienceFee + convenienceGst;
+}
+
+/// What an artwork costs at checkout, quoted by the server from the pricing
+/// rules in force right now (`GET /v1/artworks/:id/quote`). The checkout
+/// screens show this instead of computing a ladder locally, so a preview can
+/// never disagree with the order the server then creates — and an admin
+/// changing a rate moves every screen at once.
+class CheckoutQuote {
+  const CheckoutQuote({
+    required this.artworkId,
+    required this.displayPrice,
+    required this.gstIncluded,
+    required this.gstRate,
+    required this.convenienceFee,
+    required this.convenienceGst,
+    required this.deliveryCharge,
+    required this.total,
+  });
+
+  final String artworkId;
+
+  /// The price shown on the card — GST already inside it.
+  final double displayPrice;
+  final double gstIncluded;
+
+  /// The artwork GST rate in force, as a fraction (`0.05` = 5%).
+  final double gstRate;
+  final double convenienceFee;
+  final double convenienceGst;
+  final double deliveryCharge;
+  final double total;
 }

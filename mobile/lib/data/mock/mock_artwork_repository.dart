@@ -2,6 +2,7 @@ import '../models/artist.dart';
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/artwork_filters.dart';
+import '../models/marketplace.dart';
 import '../repositories/artwork_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_utils.dart';
@@ -164,14 +165,24 @@ class MockArtworkRepository implements ArtworkRepository {
   }
 
   @override
-  Future<List<Artwork>> list(ArtworkFilters filters) => mockDelay(() {
-    var results = _readAll().where(isPubliclyListed).toList();
+  Future<MarketplacePage> list(ArtworkFilters filters) => mockDelay(() {
+    final live = _readAll().where(isPubliclyListed).toList();
+    var results = [...live];
 
-    if (filters.category != null) {
-      results = results.where((a) => a.category == filters.category).toList();
+    if (filters.categories.isNotEmpty) {
+      results = results.where((a) => filters.categories.contains(a.category)).toList();
     }
-    if (filters.medium != null) {
-      results = results.where((a) => a.medium == filters.medium).toList();
+    if (filters.mediums.isNotEmpty) {
+      results = results.where((a) => filters.mediums.contains(a.medium)).toList();
+    }
+    if (filters.rarity != null) {
+      results = results.where((a) => a.rarityType == filters.rarity).toList();
+    }
+    if (filters.artistId != null) {
+      results = results.where((a) => a.artistId == filters.artistId).toList();
+    }
+    if (filters.size != null) {
+      results = results.where((a) => a.sizeBand == filters.size).toList();
     }
     if (filters.minPrice != null) {
       results = results.where((a) => a.customerPrice >= filters.minPrice!).toList();
@@ -200,8 +211,43 @@ class MockArtworkRepository implements ArtworkRepository {
         results.sort((a, b) => _createdAt(b).compareTo(_createdAt(a)));
     }
 
-    return results;
+    final start = (filters.page - 1) * marketplacePageSize;
+    final page = results.skip(start).take(marketplacePageSize).toList();
+    return MarketplacePage(
+      artworks: page,
+      total: results.length,
+      page: filters.page,
+      pageSize: marketplacePageSize,
+      facets: _facetsOf(live),
+    );
   });
+
+  /// Every publicly listed piece, newest first, unpaged. The marketplace
+  /// screen pages (like the real API); fixtures and tests that mean "all of
+  /// it" ask for this instead.
+  Future<List<Artwork>> listAllLive() => mockDelay(() {
+    final live = _readAll().where(isPubliclyListed).toList();
+    live.sort((a, b) => _createdAt(b).compareTo(_createdAt(a)));
+    return live;
+  });
+
+  /// The filter choices across the whole live marketplace, not just the page.
+  MarketplaceFacets _facetsOf(List<Artwork> live) {
+    final prices = live.map((a) => a.customerPrice).toList()..sort();
+    final artists = <String, String>{for (final a in live) a.artistId: a.artistName};
+    return MarketplaceFacets(
+      categories: (live.map((a) => a.category).toSet().toList()..sort()),
+      mediums: (live.map((a) => a.medium).toSet().toList()..sort()),
+      artists: [for (final e in artists.entries) FacetArtist(id: e.key, name: e.value)],
+      rarityCounts: {
+        for (final rank in ArtworkRarity.values)
+          if (live.any((a) => a.rarityType == rank))
+            rank: live.where((a) => a.rarityType == rank).length,
+      },
+      priceMin: prices.isEmpty ? null : prices.first,
+      priceMax: prices.isEmpty ? null : prices.last,
+    );
+  }
 
   DateTime _createdAt(Artwork a) => a.statusHistory.isEmpty
       ? DateTime.fromMillisecondsSinceEpoch(0)
@@ -214,6 +260,12 @@ class MockArtworkRepository implements ArtworkRepository {
       if (a.id == id) return a;
     }
     return null;
+  });
+
+  @override
+  Future<List<Artwork>> getMany(Iterable<String> ids) => mockDelay(() {
+    final wanted = ids.toSet();
+    return _readAll().where((a) => wanted.contains(a.id)).toList();
   });
 
   @override
@@ -232,4 +284,18 @@ class MockArtworkRepository implements ArtworkRepository {
 
   @override
   Future<List<ArtistProfile>> listArtists() => mockDelay(seedArtists);
+
+  @override
+  Future<List<ArtistCard>> listArtistCards() => mockDelay(() {
+    final live = _readAll().where(isPubliclyListed).toList();
+    return [
+      for (final profile in seedArtists())
+        if (live.any((a) => a.artistId == profile.id))
+          ArtistCard(
+            profile: profile,
+            artworkCount: live.where((a) => a.artistId == profile.id).length,
+            coverImageUrl: live.firstWhere((a) => a.artistId == profile.id).thumbnailUrl,
+          ),
+    ];
+  });
 }

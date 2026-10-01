@@ -39,6 +39,15 @@ abstract class ArtistProfile with _$ArtistProfile {
     required String profileImageUrl,
     required ArtistVerificationState verification,
     required List<SocialProofLink> socialLinks,
+
+    /// One plain line of what they make, under the name.
+    @Default('') String headline,
+
+    /// City and state — never a street address.
+    @Default('') String location,
+
+    /// On GalleryZone since (ISO). Empty when the API doesn't say.
+    @Default('') String joinedAt,
   }) = _ArtistProfile;
 
   factory ArtistProfile.fromJson(Map<String, dynamic> json) => _$ArtistProfileFromJson(json);

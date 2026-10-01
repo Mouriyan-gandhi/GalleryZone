@@ -47,9 +47,15 @@ class ResetPasswordInput {
 }
 
 /// `login`/`register`/`forgotPassword` all resolve this on success.
+///
+/// [role] is set by a backend that knows it (the real API reads it from the
+/// account's own record). The offline mock can't know, so it leaves it null
+/// and the form falls back to the "sign in as" choice.
 class AuthAck {
-  const AuthAck({required this.email});
+  const AuthAck({required this.email, this.role, this.name});
   final String email;
+  final Role? role;
+  final String? name;
 }
 
 /// `resetPassword`/`verifyEmail` resolve this on success.

@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
-import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/repositories/artist_repository.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -139,19 +138,19 @@ void main() {
       // Insurance is not the artist's call once the piece leaves the studio.
       expect(submitted.insured, isTrue);
 
-      final browsable = await MockArtworkRepository().list(const ArtworkFilters());
+      final browsable = await MockArtworkRepository().listAllLive();
       expect(browsable.map((a) => a.id), isNot(contains(submitted.id)));
     });
 
     test('marking a piece sold elsewhere pulls it from every channel', () async {
-      final before = await MockArtworkRepository().list(const ArtworkFilters());
+      final before = await MockArtworkRepository().listAllLive();
       expect(before.map((a) => a.id), contains('aw-1'));
 
       final withdrawn = await artist.markSoldElsewhere('aw-1');
       expect(withdrawn.status, ArtworkStatus.soldExternally);
       expect(withdrawn.statusHistory.last.status, ArtworkStatus.soldExternally);
 
-      final after = await MockArtworkRepository().list(const ArtworkFilters());
+      final after = await MockArtworkRepository().listAllLive();
       expect(after.map((a) => a.id), isNot(contains('aw-1')));
       // The passport must still resolve — a tag on the wall outlives the listing.
       expect(await MockArtworkRepository().get('aw-1'), isNotNull);

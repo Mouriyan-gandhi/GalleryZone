@@ -5,7 +5,6 @@ import 'package:gallery_zone/data/mock/mock_checkout_repository.dart';
 import 'package:gallery_zone/data/mock/mock_customer_repository.dart';
 import 'package:gallery_zone/data/models/artist_portal.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
-import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/models/customer.dart';
 import 'package:gallery_zone/data/models/order.dart';
 import 'package:gallery_zone/data/repositories/artist_repository.dart';
@@ -63,12 +62,12 @@ void main() {
       expect(submitted.status, ArtworkStatus.pendingApproval);
 
       // Nothing has elapsed yet, so it is still off the marketplace.
-      var live = await artworks.list(const ArtworkFilters());
+      var live = await artworks.listAllLive();
       expect(live.map((a) => a.id), isNot(contains(submitted.id)));
 
       _runReview();
 
-      live = await artworks.list(const ArtworkFilters());
+      live = await artworks.listAllLive();
       expect(live.map((a) => a.id), contains(submitted.id));
       final approved = live.firstWhere((a) => a.id == submitted.id);
       expect(approved.status, ArtworkStatus.marketplace);
@@ -82,14 +81,14 @@ void main() {
       final draft = await artist.submitArtwork(_input(asDraft: true, title: 'A draft'));
       _runReview();
 
-      final live = await artworks.list(const ArtworkFilters());
+      final live = await artworks.listAllLive();
       expect(live.map((a) => a.id), isNot(contains(draft.id)));
 
       // Sending it explicitly is what starts the clock.
       await artist.submitForReview(draft.id);
       _runReview();
       expect(
-        (await artworks.list(const ArtworkFilters())).map((a) => a.id),
+        (await artworks.listAllLive()).map((a) => a.id),
         contains(draft.id),
       );
     });
@@ -98,7 +97,7 @@ void main() {
       // aw-2 has been "in review" since long before the app started. It must
       // not be swept up by the demo approval.
       _runReview();
-      final live = await artworks.list(const ArtworkFilters());
+      final live = await artworks.listAllLive();
       expect(live.map((a) => a.id), isNot(contains('aw-2')));
     });
   });
@@ -115,7 +114,7 @@ void main() {
         throwsA(isA<Exception>()),
       );
 
-      final live = await artworks.list(const ArtworkFilters());
+      final live = await artworks.listAllLive();
       expect(live.map((a) => a.id), contains('aw-5'));
     });
   });
@@ -136,7 +135,7 @@ void main() {
       // The piece stays in the grid but stops being buyable — it carries a
       // "Sold" badge there, the same as the web. What must not happen is a
       // second sale of a one-of-a-kind original.
-      final listed = await artworks.list(const ArtworkFilters());
+      final listed = await artworks.listAllLive();
       expect(listed.firstWhere((a) => a.id == submitted.id).status, ArtworkStatus.sold);
       expect(
         checkout.createOrder(

@@ -135,10 +135,13 @@ class _CollectionDetailSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artwork = item.artwork;
-    final deliveredAt = item.order.statusHistory
-        .where((event) => event.status.name == 'delivered')
-        .map((event) => event.changedAt)
-        .lastOrNull;
+    // A bought piece is "owned since" the day it arrived; one handed over by
+    // its previous owner is owned since the hand-over.
+    final deliveredAt = item.order?.statusHistory
+            .where((event) => event.status.name == 'delivered')
+            .map((event) => event.changedAt)
+            .lastOrNull ??
+        item.acquiredAt;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
@@ -168,7 +171,10 @@ class _CollectionDetailSheet extends ConsumerWidget {
               _row(context, LucideIcons.scanLine, 'NFC tag', artwork.nfcTagId!),
             if (deliveredAt != null)
               _row(context, LucideIcons.checkCheck, 'Owned since', formatLongDate(deliveredAt)),
-            _row(context, LucideIcons.wallet, 'Paid', formatInr(item.order.total)),
+            if (item.order != null)
+              _row(context, LucideIcons.wallet, 'Paid', formatInr(item.order!.total))
+            else if (item.fromName.isNotEmpty)
+              _row(context, LucideIcons.send, 'Received from', item.fromName),
             const SizedBox(height: 18),
             Row(
               children: [

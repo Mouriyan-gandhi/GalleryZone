@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'artist_portal.dart';
 import 'artwork.dart';
+import 'mou.dart';
 
 part 'aggregator.freezed.dart';
 part 'aggregator.g.dart';
@@ -19,6 +20,9 @@ enum DeliveryMode {
 }
 
 enum ShipmentStatus { preparing, dispatched, delivered }
+
+/// How an aggregator paid in the cash they collected at the counter.
+enum RemitVia { wallet, bank }
 
 /// The aggregator collects "on behalf of GalleryZone", never for themselves.
 /// Either the buyer paid GalleryZone directly (transfer or UPI, using the
@@ -80,6 +84,14 @@ abstract class AggregatorSale with _$AggregatorSale {
     /// while the money is still sitting in their till.
     String? remittedAt,
 
+    /// Cash sales: when the whole price is due at GalleryZone — two days
+    /// after the sale (client, 30 Sep 2026). Null on card/transfer sales.
+    String? remitDueAt,
+
+    /// How the cash was paid in: taken from the wallet, or declared as a bank
+    /// transfer to GalleryZone's account.
+    RemitVia? remittedVia,
+
     /// Null when [deliveryMode] is [DeliveryMode.selfPickup].
     String? courierRef,
   }) = _AggregatorSale;
@@ -124,6 +136,24 @@ abstract class AggregatorProfile with _$AggregatorProfile {
     required String bankAccountMasked,
     required String ifsc,
     required String securityDepositStatus,
+
+    /// Where the GST number stands with GalleryZone. An aggregator can't
+    /// reserve anything until it is approved (client, 30 Sep 2026).
+    @Default(ReviewStatus.notSubmitted) ReviewStatus gstStatus,
+    @Default('') String email,
+    @Default('IN') String country,
+
+    /// The address in the pieces the agreement and shipments need.
+    @Default('') String addressCity,
+    @Default('') String addressState,
+    @Default('') String addressPincode,
+    @Default(ReviewStatus.notSubmitted) ReviewStatus aadhaarStatus,
+    String? aadhaarMasked,
+
+    /// MOU §10: the one GalleryZone coordinator for the premises.
+    @Default('') String coordinatorDesignation,
+    @Default('') String coordinatorPhone,
+    @Default('') String coordinatorEmail,
 
     /// Signed once from the aggregator's profile screen — the partner
     /// agreement, separate from the artist MOU. Null until they sign it, and

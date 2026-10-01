@@ -46,6 +46,8 @@ _AggregatorSale _$AggregatorSaleFromJson(Map<String, dynamic> json) =>
           $enumDecodeNullable(_$PaymentRouteEnumMap, json['paymentRoute']) ??
           PaymentRoute.directToGalleryZone,
       remittedAt: json['remittedAt'] as String?,
+      remitDueAt: json['remitDueAt'] as String?,
+      remittedVia: $enumDecodeNullable(_$RemitViaEnumMap, json['remittedVia']),
       courierRef: json['courierRef'] as String?,
     );
 
@@ -66,6 +68,8 @@ Map<String, dynamic> _$AggregatorSaleToJson(_AggregatorSale instance) =>
       'deliveredAt': instance.deliveredAt,
       'paymentRoute': _$PaymentRouteEnumMap[instance.paymentRoute]!,
       'remittedAt': instance.remittedAt,
+      'remitDueAt': instance.remitDueAt,
+      'remittedVia': _$RemitViaEnumMap[instance.remittedVia],
       'courierRef': instance.courierRef,
     };
 
@@ -84,6 +88,8 @@ const _$PaymentRouteEnumMap = {
   PaymentRoute.directToGalleryZone: 'direct_to_galleryzone',
   PaymentRoute.cashAtPremises: 'cash_at_premises',
 };
+
+const _$RemitViaEnumMap = {RemitVia.wallet: 'wallet', RemitVia.bank: 'bank'};
 
 _GallerySpace _$GallerySpaceFromJson(Map<String, dynamic> json) =>
     _GallerySpace(
@@ -120,6 +126,21 @@ _AggregatorProfile _$AggregatorProfileFromJson(Map<String, dynamic> json) =>
       bankAccountMasked: json['bankAccountMasked'] as String,
       ifsc: json['ifsc'] as String,
       securityDepositStatus: json['securityDepositStatus'] as String,
+      gstStatus:
+          $enumDecodeNullable(_$ReviewStatusEnumMap, json['gstStatus']) ??
+          ReviewStatus.notSubmitted,
+      email: json['email'] as String? ?? '',
+      country: json['country'] as String? ?? 'IN',
+      addressCity: json['addressCity'] as String? ?? '',
+      addressState: json['addressState'] as String? ?? '',
+      addressPincode: json['addressPincode'] as String? ?? '',
+      aadhaarStatus:
+          $enumDecodeNullable(_$ReviewStatusEnumMap, json['aadhaarStatus']) ??
+          ReviewStatus.notSubmitted,
+      aadhaarMasked: json['aadhaarMasked'] as String?,
+      coordinatorDesignation: json['coordinatorDesignation'] as String? ?? '',
+      coordinatorPhone: json['coordinatorPhone'] as String? ?? '',
+      coordinatorEmail: json['coordinatorEmail'] as String? ?? '',
       mouAcceptance: json['mouAcceptance'] == null
           ? null
           : MouAcceptance.fromJson(
@@ -138,8 +159,26 @@ Map<String, dynamic> _$AggregatorProfileToJson(_AggregatorProfile instance) =>
       'bankAccountMasked': instance.bankAccountMasked,
       'ifsc': instance.ifsc,
       'securityDepositStatus': instance.securityDepositStatus,
+      'gstStatus': _$ReviewStatusEnumMap[instance.gstStatus]!,
+      'email': instance.email,
+      'country': instance.country,
+      'addressCity': instance.addressCity,
+      'addressState': instance.addressState,
+      'addressPincode': instance.addressPincode,
+      'aadhaarStatus': _$ReviewStatusEnumMap[instance.aadhaarStatus]!,
+      'aadhaarMasked': instance.aadhaarMasked,
+      'coordinatorDesignation': instance.coordinatorDesignation,
+      'coordinatorPhone': instance.coordinatorPhone,
+      'coordinatorEmail': instance.coordinatorEmail,
       'mouAcceptance': instance.mouAcceptance,
     };
+
+const _$ReviewStatusEnumMap = {
+  ReviewStatus.notSubmitted: 'not_submitted',
+  ReviewStatus.submitted: 'submitted',
+  ReviewStatus.approved: 'approved',
+  ReviewStatus.rejected: 'rejected',
+};
 
 _AggregatorSettings _$AggregatorSettingsFromJson(Map<String, dynamic> json) =>
     _AggregatorSettings(

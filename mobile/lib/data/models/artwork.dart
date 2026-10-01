@@ -59,10 +59,13 @@ bool isMarketplaceListed(ListingType type) => type != ListingType.aggregatorOnly
 
 bool isAggregatorListed(ListingType type) => type != ListingType.marketplaceOnly;
 
-/// Rarity/edition type of a piece, shown as a badge on the artist's artwork
-/// card. The web keeps this outside its Artwork type and reads it back with
-/// `"rarityType" in artwork` casts; here it is a real field, which is the
-/// shape both clients should end up with.
+/// GalleryZone's rank for a piece — Rare / Unique / Original / Standard —
+/// shown as a badge over the artwork. It is GalleryZone's call, never the
+/// artist's: an admin sets it when approving a piece, it can be changed
+/// later but never cleared, so every listed piece carries one.
+///
+/// "Standard" (S) was "Normal" (N) until 30 Sep 2026. Saved data and old API
+/// rows may still say `N`; [ArtworkRarityConverter] reads it as Standard.
 enum ArtworkRarity {
   @JsonValue('R')
   rare,
@@ -70,29 +73,83 @@ enum ArtworkRarity {
   unique,
   @JsonValue('O')
   original,
-  @JsonValue('N')
-  normal,
+  @JsonValue('S')
+  standard,
 }
 
 const artworkRarityCode = {
   ArtworkRarity.rare: 'R',
   ArtworkRarity.unique: 'U',
   ArtworkRarity.original: 'O',
-  ArtworkRarity.normal: 'N',
+  ArtworkRarity.standard: 'S',
 };
 
 const artworkRarityLabel = {
-  ArtworkRarity.rare: 'Rare (R)',
-  ArtworkRarity.unique: 'Unique (U)',
-  ArtworkRarity.original: 'Original (O)',
-  ArtworkRarity.normal: 'Normal (N)',
+  ArtworkRarity.rare: 'Rare',
+  ArtworkRarity.unique: 'Unique',
+  ArtworkRarity.original: 'Original',
+  ArtworkRarity.standard: 'Standard',
 };
 
 const artworkRarityDescription = {
   ArtworkRarity.rare: 'Limited or one-of-a-kind with exceptional provenance.',
   ArtworkRarity.unique: 'Singular piece — the only one in existence.',
   ArtworkRarity.original: 'Hand-made original by the artist.',
-  ArtworkRarity.normal: 'Open edition or standard listing.',
+  ArtworkRarity.standard: 'Open edition or standard listing.',
+};
+
+/// Reads a rank from the API or from saved data: `S`, or the retired `N`.
+/// Anything unrecognised is "unranked" (null) rather than a crash.
+ArtworkRarity? artworkRarityFromCode(String? code) => switch (code) {
+  'R' => ArtworkRarity.rare,
+  'U' => ArtworkRarity.unique,
+  'O' => ArtworkRarity.original,
+  'S' || 'N' => ArtworkRarity.standard,
+  _ => null,
+};
+
+class ArtworkRarityConverter implements JsonConverter<ArtworkRarity?, String?> {
+  const ArtworkRarityConverter();
+
+  @override
+  ArtworkRarity? fromJson(String? json) => artworkRarityFromCode(json);
+
+  @override
+  String? toJson(ArtworkRarity? object) => object == null ? null : artworkRarityCode[object];
+}
+
+/// Rough size band the API derives from a piece's stored dimensions.
+enum ArtworkSizeBand { small, medium, large }
+
+const artworkSizeBandLabel = {
+  ArtworkSizeBand.small: 'Small',
+  ArtworkSizeBand.medium: 'Medium',
+  ArtworkSizeBand.large: 'Large',
+};
+
+/// The four-value review vocabulary shared by every admin-reviewed fact:
+/// insurance, GST number, KYC/Aadhaar. Same words, different domains — a
+/// person can be approved on one and rejected on another.
+enum ReviewStatus {
+  @JsonValue('not_submitted')
+  notSubmitted,
+  submitted,
+  approved,
+  rejected,
+}
+
+const reviewStatusLabel = {
+  ReviewStatus.notSubmitted: 'Not submitted',
+  ReviewStatus.submitted: 'Under review',
+  ReviewStatus.approved: 'Approved',
+  ReviewStatus.rejected: 'Rejected',
+};
+
+ReviewStatus reviewStatusFromCode(String? code) => switch (code) {
+  'submitted' => ReviewStatus.submitted,
+  'approved' => ReviewStatus.approved,
+  'rejected' => ReviewStatus.rejected,
+  _ => ReviewStatus.notSubmitted,
 };
 
 enum SocialProofPlatform { instagram, youtube, x, tiktok }
@@ -104,6 +161,10 @@ abstract class ArtworkImage with _$ArtworkImage {
     required String thumbnailUrl,
     required int sortOrder,
     required String altText,
+
+    /// Server id — present on the artist's own views, where it is what lets
+    /// a photo be deleted or reordered. Public views carry none.
+    String? id,
   }) = _ArtworkImage;
 
   factory ArtworkImage.fromJson(Map<String, dynamic> json) => _$ArtworkImageFromJson(json);
@@ -152,14 +213,37 @@ abstract class Artwork with _$Artwork {
     String? dimensions,
     int? yearCreated,
     required List<ArtworkImage> images,
-    required String coaCertificateNumber,
-    required String coaIssueDate,
+
+    /// The certificate belongs to the owner's, artist's and passport views —
+    /// the public marketplace no longer carries it (1 Oct 2026), so these are
+    /// empty on a listing and must not be formatted without checking.
+    @Default('') String coaCertificateNumber,
+    @Default('') String coaIssueDate,
     required List<SocialProofLink> socialProofLinks,
     required List<ArtworkStatusEvent> statusHistory,
     String? nfcTagId,
 
-    /// R / U / O / N. Null on fixtures that predate the field.
-    ArtworkRarity? rarityType,
+    /// GalleryZone's rank (R / U / O / S). Null until an admin has ranked the
+    /// piece, and on fixtures that predate the field.
+    @ArtworkRarityConverter() ArtworkRarity? rarityType,
+
+    /// GZ000004-style product code printed on the tag and the passport.
+    String? productCode,
+
+    /// Original / limited edition / open edition / study / commission / other.
+    String? artworkType,
+
+    /// Which of the world painting traditions this is — only for paintings.
+    String? paintingStyle,
+
+    /// Policy number the artist pasted back from the insurer, and the admin's
+    /// verdict on it. Only meaningful when [insured] is true.
+    String? insuranceNumber,
+    @Default(ReviewStatus.notSubmitted) ReviewStatus insuranceStatus,
+
+    /// The artist's public location; an artwork has none of its own.
+    String? artistLocation,
+    ArtworkSizeBand? sizeBand,
 
     /// Weight, framing and packing. Nullable because the fixture records
     /// predate the fields; the submit form collects them and requires them
@@ -577,6 +661,21 @@ bool isPenaltyCollectable(ExternalSalePenalty penalty) =>
 /// — never by `ArtworkRepository`'s customer/public-facing methods.
 @freezed
 abstract class ArtistArtwork with _$ArtistArtwork {
-  const factory ArtistArtwork({required Artwork artwork, required double artistPrice}) =
-      _ArtistArtwork;
+  const factory ArtistArtwork({
+    required Artwork artwork,
+    required double artistPrice,
+
+    /// What the artist would take home, per channel, at today's rates — the
+    /// API works it out (listing fee, TDS, service charges); the app only
+    /// shows it. Zero on the offline mock, which has no rate sheet.
+    @Default(0) double artistNetMarketplace,
+    @Default(0) double artistNetAggregator,
+
+    /// When the 7-day edit window closes (ISO). Null for a draft, which has none.
+    String? editableUntil,
+
+    /// Whether the artist opted into transit insurance, as opposed to it
+    /// merely being required by the channel.
+    @Default(false) bool insuranceOpted,
+  }) = _ArtistArtwork;
 }

@@ -32,6 +32,21 @@ const _$ActivityKindEnumMap = {
   ActivityKind.withdrawal: 'withdrawal',
 };
 
+_FreeAccess _$FreeAccessFromJson(Map<String, dynamic> json) => _FreeAccess(
+  until: json['until'] as String,
+  months: (json['months'] as num).toInt(),
+  surveyRespondent: json['surveyRespondent'] as bool? ?? false,
+  active: json['active'] as bool? ?? true,
+);
+
+Map<String, dynamic> _$FreeAccessToJson(_FreeAccess instance) =>
+    <String, dynamic>{
+      'until': instance.until,
+      'months': instance.months,
+      'surveyRespondent': instance.surveyRespondent,
+      'active': instance.active,
+    };
+
 _ArtistProfileDetails _$ArtistProfileDetailsFromJson(
   Map<String, dynamic> json,
 ) => _ArtistProfileDetails(
@@ -43,9 +58,20 @@ _ArtistProfileDetails _$ArtistProfileDetailsFromJson(
   website: json['website'] as String,
   bankAccountMasked: json['bankAccountMasked'] as String,
   ifsc: json['ifsc'] as String,
-  aadhaarStatus: $enumDecode(_$AadhaarStatusEnumMap, json['aadhaarStatus']),
+  aadhaarStatus: $enumDecode(_$ReviewStatusEnumMap, json['aadhaarStatus']),
   aadhaarMasked: json['aadhaarMasked'] as String,
   gstin: json['gstin'] as String?,
+  gstStatus:
+      $enumDecodeNullable(_$ReviewStatusEnumMap, json['gstStatus']) ??
+      ReviewStatus.notSubmitted,
+  pan: json['pan'] as String?,
+  headline: json['headline'] as String?,
+  location: json['location'] as String?,
+  socialProofVideoUrl: json['socialProofVideoUrl'] as String?,
+  joinedAt: json['joinedAt'] as String? ?? '',
+  freeAccess: json['freeAccess'] == null
+      ? null
+      : FreeAccess.fromJson(json['freeAccess'] as Map<String, dynamic>),
   pickupLine1: json['pickupLine1'] as String? ?? '',
   pickupLine2: json['pickupLine2'] as String? ?? '',
   pickupCity: json['pickupCity'] as String? ?? '',
@@ -64,9 +90,16 @@ Map<String, dynamic> _$ArtistProfileDetailsToJson(
   'website': instance.website,
   'bankAccountMasked': instance.bankAccountMasked,
   'ifsc': instance.ifsc,
-  'aadhaarStatus': _$AadhaarStatusEnumMap[instance.aadhaarStatus]!,
+  'aadhaarStatus': _$ReviewStatusEnumMap[instance.aadhaarStatus]!,
   'aadhaarMasked': instance.aadhaarMasked,
   'gstin': instance.gstin,
+  'gstStatus': _$ReviewStatusEnumMap[instance.gstStatus]!,
+  'pan': instance.pan,
+  'headline': instance.headline,
+  'location': instance.location,
+  'socialProofVideoUrl': instance.socialProofVideoUrl,
+  'joinedAt': instance.joinedAt,
+  'freeAccess': instance.freeAccess,
   'pickupLine1': instance.pickupLine1,
   'pickupLine2': instance.pickupLine2,
   'pickupCity': instance.pickupCity,
@@ -74,10 +107,11 @@ Map<String, dynamic> _$ArtistProfileDetailsToJson(
   'pickupPincode': instance.pickupPincode,
 };
 
-const _$AadhaarStatusEnumMap = {
-  AadhaarStatus.verified: 'verified',
-  AadhaarStatus.pending: 'pending',
-  AadhaarStatus.unverified: 'unverified',
+const _$ReviewStatusEnumMap = {
+  ReviewStatus.notSubmitted: 'not_submitted',
+  ReviewStatus.submitted: 'submitted',
+  ReviewStatus.approved: 'approved',
+  ReviewStatus.rejected: 'rejected',
 };
 
 _ArtistSettings _$ArtistSettingsFromJson(Map<String, dynamic> json) =>
@@ -94,20 +128,6 @@ Map<String, dynamic> _$ArtistSettingsToJson(_ArtistSettings instance) =>
       'notifyNewSale': instance.notifyNewSale,
       'notifyWithdrawalProcessed': instance.notifyWithdrawalProcessed,
       'notifyNewMessage': instance.notifyNewMessage,
-    };
-
-_MouAcceptance _$MouAcceptanceFromJson(Map<String, dynamic> json) =>
-    _MouAcceptance(
-      version: json['version'] as String,
-      acceptedAt: json['acceptedAt'] as String,
-      signatureName: json['signatureName'] as String? ?? '',
-    );
-
-Map<String, dynamic> _$MouAcceptanceToJson(_MouAcceptance instance) =>
-    <String, dynamic>{
-      'version': instance.version,
-      'acceptedAt': instance.acceptedAt,
-      'signatureName': instance.signatureName,
     };
 
 _Settlement _$SettlementFromJson(Map<String, dynamic> json) => _Settlement(
@@ -167,6 +187,34 @@ Map<String, dynamic> _$MessageThreadToJson(_MessageThread instance) =>
       'receivedAt': instance.receivedAt,
     };
 
+_HoldingExtensionRequest _$HoldingExtensionRequestFromJson(
+  Map<String, dynamic> json,
+) => _HoldingExtensionRequest(
+  status: $enumDecode(_$ExtensionStatusEnumMap, json['status']),
+  assurance: json['assurance'] as String,
+  requestedAt: json['requestedAt'] as String,
+  decidedAt: json['decidedAt'] as String?,
+  note: json['note'] as String?,
+  previousExpiresAt: json['previousExpiresAt'] as String? ?? '',
+);
+
+Map<String, dynamic> _$HoldingExtensionRequestToJson(
+  _HoldingExtensionRequest instance,
+) => <String, dynamic>{
+  'status': _$ExtensionStatusEnumMap[instance.status]!,
+  'assurance': instance.assurance,
+  'requestedAt': instance.requestedAt,
+  'decidedAt': instance.decidedAt,
+  'note': instance.note,
+  'previousExpiresAt': instance.previousExpiresAt,
+};
+
+const _$ExtensionStatusEnumMap = {
+  ExtensionStatus.pending: 'pending',
+  ExtensionStatus.approved: 'approved',
+  ExtensionStatus.declined: 'declined',
+};
+
 _AggregatorHolding _$AggregatorHoldingFromJson(Map<String, dynamic> json) =>
     _AggregatorHolding(
       id: json['id'] as String,
@@ -186,6 +234,13 @@ _AggregatorHolding _$AggregatorHoldingFromJson(Map<String, dynamic> json) =>
       displayPriceSetAt: json['displayPriceSetAt'] as String?,
       returnedAt: json['returnedAt'] as String?,
       windowExtended: json['windowExtended'] as bool? ?? false,
+      appreciated: json['appreciated'] as bool? ?? false,
+      priceWarning: json['priceWarning'] as bool? ?? false,
+      extensionRequest: json['extensionRequest'] == null
+          ? null
+          : HoldingExtensionRequest.fromJson(
+              json['extensionRequest'] as Map<String, dynamic>,
+            ),
     );
 
 Map<String, dynamic> _$AggregatorHoldingToJson(_AggregatorHolding instance) =>
@@ -204,6 +259,9 @@ Map<String, dynamic> _$AggregatorHoldingToJson(_AggregatorHolding instance) =>
       'displayPriceSetAt': instance.displayPriceSetAt,
       'returnedAt': instance.returnedAt,
       'windowExtended': instance.windowExtended,
+      'appreciated': instance.appreciated,
+      'priceWarning': instance.priceWarning,
+      'extensionRequest': instance.extensionRequest,
     };
 
 const _$HoldingStatusEnumMap = {
