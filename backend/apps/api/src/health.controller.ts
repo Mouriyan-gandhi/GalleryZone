@@ -10,13 +10,7 @@ import { Public } from "./auth/roles.decorator.ts";
 export class HealthController {
   @Public()
   @Get()
-  check(): { status: "ok"; timestamp: string; emulator: boolean } {
-    // True only when this process talks to the local Firebase emulators. The
-    // demo seed (backend/scripts/demo) refuses to write unless it is, so it
-    // can never register accounts on a real API that happens to own :8080.
-    const emulator = Boolean(
-      process.env.FIRESTORE_EMULATOR_HOST && process.env.FIREBASE_AUTH_EMULATOR_HOST,
-    );
-    return { status: "ok", timestamp: new Date().toISOString(), emulator };
+  check(): { status: "ok"; timestamp: string } {
+    return { status: "ok", timestamp: new Date().toISOString() };
   }
 }
