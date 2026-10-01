@@ -1,9 +1,5 @@
 "use client";
 
-import { UserAvatar } from "@/components/shared/user-avatar";
-
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -25,24 +21,24 @@ import {
   Settings as SettingsIcon,
   Menu,
   X,
-  PanelLeftClose,
-  PanelLeftOpen,
   Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { SwitchMode } from "@/components/switch-mode";
 import { NotificationsPopover } from "@/components/notifications-popover";
-import { SignOutButton } from "@/components/shared/sign-out-button";
-import { SidebarBrand } from "@/components/shared/sidebar-brand";
+import { AccountMenu } from "@/components/shared/account-menu";
+import { SidebarBrand, SidebarHeader } from "@/components/shared/sidebar-brand";
 import { useArtistMessages } from "@/hooks/useArtistMessages";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
+// "View site" is pinned above this list, so the sidebar reads: View site,
+// My Profile, My Artworks, Add Artwork, Dashboard, then the rest.
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { label: "My Profile", href: "/dashboard/profile", icon: CircleUserRound },
   { label: "My Artworks", href: "/dashboard/artworks", icon: ImageIcon },
   { label: "Add Artwork", href: "/dashboard/artworks/upload", icon: ImagePlus },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { label: "Portfolio", href: "/dashboard/portfolio", icon: LayoutTemplate },
   { label: "Orders", href: "/dashboard/orders", icon: ShoppingBag },
   { label: "Earnings & Wallet", href: "/dashboard/wallet", icon: Wallet },
@@ -97,20 +93,11 @@ function Sidebar({
           collapsed ? "lg:w-20" : "lg:w-64",
         )}
       >
-        <div className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between bg-sidebar px-5">
-          <SidebarBrand collapsed={collapsed} />
-          <button
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed((c) => !c)}
-            className="rounded-md p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4" />
-            ) : (
-              <PanelLeftClose className="size-4" />
-            )}
-          </button>
-        </div>
+        <SidebarHeader
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((c) => !c)}
+          className="sticky top-0 z-10 bg-sidebar"
+        />
         <SidebarBody collapsed={collapsed} onNavigate={() => {}} showGroups={false} />
       </aside>
 
@@ -144,14 +131,12 @@ function Sidebar({
   );
 }
 
-// Purely a mobile presentation grouping — same items, same order as before,
-// so desktop (showGroups=false) renders byte-identical to pre-redesign.
-// Grouped as its own phase (not reordered into the "ideal" grouping) because
-// reordering NAV_ITEMS would move desktop's list too; that's a desktop-phase
-// decision, not this one.
+// Purely a mobile presentation grouping: a heading before the first item of
+// each run in NAV_ITEMS. Keep the keys in step with that order.
 const GROUP_LABEL_BEFORE: Partial<Record<string, string>> = {
-  "/dashboard": "Overview",
+  "/dashboard/profile": "Account",
   "/dashboard/artworks": "Artworks",
+  "/dashboard": "Overview",
   "/dashboard/orders": "Sales",
   "/dashboard/coa-nfc": "Identity",
   "/dashboard/analytics": "Insights",
@@ -206,7 +191,6 @@ function SidebarBody({
   onNavigate: () => void;
   showGroups: boolean;
 }) {
-  const { data: me } = useCurrentUser();
   const pathname = usePathname();
   const { data: messages } = useArtistMessages();
   const unreadMessages = messages?.filter((m) => m.unread).length ?? 0;
@@ -283,25 +267,6 @@ function SidebarBody({
           );
         })}
       </nav>
-
-
-      <CollapsibleNavLink
-        href="/dashboard/profile"
-        label={me?.name ?? "My Profile"}
-        collapsed={collapsed}
-        onClick={onNavigate}
-        className="mx-3 mb-4 flex items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-3 transition-colors hover:bg-sidebar-accent"
-      >
-        <UserAvatar name={me?.name} className="size-9" />
-        <div className={cn("min-w-0", collapsed && "lg:hidden")}>
-          <p className="truncate text-sm font-medium text-sidebar-foreground">
-            {me?.name ?? "Artist"}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">
-            {me?.email ?? ""}
-          </p>
-        </div>
-      </CollapsibleNavLink>
     </>
   );
 }
@@ -351,7 +316,11 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex items-center gap-2">
         <NotificationsPopover />
         <SwitchMode />
-        <SignOutButton />
+        <AccountMenu
+          role="Artist"
+          profileHref="/dashboard/profile"
+          settingsHref="/dashboard/settings"
+        />
       </div>
     </header>
   );

@@ -1,9 +1,5 @@
 "use client";
 
-import { UserAvatar } from "@/components/shared/user-avatar";
-
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -26,13 +22,11 @@ import {
   Settings as SettingsIcon,
   Menu,
   X,
-  PanelLeftClose,
-  PanelLeftOpen,
-  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SidebarBrand } from "@/components/shared/sidebar-brand";
+import { SidebarHeader } from "@/components/shared/sidebar-brand";
+import { AccountMenu } from "@/components/shared/account-menu";
 import { SwitchMode } from "@/components/switch-mode";
 import { NotificationsPopover } from "@/components/notifications-popover";
 import {
@@ -41,13 +35,7 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
 import { useAggregatorMessages } from "@/hooks/useAggregatorMessages";
-import { authService } from "@/services/authService";
 
 // Deliberately a parallel sibling to features/dashboard/dashboard-shell.tsx,
 // not a shared/generalized abstraction over it — same reasoning as before:
@@ -252,8 +240,10 @@ function Sidebar({
           collapsed ? "lg:w-20" : "lg:w-64",
         )}
       >
-        <div className="flex h-16 items-center justify-between px-5">
-          <SidebarBrand collapsed={collapsed} />
+        <SidebarHeader
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((c) => !c)}
+        >
           <button
             aria-label="Close menu"
             onClick={onClose}
@@ -261,18 +251,7 @@ function Sidebar({
           >
             <X className="size-5" />
           </button>
-          <button
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed((c) => !c)}
-            className="hidden rounded-md p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground lg:inline-flex"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4" />
-            ) : (
-              <PanelLeftClose className="size-4" />
-            )}
-          </button>
-        </div>
+        </SidebarHeader>
 
         <span
           className={cn(
@@ -337,75 +316,11 @@ function Sidebar({
   );
 }
 
-// Compact account menu for the desktop topbar — sits next to SwitchMode
-// instead of the old full-width card pinned at the bottom of the sidebar.
-function AccountMenu() {
-  const { data: me } = useCurrentUser();
-  const [open, setOpen] = useState(false);
-
-  function handleSignOut() {
-    void authService.logout();
-    window.location.href = "/login";
-  }
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        aria-label="Account menu"
-        className="flex items-center gap-1.5 rounded-full p-1 text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
-      >
-        <UserAvatar name={me?.name} className="size-8" />
-      </PopoverTrigger>
-      <PopoverContent side="bottom" align="end" className="w-56 p-1.5">
-        <div className="px-2.5 py-2">
-          <p className="truncate text-sm font-medium text-foreground">
-            {me?.name ?? "Aggregator"}
-          </p>
-          <p className="truncate text-xs text-muted-foreground">Aggregator</p>
-        </div>
-        <div className="my-1 border-t border-border" />
-        <Link
-          href="/aggregator/profile"
-          onClick={() => setOpen(false)}
-          className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground/90 transition-colors hover:bg-muted"
-        >
-          <CircleUserRound
-            className="size-4 text-muted-foreground"
-            strokeWidth={1.75}
-          />
-          My Profile
-        </Link>
-        <Link
-          href="/aggregator/settings"
-          onClick={() => setOpen(false)}
-          className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground/90 transition-colors hover:bg-muted"
-        >
-          <SettingsIcon
-            className="size-4 text-muted-foreground"
-            strokeWidth={1.75}
-          />
-          Settings
-        </Link>
-        <div className="my-1 border-t border-border" />
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-foreground/90 transition-colors hover:bg-muted"
-        >
-          <LogOut className="size-4 text-muted-foreground" strokeWidth={1.75} />
-          Sign out
-        </button>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 const PAGE_TITLES: Record<string, string> = Object.fromEntries(
   ALL_ITEMS.map((item) => [item.href, item.label]),
 );
 
 function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { data: me } = useCurrentUser();
   const pathname = usePathname();
   const title = PAGE_TITLES[pathname] ?? "Aggregator Portal";
 
@@ -425,9 +340,11 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           <span className="text-[10px] text-muted-foreground leading-none mt-0.5">Aggregator Portal</span>
         </div>
         <NotificationsPopover groups={[]} />
-        <Link href="/aggregator/profile" className="relative size-8 overflow-hidden rounded-full border border-gold/40 shrink-0">
-          <UserAvatar name={me?.name} className="size-8" />
-        </Link>
+        <AccountMenu
+          role="Aggregator"
+          profileHref="/aggregator/profile"
+          settingsHref="/aggregator/settings"
+        />
       </div>
 
       {/* Desktop layout: page title + controls */}
@@ -439,7 +356,11 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="hidden lg:flex lg:items-center lg:gap-2">
         <NotificationsPopover groups={[]} />
         <SwitchMode />
-        <AccountMenu />
+        <AccountMenu
+          role="Aggregator"
+          profileHref="/aggregator/profile"
+          settingsHref="/aggregator/settings"
+        />
       </div>
     </header>
   );

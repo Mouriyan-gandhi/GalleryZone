@@ -3,7 +3,7 @@
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useSyncExternalStore, useEffect, useState } from "react";
 import {
   Home,
@@ -18,7 +18,6 @@ import {
   CircleUserRound,
   MapPin,
   LifeBuoy,
-  LogOut,
   Menu,
   type LucideIcon,
 } from "lucide-react";
@@ -34,7 +33,6 @@ import {
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { initials } from "@/features/account/account-data";
 import { readSessionRole, subscribeToSession } from "@/lib/session";
-import { authService } from "@/services/authService";
 import { useMounted } from "@/hooks/useMounted";
 
 interface NavItem {
@@ -127,7 +125,6 @@ function NavLink({
 export function MobileBottomNav() {
   const { data: me } = useCurrentUser();
   const pathname = usePathname();
-  const router = useRouter();
   const mounted = useMounted();
   const sessionRole = useSyncExternalStore(
     subscribeToSession,
@@ -213,18 +210,6 @@ export function MobileBottomNav() {
                   </SheetClose>
                 );
               })}
-              <div className="my-2 h-px w-full bg-border" />
-              <button
-                type="button"
-                onClick={() => {
-                  void authService.logout();
-                  router.push("/login");
-                }}
-                className="flex items-center gap-3 rounded-lg px-4 py-3 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
-              >
-                <LogOut className="size-4.5 shrink-0" strokeWidth={1.75} />
-                Sign out
-              </button>
             </div>
           </SheetContent>
         </Sheet>

@@ -45,18 +45,23 @@ export function AuthLayoutPanel() {
 
 function Wordmark() {
   return (
-    <Link href="/" className="flex flex-col gap-0.5">
-      <div className="flex items-baseline gap-2.5">
-        <span className="font-display text-2xl font-semibold text-gold-bright italic">
-          GZ
-        </span>
+    <Link href="/" className="flex items-center gap-3">
+      <Image
+        src="/brand/gz-logo.png"
+        alt="GalleryZone"
+        width={822}
+        height={560}
+        priority
+        className="h-14 w-auto shrink-0"
+      />
+      <div className="flex flex-col gap-0.5">
         <span className="text-sm font-medium tracking-[0.18em] text-sidebar-foreground">
           GALLERYZONE
         </span>
+        <span className="text-[10px] font-semibold tracking-[0.28em] text-gold/70 uppercase">
+          Art Connects
+        </span>
       </div>
-      <span className="ml-0.5 text-[10px] font-semibold tracking-[0.28em] text-gold/70 uppercase">
-        Art Connects
-      </span>
     </Link>
   );
 }

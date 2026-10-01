@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from "react";
 import { Mail } from "lucide-react";
-import { InstagramGlyph, XGlyph, LinkedinGlyph } from "./social-icons";
+import { InstagramGlyph, XGlyph, LinkedinGlyph, YoutubeGlyph } from "./social-icons";
 
 export type FooterLink =
   | { label: string; href: string; comingSoon?: false }
@@ -98,6 +98,8 @@ export const SOCIAL_LINKS: SocialLink[] = [
     target: "_blank",
     rel: "noopener noreferrer",
   },
+  // ponytail: no channel URL yet, "#" like X above — put the real link here.
+  { icon: YoutubeGlyph, href: "#", label: "YouTube" },
   {
     icon: Mail,
     href: "https://mail.google.com/mail/?view=cm&fs=1&to=galleryzone@zohomail.in",

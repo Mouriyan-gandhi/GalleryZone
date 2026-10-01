@@ -1,12 +1,19 @@
+import Image from "next/image";
+
 // Centered wordmark shown atop the form card on every Auth screen — distinct
 // from AuthLayoutPanel's small top-left Wordmark, which lives in the
 // separate artwork showcase panel and stays untouched.
 export function AuthCrest() {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      <span className="font-display text-4xl font-semibold text-gold-bright italic">
-        GZ
-      </span>
+      <Image
+        src="/brand/gz-logo.png"
+        alt="GalleryZone"
+        width={822}
+        height={560}
+        priority
+        className="h-24 w-auto"
+      />
       <span className="text-sm font-medium tracking-[0.25em] text-foreground">
         GALLERYZONE
       </span>
