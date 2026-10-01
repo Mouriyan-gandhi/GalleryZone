@@ -25,6 +25,12 @@ abstract class CheckoutRepository {
   /// demo drives it by hand from the order screen.
   Future<Order> advanceOrder(String id);
 
+  /// What the artwork costs at checkout, from the pricing rules in force
+  /// right now: the price (GST inside), the convenience fee and its own GST,
+  /// delivery, and the total. The review and payment steps show exactly this,
+  /// so a preview can never disagree with the order that follows.
+  Future<CheckoutQuote> getQuote(String artworkId);
+
   Future<List<Order>> listOrders();
 
   Future<Order?> getOrder(String id);

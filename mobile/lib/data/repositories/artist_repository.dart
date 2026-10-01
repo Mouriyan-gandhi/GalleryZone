@@ -1,6 +1,8 @@
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
+import '../models/mou.dart';
+import '../models/pricing_rules.dart';
 import '../models/order.dart';
 
 /// What the artist submits from the upload screen. `artistPrice` is the
@@ -20,8 +22,10 @@ class SubmitArtworkInput {
     this.dimensions,
     this.yearCreated,
     this.nfcTagId,
-    this.rarityType,
     this.physical,
+    this.artworkType,
+    this.paintingStyle,
+    this.insuranceNumber,
   });
 
   final String title;
@@ -36,12 +40,21 @@ class SubmitArtworkInput {
   /// Draft stays with the artist; otherwise it enters the review queue.
   final bool asDraft;
 
+  /// `L x W [x H] unit`, written by the form (ASCII `x`, unit `in` or `cm`) —
+  /// the API derives the size band from this exact shape.
   final String? dimensions;
   final int? yearCreated;
   final String? nfcTagId;
 
-  /// R / U / O / N, shown as a badge on the artist's card.
-  final ArtworkRarity? rarityType;
+  /// Original / limited edition / open edition / study / commission / other.
+  final String? artworkType;
+
+  /// Which painting tradition — only asked when the category is painting.
+  final String? paintingStyle;
+
+  /// The policy number pasted back from the insurer. A new or changed number
+  /// goes to GalleryZone for verification.
+  final String? insuranceNumber;
 
   /// Weight, framing and packing. Required in practice once the aggregator
   /// channel is picked — see [missingForAggregator].
@@ -74,6 +87,14 @@ abstract class ArtistRepository {
   /// Returns [ArtistArtwork] — artwork plus the artist's private price. No
   /// other repository method may construct that type.
   Future<List<ArtistArtwork>> listArtworks();
+
+  /// One of the artist's own pieces with the private figures, or null when it
+  /// isn't theirs. For the edit form, which needs image ids and the window.
+  Future<ArtistArtwork?> getArtwork(String artworkId);
+
+  /// New pictures are local file paths in [SubmitArtworkInput.images]; ones
+  /// that already exist carry their server id and are kept. The list order is
+  /// the display order, cover first.
   Future<Artwork> submitArtwork(SubmitArtworkInput input);
 
   /// Edits are refused here, not just hidden in the UI: 7 days from listing,
@@ -108,15 +129,34 @@ abstract class ArtistRepository {
   Future<List<Settlement>> listSettlements();
   Future<List<GallerySpacePlacement>> listGallerySpaces();
 
-  /// The artist's acceptance of the MOU, or null if they have not accepted
-  /// any version yet.
   /// Paper-certificate requests from collectors, newest first, and the
   /// artist marking one dispatched.
   Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests();
   Future<PhysicalCoaRequest> dispatchPhysicalCoa(String requestId, String courierRef);
 
+  /// Links a physical NFC tag to a piece. Replaces any tag already linked.
+  Future<Artwork> linkNfcTag(String artworkId, String nfcTagId);
+
+  /// The artist's acceptance of the MOU version in force, or null if they have
+  /// not signed it (an older version counts as unsigned).
   Future<MouAcceptance?> getMouAcceptance();
-  Future<MouAcceptance> acceptMou(String version);
+
+  /// The agreement's signed state: the signature on the version in force (if
+  /// any) and the draft with its blanks filled from the profile.
+  Future<MouState> getMouState();
+
+  /// Signs the agreement. [signatureName] must match the account's name; the
+  /// signing time is the server's. [signatureDataUrl] is the drawn signature
+  /// as a PNG data URL (the offline mock accepts it empty).
+  Future<MouAcceptance> acceptMou({
+    required String signatureName,
+    required String version,
+    String signatureDataUrl = '',
+  });
+
+  /// The published commercial terms the upload ladder quotes from; null if
+  /// none are in force.
+  Future<PricingRules?> getPricingRules();
 
   Future<ArtistSettings> getSettings();
   Future<ArtistSettings> updateSettings(ArtistSettings settings);

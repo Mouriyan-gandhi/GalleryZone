@@ -2,9 +2,12 @@ import 'dart:convert';
 
 import '../../core/format.dart';
 import '../../core/pricing.dart';
+import '../../features/artist/mou_data.dart' show mouVersion;
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
+import '../models/mou.dart';
+import '../models/pricing_rules.dart';
 import '../models/order.dart';
 import '../repositories/artist_repository.dart';
 import '../storage/mock_db.dart';
@@ -538,8 +541,10 @@ class MockArtistRepository implements ArtistRepository {
         socialProofLinks: const [],
         statusHistory: [ArtworkStatusEvent(status: status, changedAt: now)],
         nfcTagId: input.nfcTagId,
-        rarityType: input.rarityType,
         physical: input.physical,
+        artworkType: input.artworkType,
+        paintingStyle: input.paintingStyle,
+        insuranceNumber: input.insuranceNumber,
       );
 
       _writePrices({..._readPrices(), id: input.artistPrice});
@@ -593,7 +598,9 @@ class MockArtistRepository implements ArtistRepository {
         listingType: patch.listingType,
         insured: patch.insuranceOpted || isAggregatorListed(patch.listingType),
         nfcTagId: patch.nfcTagId,
-        rarityType: patch.rarityType,
+        artworkType: patch.artworkType,
+        paintingStyle: patch.paintingStyle,
+        insuranceNumber: patch.insuranceNumber,
         physical: patch.physical ?? existing.physical,
         images: patch.images.isEmpty ? existing.images : patch.images,
         thumbnailUrl: patch.images.isEmpty ? existing.thumbnailUrl : patch.images.first.url,
@@ -893,20 +900,54 @@ class MockArtistRepository implements ArtistRepository {
   }
 
   @override
-  Future<MouAcceptance?> getMouAcceptance() => mockDelay(
-        () => MockDb.getCollection(
-          _mouKey,
-          () => const <MouAcceptance>[],
-          MouAcceptance.fromJson,
-          (a) => a.toJson(),
-        ).firstOrNull,
-      );
+  Future<MouAcceptance?> getMouAcceptance() => mockDelay(_readMouAcceptance);
+
+  MouAcceptance? _readMouAcceptance() => MockDb.getCollection(
+        _mouKey,
+        () => const <MouAcceptance>[],
+        MouAcceptance.fromJson,
+        (a) => a.toJson(),
+      ).firstOrNull;
 
   @override
-  Future<MouAcceptance> acceptMou(String version) => mockDelay(() {
+  Future<MouState> getMouState() => mockDelay(() {
+        final profile = _readSingle(
+          _profileKey,
+          seedArtistProfile,
+          ArtistProfileDetails.fromJson,
+          (p) => p.toJson(),
+        );
+        final acceptance = _readMouAcceptance();
+        return MouState(
+          draft: MouDraft(
+            version: mouVersion,
+            parties: MouParties(
+              party: MouPartyDetails(
+                name: profile.fullName,
+                mobile: profile.phone,
+                email: profile.email,
+                gstNo: profile.gstin,
+              ),
+              company: const MouCompanyDetails(name: 'Galleryzone Private Limited'),
+            ),
+            asOf: DateTime.now().toIso8601String(),
+          ),
+          acceptance: acceptance != null && acceptance.version == mouVersion ? acceptance : null,
+        );
+      });
+
+  @override
+  Future<MouAcceptance> acceptMou({
+    required String signatureName,
+    required String version,
+    String signatureDataUrl = '',
+  }) =>
+      mockDelay(() {
         final acceptance = MouAcceptance(
           version: version,
           acceptedAt: DateTime.now().toIso8601String(),
+          signatureName: signatureName.trim(),
+          signatureDataUrl: signatureDataUrl,
         );
         // One row, replaced: only the current acceptance matters, and keeping
         // a history of them would imply a legal record this build does not
@@ -919,6 +960,45 @@ class MockArtistRepository implements ArtistRepository {
         );
         return acceptance;
       });
+
+  @override
+  Future<PricingRules?> getPricingRules() => mockDelay(
+        () => const PricingRules(
+          gstRate: gstRate,
+          platformMarkup: platformMarkup,
+          artistListingFeeRate: artistListingFeeRate,
+          serviceGstRate: 0.18,
+          artistTdsRate: 0.001,
+          artistConvenienceRate: artistConvenienceRate,
+          aggregatorCommissionRate: aggregatorCommissionRate,
+          aggregatorAdvanceRate: aggregatorAdvanceRate,
+          nfcTagCharge: 100,
+          subscriptionFee: 1200,
+          deliveryCharge: deliveryCharge,
+          insuranceThreshold: 20000,
+        ),
+      );
+
+  @override
+  Future<ArtistArtwork?> getArtwork(String artworkId) => mockDelay(() {
+        final artwork = _artistArtworks().where((a) => a.id == artworkId).firstOrNull;
+        if (artwork == null) return null;
+        return ArtistArtwork(artwork: artwork, artistPrice: _readPrices()[artwork.id] ?? 0);
+      });
+
+  @override
+  Future<Artwork> linkNfcTag(String artworkId, String nfcTagId) {
+    final inLive = _readListed().where((a) => a.id == artworkId).firstOrNull;
+    final existing = inLive ?? _readPending().where((a) => a.id == artworkId).firstOrNull;
+    if (existing == null || existing.artistId != currentArtistId) {
+      return mockError('Artwork not found');
+    }
+    return mockDelay(() {
+      final updated = existing.copyWith(nfcTagId: nfcTagId);
+      _replaceArtwork(updated, inLive: inLive != null);
+      return updated;
+    });
+  }
 
   @override
   Future<ArtistSettings> getSettings() => mockDelay(

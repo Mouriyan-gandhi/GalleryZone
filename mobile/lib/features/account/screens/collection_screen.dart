@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/aggregator.dart' show DeliveryAddress;
 import '../../../data/models/customer.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../auth/providers/auth_providers.dart';
@@ -221,8 +222,12 @@ class _CollectionDetailSheet extends ConsumerWidget {
                       .read(customerRepositoryProvider)
                       .requestPhysicalCoa(
                         artworkId: artwork.id,
-                        deliveryAddress:
-                            '${address.line1}, ${address.city} ${address.pincode}',
+                        delivery: DeliveryAddress(
+                          line1: address.line1,
+                          city: address.city,
+                          state: address.state,
+                          pincode: address.pincode,
+                        ),
                       );
                   ref.invalidate(physicalCoaRequestsProvider);
                   messenger.showSnackBar(

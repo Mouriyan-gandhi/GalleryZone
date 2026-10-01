@@ -1,4 +1,6 @@
 import '../models/artwork.dart';
+import '../models/passport.dart';
+import '../remote/mappers/catalog_mappers.dart' show artworkStatusToApi;
 import '../repositories/ownership_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_artwork_repository.dart' show promoteApprovedSubmissions, seedArtworksCollection;
@@ -60,6 +62,53 @@ class MockOwnershipRepository implements OwnershipRepository {
       (a) => a.toJson(),
     );
   }
+
+  @override
+  Future<Passport?> getPassport(String artworkId) => mockDelay(() {
+    final artwork = _findArtwork(artworkId);
+    if (artwork == null) return null;
+    final custody = resolveCustody(artwork);
+    final held = custody.legalOwner == CustodyParty.customer;
+    final transfers = _read().where((t) => t.artworkId == artworkId).toList()
+      ..sort((a, b) => a.initiatedAt.compareTo(b.initiatedAt));
+    return Passport(
+      artworkId: artwork.id,
+      productCode: artwork.productCode ?? artwork.id.toUpperCase(),
+      title: artwork.title,
+      artistId: artwork.artistId,
+      artistName: artwork.artistName,
+      category: artwork.category,
+      medium: artwork.medium,
+      dimensions: artwork.dimensions,
+      yearCreated: artwork.yearCreated,
+      images: artwork.images,
+      status: artworkStatusToApi(artwork.status),
+      coaCertificateNumber: artwork.coaCertificateNumber.isEmpty ? null : artwork.coaCertificateNumber,
+      coaIssuedAt: artwork.coaIssueDate.isEmpty ? null : artwork.coaIssueDate,
+      listedAt: artwork.statusHistory.firstOrNull?.changedAt ?? '',
+      ownerKind: held ? PassportOwnerKind.collector : PassportOwnerKind.artist,
+      ownerName: held ? (custody.legalOwnerName ?? 'Collector') : artwork.artistName,
+      events: [
+        for (final t in transfers)
+          PassportEvent(
+            id: t.id,
+            kind: transferKindOf(t),
+            status: t.status,
+            fromName: t.fromName,
+            toName: t.toName,
+            viaSale: false,
+            initiatedAt: t.initiatedAt,
+            acceptedAt: t.acceptedAt,
+            cancelledAt: t.cancelledAt,
+            displayEndsAt: t.displayEndsAt,
+            displayEndedAt: t.displayEndedAt,
+          ),
+      ],
+    );
+  });
+
+  @override
+  Future<MyPassports> myPassports() => mockDelay(() => MyPassports.empty);
 
   @override
   Future<List<OwnershipTransfer>> listForArtwork(String artworkId) => mockDelay(() {

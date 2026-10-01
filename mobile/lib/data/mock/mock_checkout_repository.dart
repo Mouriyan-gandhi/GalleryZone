@@ -54,6 +54,25 @@ class MockCheckoutRepository implements CheckoutRepository {
   );
 
   @override
+  Future<CheckoutQuote> getQuote(String artworkId) {
+    final artwork = _readArtworks().where((a) => a.id == artworkId).firstOrNull;
+    if (artwork == null) return mockError('Artwork not found');
+    final totals = checkoutTotal(artwork.customerPrice);
+    return mockDelay(
+      () => CheckoutQuote(
+        artworkId: artworkId,
+        displayPrice: totals.displayPrice,
+        gstIncluded: totals.gstIncluded,
+        gstRate: gstRate,
+        convenienceFee: totals.convenienceFee,
+        convenienceGst: 0,
+        deliveryCharge: totals.deliveryCharge,
+        total: totals.total,
+      ),
+    );
+  }
+
+  @override
   Future<List<Order>> listOrders() => mockDelay(_readOrders);
 
   @override

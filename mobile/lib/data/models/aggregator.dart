@@ -207,17 +207,23 @@ class AggregatorCustomer {
   final double totalSpend;
 }
 
-/// The three dashboard headline figures.
+/// The dashboard headline figures.
 class AggregatorDashboardSummary {
   const AggregatorDashboardSummary({
     required this.activeReservations,
     required this.commissionEarned,
     required this.pendingSettlements,
+    this.conversionRate,
   });
 
   final int activeReservations;
   final double commissionEarned;
   final int pendingSettlements;
+
+  /// Of the pieces that have finished (sold or returned), the share that
+  /// sold, as a whole percent. Null until one has finished — a rate over
+  /// nothing is not 0%.
+  final int? conversionRate;
 }
 
 class AggregatorAnalyticsSummary {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_zone/core/router/app_router.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
+import 'package:gallery_zone/data/models/account.dart';
 import 'package:gallery_zone/data/models/auth.dart';
 import 'package:gallery_zone/data/repositories/auth_repository.dart';
 import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
@@ -35,6 +36,12 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthResult> verifyEmail({String? token, bool simulateError = false}) async =>
       const AuthResult();
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<CurrentUser?> resumeSession() async => null;
 }
 
 void main() {

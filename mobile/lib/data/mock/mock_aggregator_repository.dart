@@ -4,6 +4,8 @@ import '../models/aggregator.dart';
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
+import '../models/mou.dart';
+import '../../features/aggregator/aggregator_mou_data.dart' show aggregatorMouVersion;
 import '../repositories/aggregator_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_artist_repository.dart'
@@ -274,7 +276,11 @@ class MockAggregatorRepository implements AggregatorRepository {
       });
 
   @override
-  Future<AggregatorHolding> reserve(String artworkId, {bool simulateConflict = false}) {
+  Future<AggregatorHolding> reserve(
+    String artworkId, {
+    double? sellingPrice,
+    bool simulateConflict = false,
+  }) {
     if (simulateConflict) return mockError('Artwork no longer available');
 
     // MOU first, inventory second: an unsigned aggregator has no agreement
@@ -436,6 +442,26 @@ class MockAggregatorRepository implements AggregatorRepository {
         refunded: holding.advanceAmount,
         deliveryLost: deliveryLost,
       );
+    });
+  }
+
+  @override
+  Future<AggregatorHolding> requestExtension(String holdingId, String assurance) {
+    final holdings = _readHoldings();
+    final holding = holdings.where((h) => h.id == holdingId).firstOrNull;
+    if (holding == null) return mockError('Holding not found');
+    if (assurance.trim().length < 10) return mockError('Tell GalleryZone why this piece will sell');
+    return mockDelay(() {
+      final updated = holding.copyWith(
+        extensionRequest: HoldingExtensionRequest(
+          status: ExtensionStatus.pending,
+          assurance: assurance.trim(),
+          requestedAt: DateTime.now().toIso8601String(),
+          previousExpiresAt: holding.expiresAt,
+        ),
+      );
+      _writeHoldings([for (final h in holdings) h.id == holdingId ? updated : h]);
+      return updated;
     });
   }
 
@@ -664,7 +690,7 @@ class MockAggregatorRepository implements AggregatorRepository {
       });
 
   @override
-  Future<AggregatorSale> advanceShipment(String saleId) {
+  Future<AggregatorSale> advanceShipment(String saleId, {String? courierRef}) {
     final sales = _readSales();
     final sale = sales.where((s) => s.id == saleId).firstOrNull;
     if (sale == null) return mockError('Sale not found');
@@ -675,7 +701,11 @@ class MockAggregatorRepository implements AggregatorRepository {
     return mockDelay(() {
       final now = DateTime.now().toIso8601String();
       final updated = sale.shipmentStatus == ShipmentStatus.preparing
-          ? sale.copyWith(shipmentStatus: ShipmentStatus.dispatched, dispatchedAt: now)
+          ? sale.copyWith(
+              shipmentStatus: ShipmentStatus.dispatched,
+              dispatchedAt: now,
+              courierRef: courierRef != null && courierRef.trim().isNotEmpty ? courierRef.trim() : sale.courierRef,
+            )
           : sale.copyWith(shipmentStatus: ShipmentStatus.delivered, deliveredAt: now);
       _writeSales([for (final s in sales) s.id == saleId ? updated : s]);
       return updated;
@@ -691,6 +721,19 @@ class MockAggregatorRepository implements AggregatorRepository {
           (s) => s.toJson(),
         ),
       );
+
+  @override
+  Future<GallerySpace> addGallerySpace(GallerySpace space) => mockDelay(() {
+        final spaces = MockDb.getCollection(
+          _gallerySpacesKey,
+          seedGallerySpaces,
+          GallerySpace.fromJson,
+          (s) => s.toJson(),
+        );
+        final added = space.copyWith(id: 'space-${DateTime.now().microsecondsSinceEpoch}');
+        MockDb.setCollection(_gallerySpacesKey, [...spaces, added], (s) => s.toJson());
+        return added;
+      });
 
   @override
   Future<WalletSummary> getWallet() => mockDelay(_readWallet);
@@ -764,7 +807,7 @@ class MockAggregatorRepository implements AggregatorRepository {
       ]);
 
   @override
-  Future<AggregatorSale> markRemitted(String saleId) {
+  Future<AggregatorSale> markRemitted(String saleId, {RemitVia via = RemitVia.wallet}) {
     final sales = _readSales();
     final sale = sales.where((s) => s.id == saleId).firstOrNull;
     if (sale == null) return mockError('Sale not found');
@@ -772,7 +815,7 @@ class MockAggregatorRepository implements AggregatorRepository {
 
     return mockDelay(() {
       final now = DateTime.now();
-      final updated = sale.copyWith(remittedAt: now.toIso8601String());
+      final updated = sale.copyWith(remittedAt: now.toIso8601String(), remittedVia: via);
       _writeSales([for (final s in sales) s.id == saleId ? updated : s]);
       _pushTransactions([
         WalletTransaction(
@@ -951,6 +994,7 @@ class MockAggregatorRepository implements AggregatorRepository {
   Future<AggregatorProfile> acceptMou({
     required String signatureName,
     required String version,
+    String signatureDataUrl = '',
   }) {
     if (signatureName.trim().isEmpty) {
       return mockError('Type your full name to sign');
@@ -961,12 +1005,36 @@ class MockAggregatorRepository implements AggregatorRepository {
           acceptedAt: DateTime.now().toIso8601String(),
           signatureName: signatureName.trim(),
           version: version,
+          signatureDataUrl: signatureDataUrl,
         ),
       );
       _writeSingle(_profileKey, updated, (p) => p.toJson());
       return updated;
     });
   }
+
+  @override
+  Future<MouState> getMouState() => mockDelay(() {
+        final profile = _readProfile();
+        final acceptance = profile.mouAcceptance;
+        return MouState(
+          draft: MouDraft(
+            version: aggregatorMouVersion,
+            parties: MouParties(
+              party: MouPartyDetails(
+                name: profile.contactPerson,
+                businessName: profile.companyName,
+                address: profile.addressLine1,
+                mobile: profile.phone,
+                gstNo: profile.gstNumber,
+              ),
+              company: const MouCompanyDetails(name: 'Galleryzone Private Limited'),
+            ),
+            asOf: DateTime.now().toIso8601String(),
+          ),
+          acceptance: acceptance != null && acceptance.version == aggregatorMouVersion ? acceptance : null,
+        );
+      });
 
   @override
   Future<AggregatorSettings> getSettings() => mockDelay(

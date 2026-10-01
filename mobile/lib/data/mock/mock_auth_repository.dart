@@ -1,3 +1,4 @@
+import '../models/account.dart';
 import '../models/auth.dart';
 import '../repositories/auth_repository.dart';
 import 'mock_utils.dart';
@@ -35,4 +36,10 @@ class MockAuthRepository implements AuthRepository {
     if (simulateError || token == 'invalid') return mockError('This verification link is invalid or has expired.');
     return mockDelay(() => const AuthResult(), duration: const Duration(milliseconds: 1200));
   }
+
+  @override
+  Future<void> signOut() async {}
+
+  @override
+  Future<CurrentUser?> resumeSession() async => null;
 }

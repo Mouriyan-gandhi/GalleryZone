@@ -74,7 +74,12 @@ class MouScreen extends ConsumerWidget {
                   FilledButton(
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
-                      await ref.read(artistRepositoryProvider).acceptMou(mouVersion);
+                      final repository = ref.read(artistRepositoryProvider);
+                      final profile = await repository.getProfile();
+                      await repository.acceptMou(
+                        signatureName: profile.fullName,
+                        version: mouVersion,
+                      );
                       ref.invalidate(mouAcceptanceProvider);
                       messenger.showSnackBar(
                         const SnackBar(content: Text('MOU accepted')),

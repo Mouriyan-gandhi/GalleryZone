@@ -83,7 +83,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   final _nfcTag = TextEditingController();
 
   String _category = 'painting';
-  ArtworkRarity? _rarity;
   String _medium = 'Oil on Canvas';
   ListingType _listingType = ListingType.marketplaceAndAggregator;
   bool _insuranceOpted = false;
@@ -143,7 +142,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
       setState(() {
         _editing = artwork;
         _category = artwork.category;
-        _rarity = artwork.rarityType;
         _medium = artwork.medium;
         _listingType = artwork.listingType;
         _insuranceOpted = artwork.insured;
@@ -205,7 +203,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
         title: _title.text,
         description: _description.text.trim(),
         category: _category,
-        rarityType: _rarity,
         medium: _medium,
         artistPrice: _artistPrice,
         listingType: _listingType,
@@ -476,25 +473,6 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                     value: _category,
                     items: _categories,
                     onChanged: (value) => setState(() => _category = value!),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<ArtworkRarity>(
-                    initialValue: _rarity,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Artwork type / rarity',
-                      helperText:
-                          'R = Rare · U = Unique · O = Original · N = Normal. '
-                          'Shown as a badge on your artwork card.',
-                    ),
-                    items: [
-                      for (final rarity in ArtworkRarity.values)
-                        DropdownMenuItem(
-                          value: rarity,
-                          child: Text(artworkRarityLabel[rarity]!),
-                        ),
-                    ],
-                    onChanged: (value) => setState(() => _rarity = value),
                   ),
                   const SizedBox(height: 14),
                   _Dropdown(

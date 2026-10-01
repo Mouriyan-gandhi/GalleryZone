@@ -1,3 +1,4 @@
+import '../models/aggregator.dart' show DeliveryAddress;
 import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../models/order.dart';
@@ -32,7 +33,7 @@ abstract class CustomerRepository {
   /// owns. MOU §12 — the artist signs and dispatches it by hand.
   Future<PhysicalCoaRequest> requestPhysicalCoa({
     required String artworkId,
-    required String deliveryAddress,
+    required DeliveryAddress delivery,
   });
 
   Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests();

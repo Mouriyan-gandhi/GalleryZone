@@ -3,6 +3,7 @@ import '../models/aggregator.dart';
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
+import '../models/mou.dart';
 
 /// Business rules, stated once here and applied everywhere this repository is
 /// the source of truth: the reserve preview, the reserve write, dashboard KPI
@@ -62,7 +63,12 @@ class AggregatorOffer {
     required this.daysLeftInListing,
     required this.deliveryCharge,
     required this.payable,
-    required this.previousAggregatorChangedPrice,
+    this.previousAggregatorChangedPrice = false,
+    this.sellingPrice = 0,
+    this.standardPrice = 0,
+    this.monthlyReduction = 0,
+    this.gstRate = 0.05,
+    this.priceWarnFrom,
   });
 
   final String artworkId;
@@ -94,8 +100,27 @@ class AggregatorOffer {
   /// Advance plus delivery — the amount locked from the wallet on reserve.
   final double payable;
 
-  /// Whether the previous aggregator used their one price change.
+  /// Whether the previous aggregator used their one price change. (The
+  /// server no longer reports this — it shifts the ladder itself.)
   final bool previousAggregatorChangedPrice;
+
+  /// GalleryZone's price this month BEFORE GST: the floor in month 1 (the
+  /// aggregator may choose higher), fixed after. [offerPrice] is the same
+  /// with GST — what a customer sees if GalleryZone's price is kept.
+  final double sellingPrice;
+
+  /// Month 1's price before any monthly reduction — the ladder's top rung.
+  final double standardPrice;
+
+  /// How much this month's reduction has cut off [standardPrice]; 0 in month 1.
+  final double monthlyReduction;
+
+  /// The artwork GST rate in force, as a fraction.
+  final double gstRate;
+
+  /// Month 1: the price before GST at or above which GalleryZone is warned
+  /// (never blocked). Null when no warning applies.
+  final double? priceWarnFrom;
 }
 
 /// A reservable artwork with this month's terms attached.
@@ -156,9 +181,23 @@ abstract class AggregatorRepository {
   /// be reserved twice.
   Future<List<ReservableArtwork>> listReservableInventory();
 
+  /// [sellingPrice] is the price BEFORE GST the aggregator chooses — month 1
+  /// only, never below GalleryZone's offer; omitted takes GalleryZone's
+  /// price. Once reserved it cannot be changed. The offline mock ignores it
+  /// (it still lets the price be raised afterwards).
+  ///
   /// [simulateConflict] mirrors the documented 409 race (SAD §3.5, "lost the
   /// race to another aggregator") rather than an invented error path.
-  Future<AggregatorHolding> reserve(String artworkId, {bool simulateConflict});
+  Future<AggregatorHolding> reserve(
+    String artworkId, {
+    double? sellingPrice,
+    bool simulateConflict,
+  });
+
+  /// Asks GalleryZone to let the aggregator keep a piece past its thirty
+  /// days, with a written assurance (10-1000 characters) that it will sell.
+  /// GalleryZone decides each time.
+  Future<AggregatorHolding> requestExtension(String holdingId, String assurance);
 
   Future<List<AggregatorHoldingView>> listCollection();
 
@@ -168,7 +207,8 @@ abstract class AggregatorRepository {
   Future<HoldingRelease> releaseHolding(String holdingId);
 
   /// Raise-only, and only the FIRST aggregator of a cycle may do it at all
-  /// (MOU §6). The month's offer price is the floor.
+  /// (MOU §6). The month's offer price is the floor. The real API has no such
+  /// call any more — the price is set once, when reserving.
   Future<AggregatorHolding> updateDisplayPrice(String holdingId, double displayPrice);
 
   /// Signs the partner agreement. An aggregator cannot take possession of
@@ -176,16 +216,26 @@ abstract class AggregatorRepository {
   Future<AggregatorProfile> acceptMou({
     required String signatureName,
     required String version,
+    String signatureDataUrl = '',
   });
+
+  /// The agreement's signed state: the signature on the version in force (if
+  /// any) and the draft with its blanks filled from the profile.
+  Future<MouState> getMouState();
 
   Future<AggregatorSale> recordSale(RecordSaleInput input);
   Future<List<AggregatorSale>> listSales();
   Future<List<AggregatorCustomer>> listCustomers();
 
-  /// preparing → dispatched → delivered, one step per call.
-  Future<AggregatorSale> advanceShipment(String saleId);
+  /// preparing → dispatched → delivered, one step per call. [courierRef] is
+  /// the courier's tracking reference, given when dispatching a courier sale.
+  Future<AggregatorSale> advanceShipment(String saleId, {String? courierRef});
 
   Future<List<GallerySpace>> listGallerySpaces();
+
+  /// Adds premises the aggregator can display pieces at. The id is assigned by
+  /// whoever stores it, so the one passed in is ignored.
+  Future<GallerySpace> addGallerySpace(GallerySpace space);
 
   Future<WalletSummary> getWallet();
   Future<List<WalletTransaction>> listWalletTransactions();
@@ -206,8 +256,9 @@ abstract class AggregatorRepository {
   /// net it off at the counter.
   Future<List<AggregatorSale>> listRemittancesDue();
 
-  /// Records that the cash from [saleId] has been transferred to GalleryZone.
-  Future<AggregatorSale> markRemitted(String saleId);
+  /// Records that the cash from [saleId] has been paid in to GalleryZone:
+  /// taken from the wallet, or declared as a bank transfer.
+  Future<AggregatorSale> markRemitted(String saleId, {RemitVia via = RemitVia.wallet});
 
   /// Manual "simulate settlement": moves this sale's pending commission into
   /// the available balance and writes a settlement row. No background timer

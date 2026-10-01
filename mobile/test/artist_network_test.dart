@@ -171,7 +171,7 @@ void main() {
     });
 
     test('a signed MOU opens it, but only with a connection', () async {
-      await artist.acceptMou('2026.1');
+      await artist.acceptMou(signatureName: 'Devika Rao', version: '2026.1');
 
       final proposed = await network.proposeCollaboration(
         proposerId: currentArtistId,

@@ -1,4 +1,5 @@
 import '../models/artwork.dart';
+import '../models/passport.dart';
 
 /// Digital ownership hand-over for an artwork's passport, mirroring
 /// `services/ownershipService.ts`.
@@ -39,4 +40,13 @@ abstract class OwnershipRepository {
   Future<OwnershipTransfer> endDisplay(String transferId);
 
   Future<OwnershipTransfer> cancel(String transferId);
+
+  /// The public passport — what a printed QR code or NFC tag resolves to.
+  /// Readable by anyone, with names only (never a price, email or address).
+  /// Null when there is no such piece.
+  Future<Passport?> getPassport(String artworkId);
+
+  /// The passports of every piece the signed-in person owns, made, or holds
+  /// on display, each with how they relate to it.
+  Future<MyPassports> myPassports();
 }

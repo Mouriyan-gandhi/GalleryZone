@@ -1,4 +1,5 @@
 import '../../core/format.dart';
+import '../models/aggregator.dart' show DeliveryAddress;
 import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../models/order.dart';
@@ -327,8 +328,9 @@ class MockCustomerRepository implements CustomerRepository {
   @override
   Future<PhysicalCoaRequest> requestPhysicalCoa({
     required String artworkId,
-    required String deliveryAddress,
+    required DeliveryAddress delivery,
   }) {
+    final deliveryAddress = '${delivery.line1}, ${delivery.city} ${delivery.pincode}';
     final artwork = _readArtworks().where((a) => a.id == artworkId).firstOrNull;
     if (artwork == null) return mockError('Artwork not found');
     if (_readCoaRequests().any(

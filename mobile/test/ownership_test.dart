@@ -4,6 +4,7 @@ import 'package:gallery_zone/data/mock/mock_artwork_repository.dart';
 import 'package:gallery_zone/data/mock/mock_checkout_repository.dart';
 import 'package:gallery_zone/data/mock/mock_customer_repository.dart';
 import 'package:gallery_zone/data/mock/mock_ownership_repository.dart';
+import 'package:gallery_zone/data/models/aggregator.dart' show DeliveryAddress;
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/customer.dart';
 import 'package:gallery_zone/data/models/order.dart';
@@ -188,7 +189,12 @@ void main() {
     test('a request reaches the artist and can be dispatched once', () async {
       final request = await customer.requestPhysicalCoa(
         artworkId: 'aw-1',
-        deliveryAddress: '12 Laburnum Road, Pune 411001',
+        delivery: const DeliveryAddress(
+          line1: '12 Laburnum Road',
+          city: 'Pune',
+          state: 'Maharashtra',
+          pincode: '411001',
+        ),
       );
       expect(request.status, PhysicalCoaStatus.requested);
 
@@ -205,12 +211,22 @@ void main() {
     test('the same piece cannot be requested twice while one is open', () async {
       await customer.requestPhysicalCoa(
         artworkId: 'aw-1',
-        deliveryAddress: '12 Laburnum Road, Pune 411001',
+        delivery: const DeliveryAddress(
+          line1: '12 Laburnum Road',
+          city: 'Pune',
+          state: 'Maharashtra',
+          pincode: '411001',
+        ),
       );
       expect(
         customer.requestPhysicalCoa(
           artworkId: 'aw-1',
-          deliveryAddress: '12 Laburnum Road, Pune 411001',
+          delivery: const DeliveryAddress(
+          line1: '12 Laburnum Road',
+          city: 'Pune',
+          state: 'Maharashtra',
+          pincode: '411001',
+        ),
         ),
         throwsA(isA<Exception>()),
       );
