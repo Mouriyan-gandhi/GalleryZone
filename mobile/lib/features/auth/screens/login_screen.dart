@@ -30,12 +30,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
 
-  // The role toggle is the only signal this mock phase has for "which
-  // dashboard should a successful login land on" — there's no backend to
-  // carry that, so it's the real "sign in as" control, not a hidden dev
-  // affordance.
+  // Offline mock only: with no backend to say who an account is, this toggle
+  // is the real "sign in as" control. Against the real API the role comes
+  // from the server's record of the account and the toggle is not drawn.
   Role _demoRole = Role.artist;
-  bool _rememberMe = false;
+
+  // On by default: someone signing in expects to still be signed in when they
+  // come back, not to be handed the form again.
+  bool _rememberMe = true;
   bool _simulateError = false;
   bool _isSubmitting = false;
   String? _formError;
@@ -54,7 +56,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _isSubmitting = true;
     });
     try {
-      await ref.read(authRepositoryProvider).login(
+      final ack = await ref.read(authRepositoryProvider).login(
             LoginInput(
               email: _email.text.trim(),
               password: _password.text,
@@ -62,11 +64,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
             simulateError: _simulateError,
           );
-      await ref
-          .read(sessionProvider.notifier)
-          .signIn(_demoRole, rememberMe: _rememberMe);
+      // The server decides the role; only the offline mock falls back to the
+      // "sign in as" choice.
+      final role = ack.role ?? _demoRole;
+      await ref.read(sessionProvider.notifier).signIn(role, rememberMe: _rememberMe);
+      ref.invalidate(accountProvider);
       if (!mounted) return;
-      context.go(widget.next ?? _demoRole.home);
+      context.go(landingAfterLogin(role, next: widget.next));
     } catch (error) {
       if (!mounted) return;
       setState(() => _formError = authErrorMessage(error));
@@ -78,26 +82,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final remote = ref.watch(remoteBackendProvider);
+    final sessionEnded = ref.watch(sessionEndedProvider);
     return AuthScaffold(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AuthCrest(),
           const SizedBox(height: 24),
-          RoleToggle<Role>(
-            options: [
-              for (final option in roleOptions)
-                (label: option.label, icon: option.icon, value: option.role),
-            ],
-            value: _demoRole,
-            onChanged: (role) => setState(() => _demoRole = role),
-          ),
-          const SizedBox(height: 24),
-          const AuthFormHeader(
+          if (!remote) ...[
+            RoleToggle<Role>(
+              options: [
+                for (final option in roleOptions)
+                  (label: option.label, icon: option.icon, value: option.role),
+              ],
+              value: _demoRole,
+              onChanged: (role) => setState(() => _demoRole = role),
+            ),
+            const SizedBox(height: 24),
+          ],
+          AuthFormHeader(
             title: 'Welcome back',
-            description: 'Pick your role above, then sign in to continue.',
+            description: remote
+                ? 'Sign in to continue to your portal.'
+                : 'Pick your role above, then sign in to continue.',
             icon: LucideIcons.logIn,
           ),
+          if (sessionEnded && _formError == null) ...[
+            const SizedBox(height: 20),
+            const AuthErrorBanner(message: 'You were signed out. Sign in again to continue.'),
+          ],
           if (_formError != null) ...[
             const SizedBox(height: 20),
             AuthErrorBanner(message: _formError!),
@@ -159,18 +173,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   isLoading: _isSubmitting,
                   onPressed: _submit,
                 ),
-                const SizedBox(height: 16),
-                DevPanel(
-                  child: Row(
-                    children: [
-                      const Expanded(child: Text('Simulate invalid credentials')),
-                      Switch(
-                        value: _simulateError,
-                        onChanged: (value) => setState(() => _simulateError = value),
-                      ),
-                    ],
+                if (!remote) ...[
+                  const SizedBox(height: 16),
+                  DevPanel(
+                    child: Row(
+                      children: [
+                        const Expanded(child: Text('Simulate invalid credentials')),
+                        Switch(
+                          value: _simulateError,
+                          onChanged: (value) => setState(() => _simulateError = value),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

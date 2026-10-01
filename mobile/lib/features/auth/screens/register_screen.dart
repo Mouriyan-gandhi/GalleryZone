@@ -64,7 +64,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(authRepositoryProvider).register(
+      final ack = await ref.read(authRepositoryProvider).register(
             RegisterInput(
               role: _role,
               name: _name.text.trim(),
@@ -77,6 +77,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           );
       if (!mounted) return;
+      final granted = ack.role;
+      if (granted != null) {
+        // The real backend signs the new account straight in, so land in the
+        // portal — an artist or aggregator on their profile, where the
+        // details everything else depends on get filled in.
+        await ref.read(sessionProvider.notifier).signIn(granted);
+        ref.invalidate(accountProvider);
+        if (!mounted) return;
+        context.go(landingAfterRegister(granted));
+        return;
+      }
       setState(() => _isRegistered = true);
     } catch (error) {
       if (!mounted) return;
@@ -99,6 +110,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final remote = ref.watch(remoteBackendProvider);
     if (_isRegistered) {
       return AuthScaffold(
         child: AuthResultPanel(
@@ -236,33 +248,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     const Expanded(child: Text('I agree to the Terms of Service')),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    for (final option in roleOptions) ...[
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => _demoSignIn(option.role),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(option.icon, size: 16, color: theme.colorScheme.tertiary),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Demo ${option.label}',
-                                style: theme.textTheme.labelSmall,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
+                if (!remote) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      for (final option in roleOptions) ...[
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _demoSignIn(option.role),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(option.icon, size: 16, color: theme.colorScheme.tertiary),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Demo ${option.label}',
+                                  style: theme.textTheme.labelSmall,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      if (option != roleOptions.last) const SizedBox(width: 8),
+                        if (option != roleOptions.last) const SizedBox(width: 8),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 AuthSubmitButton(
                   label: 'Create account',

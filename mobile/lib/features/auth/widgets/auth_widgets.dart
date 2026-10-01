@@ -458,8 +458,9 @@ class PasswordStrengthMeter extends StatelessWidget {
   }
 }
 
-/// OAuth buttons stay a styled, honest dead end — no backend to hand off
-/// to, so they say so rather than faking a redirect (same as the web).
+/// Google sign-in needs a native OAuth client the app does not carry yet, so
+/// the button says so rather than faking a redirect. Email and password work
+/// everywhere. (Apple was dropped: the website removed its stub too.)
 class SocialAuthRow extends StatelessWidget {
   const SocialAuthRow({super.key});
 
@@ -471,9 +472,11 @@ class SocialAuthRow extends StatelessWidget {
 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.16 7.07l3.68 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
 </svg>''';
 
-  void _notWired(BuildContext context, String provider) {
+  void _notAvailable(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$provider sign-in isn't wired up in this demo yet.")),
+      const SnackBar(
+        content: Text("Google sign-in isn't available in the app yet — use your email and password."),
+      ),
     );
   }
 
@@ -496,24 +499,13 @@ class SocialAuthRow extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _notWired(context, 'Google'),
-                icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
-                label: const Text('Google'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => _notWired(context, 'Apple'),
-                icon: const Icon(Icons.apple, size: 18),
-                label: const Text('Apple'),
-              ),
-            ),
-          ],
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => _notAvailable(context),
+            icon: SvgPicture.string(_googleSvg, width: 16, height: 16),
+            label: const Text('Google'),
+          ),
         ),
       ],
     );

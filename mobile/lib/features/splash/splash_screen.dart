@@ -12,6 +12,7 @@ import '../auth/providers/auth_providers.dart';
 import '../auth/role_options.dart';
 import '../auth/screens/login_screen.dart';
 import '../shell/brand_mark.dart';
+import '../shell/portal_menu.dart' show accountNameProvider;
 
 /// How long the mark holds on its own before anything else moves.
 const splashHold = Duration(seconds: 2);
@@ -66,6 +67,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   void _afterMark() {
     if (!mounted) return;
     if (ref.read(sessionProvider) == null) return _leave();
+    // Against the real API the greeting names the signed-in account. If that
+    // hasn't been read yet (slow network), skip the greeting rather than hold
+    // the launch up or greet a stranger.
+    if (ref.read(remoteBackendProvider) && ref.read(accountNameProvider).isEmpty) return _leave();
     setState(() => _greeting = true);
     _timer = Timer(splashGreetingHold, _leave);
   }
@@ -78,12 +83,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     final role = ref.watch(sessionProvider);
+    final remote = ref.watch(remoteBackendProvider);
+    final accountName = ref.watch(accountNameProvider);
     return Scaffold(
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 450),
           child: _greeting && role != null
-              ? _Greeting(name: splashGreetingName(role))
+              ? _Greeting(name: remote ? accountName : splashGreetingName(role))
               : const _Mark(),
         ),
       ),

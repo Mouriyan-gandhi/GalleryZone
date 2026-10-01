@@ -304,13 +304,27 @@ final aggregatorMenu = <PortalMenuSection>[
         ),
     };
 
+/// The signed-in person's name as the server knows it, or empty while that is
+/// still being read (and in mock mode, which has no account record).
+final accountNameProvider = Provider<String>((ref) {
+  if (!ref.watch(remoteBackendProvider)) return '';
+  return ref.watch(accountProvider).value?.name.trim() ?? '';
+});
+
+/// First word of a full name — "Welcome back, Ananya". Empty stays empty.
+String firstNameOf(String name) => name.trim().split(RegExp(r'\s+')).first;
+
 /// The name shown on the avatar and at the top of the menu.
 ///
-/// Artist and aggregator are fixtures — there is no real session, so there is
-/// nothing else to read. The collector's name is the one field of the three a
-/// user can actually edit, so it comes from the profile they saved rather
-/// than from the seed it started as.
+/// Against the real API this is always the signed-in account, never a
+/// fixture identity (website, 16 Sep 2026). The offline mock has no account
+/// record, so it keeps its per-role fixtures — and the collector's name still
+/// comes from the profile they saved.
 final portalDisplayNameProvider = Provider<String>((ref) {
+  if (ref.watch(remoteBackendProvider)) {
+    final name = ref.watch(accountNameProvider);
+    return name.isEmpty ? 'Your account' : name;
+  }
   return switch (ref.watch(sessionProvider)) {
     Role.artist => currentArtistName,
     Role.aggregator => currentAggregatorName,

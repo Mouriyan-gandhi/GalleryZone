@@ -31,17 +31,18 @@ class AggregatorDashboardScreen extends ConsumerWidget {
         .where((message) => message.unread)
         .length;
     final menu = portalMenuFor(Role.aggregator);
+    final name = ref.watch(portalDisplayNameProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        actions: [PortalAvatarButton(name: currentAggregatorName, badgeCount: unread)],
+        actions: [PortalAvatarButton(name: name, badgeCount: unread)],
       ),
       // The shell carries this same drawer for its Profile tab; the copy here
       // is what the avatar above can reach, since this Scaffold sits inside
       // the shell's.
       endDrawer: PortalMenuDrawer(
-        name: currentAggregatorName,
+        name: name,
         roleLabel: menu.roleLabel,
         groups: menu.groups,
         homeRoute: menu.homeRoute,
@@ -59,7 +60,7 @@ class AggregatorDashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(currentAggregatorName, style: theme.textTheme.headlineSmall),
+                  Text(name, style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 4),
                   Text('Reservations, sales and commission at a glance.',
                       style: theme.textTheme.bodySmall),

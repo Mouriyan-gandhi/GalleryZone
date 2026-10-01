@@ -7,6 +7,8 @@ import '../../../core/adaptive.dart';
 import '../../../data/mock/seed/artist_seed.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../shell/portal_menu.dart' show accountNameProvider, firstNameOf;
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
 import '../widgets/rating_widgets.dart';
@@ -57,7 +59,13 @@ class ArtistDashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Welcome back, ${currentArtistName.split(' ').first}',
+                  Text(
+                      () {
+                        final name = ref.watch(remoteBackendProvider)
+                            ? ref.watch(accountNameProvider)
+                            : currentArtistName;
+                        return name.isEmpty ? 'Welcome back' : 'Welcome back, ${firstNameOf(name)}';
+                      }(),
                       style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 4),
                   Text("Here's what's happening with your art.",

@@ -55,25 +55,35 @@ import '../../features/splash/splash_screen.dart';
 /// minus `/admin`, which never mounts on mobile.
 const _guardedPrefixes = ['/dashboard', '/aggregator', '/account'];
 
-String? _guardedPrefix(String location) {
-  for (final prefix in _guardedPrefixes) {
-    if (location == prefix || location.startsWith('$prefix/')) return prefix;
+/// Open to anyone to *look at* the app, but these two need an account to do
+/// anything: paying, and accepting a hand-over (the API refuses both without
+/// one). A signed-out visitor is asked to sign in and brought straight back —
+/// rather than left staring at a skeleton while every request fails (website,
+/// 27 Sep 2026).
+const _signInFirstPrefixes = ['/checkout', '/transfer'];
+
+String? _prefixOf(String path, List<String> prefixes) {
+  for (final prefix in prefixes) {
+    if (path == prefix || path.startsWith('$prefix/')) return prefix;
   }
   return null;
 }
 
-/// Same three outcomes as `proxy.ts`: unguarded route passes; no session
-/// bounces to `/login?next=…`; a session for the wrong section bounces to
-/// that role's own home rather than a blank guard.
+/// Same outcomes as `proxy.ts` plus the sign-in-first routes: an unguarded
+/// route passes; no session bounces to `/login?next=…` (with the query kept,
+/// so `/checkout?artworkId=…` comes back as it was); a session for the wrong
+/// section bounces to that role's own home rather than a blank guard.
 @visibleForTesting
 String? redirectFor(Role? role, String location) {
-  final prefix = _guardedPrefix(location);
-  if (prefix == null) return null;
+  final path = Uri.tryParse(location)?.path ?? location;
+  final signInFirst = _prefixOf(path, _signInFirstPrefixes) != null;
+  final prefix = _prefixOf(path, _guardedPrefixes);
+  if (prefix == null && !signInFirst) return null;
 
   if (role == null) {
     return Uri(path: '/login', queryParameters: {'next': location}).toString();
   }
-  if (!role.home.startsWith(prefix)) return role.home;
+  if (prefix != null && !role.home.startsWith(prefix)) return role.home;
   return null;
 }
 
@@ -92,7 +102,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     // `role.home ?? /login` this used to pick synchronously.
     initialLocation: SplashScreen.path,
     refreshListenable: session,
-    redirect: (context, state) => redirectFor(session.value, state.matchedLocation),
+    redirect: (context, state) => redirectFor(session.value, state.uri.toString()),
     // A bad deep link (or a stale link to a screen a later phase hasn't
     // built yet) lands here instead of go_router's raw error page.
     errorBuilder: (context, state) => Scaffold(
