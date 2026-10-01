@@ -6,7 +6,7 @@
 
 import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Patch, Req } from "@nestjs/common";
 import { z } from "zod";
-import { getOwnProfile, updateOwnProfile, ProfileUpdateError, refreshArtistListings, type Db } from "@galleryzone/db";
+import { freeAccessFor, getOwnProfile, updateOwnProfile, ProfileUpdateError, refreshArtistListings, type Db, type OwnProfile } from "@galleryzone/db";
 import { Roles } from "./auth/roles.decorator.ts";
 import type { AuthenticatedRequest } from "./auth/roles.guard.ts";
 import { DB } from "./db.module.ts";
@@ -48,12 +48,18 @@ export class ProfileController {
     private readonly emails: Emails,
   ) {}
 
+  /** The profile plus the artist's free-access period (null for every other role). */
+  private async withFreeAccess(profile: OwnProfile) {
+    const freeAccess = await freeAccessFor(this.db, { email: profile.email, role: profile.role, joinedAt: new Date(profile.createdAt) });
+    return { ...profile, freeAccess };
+  }
+
   @Roles("customer", "artist", "aggregator", "admin")
   @Get("profile")
   async get(@Req() req: AuthenticatedRequest) {
     const profile = await getOwnProfile(this.db, req.authUser.uid);
     if (!profile) throw new NotFoundException({ type: "about:blank", title: "Not found", status: 404, code: "not_found" });
-    return profile;
+    return this.withFreeAccess(profile);
   }
 
   @Roles("customer", "artist", "aggregator", "admin")
@@ -73,7 +79,7 @@ export class ProfileController {
         await refreshArtistListings(this.db, req.authUser.uid);
         this.cache.clear();
       }
-      return profile;
+      return this.withFreeAccess(profile);
     } catch (error) {
       if (error instanceof ProfileUpdateError) {
         throw new BadRequestException({ type: "about:blank", title: error.message, status: 400, code: "profile_rejected" });

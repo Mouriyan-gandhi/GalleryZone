@@ -82,6 +82,8 @@ export const apiRoutes: readonly RouteSpec[] = [
   { method: "PATCH", path: "/v1/aggregator/sales/:id/shipment", authRole: "aggregator", summary: "Advance preparing→dispatched→delivered", replaces: "aggregatorSalesService.advanceShipment" },
   { method: "POST", path: "/v1/aggregator/sales/:id/remit", authRole: "aggregator", summary: "Pay in a cash sale's full price within 2 days: from the wallet, or declare a bank transfer", replaces: "aggregatorSalesService.markRemitted" },
   { method: "POST", path: "/v1/admin/holdings/:id/pull-back", authRole: "admin", summary: "Force-recall a consigned piece", replaces: "adminService.pullBackHolding" },
+  { method: "POST", path: "/v1/admin/early-access/survey-emails", authRole: "admin", summary: "Add artist-survey respondents' emails: a year of free access instead of six months", replaces: "n/a — new" },
+  { method: "GET", path: "/v1/admin/early-access/survey-emails", authRole: "admin", summary: "The artist-survey emails on the list", replaces: "n/a — new" },
 
   // --- Wallet / Settlement ---------------------------------------------------
   { method: "GET", path: "/v1/artist/wallet", authRole: "artist", summary: "Balance + pending settlements", replaces: "artistDashboardService.getWallet" },

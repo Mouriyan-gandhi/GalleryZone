@@ -211,17 +211,13 @@ export const PROFILE = {
   pickupPincode: "313001",
 };
 
-// Every artist is on the founding-member plan: free for the first year. The
-// ₹1,200/year (+18% GST) price is live as of 9 Sep 2026 for what a founding
-// year renews into — it doesn't apply retroactively, so this existing demo
-// artist's first year stays free right up to renewal.
+// The plan an artist's free period runs into. The free period itself (six
+// months, a year for survey respondents) comes from the profile's freeAccess,
+// not from here. The ₹1,200/year (+18% GST) price is live as of 9 Sep 2026.
 // Static until there's a real billing system to read a plan from.
 export const SUBSCRIPTION = {
   planName: "Founding Artist",
-  priceLabel: "Free for your first year",
   renewalPriceLabel: "₹1,200/year + 18% GST (₹1,416 total)",
-  startedOn: "2026-07-05",
-  renewsOn: "2027-07-05",
   benefits: [
     "Unlimited artwork listings",
     "0% listing and confirmation fees",

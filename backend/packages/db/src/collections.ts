@@ -63,6 +63,7 @@ export const Collections = {
   orders: "orders",
   payments: "payments",
   walletTopups: "walletTopups",
+  earlyAccessEmails: "earlyAccessEmails",
   ledgerAccounts: "ledgerAccounts",
   ledgerEntries: "ledgerEntries",
   settlements: "settlements",

@@ -5,6 +5,7 @@ import { DEFAULT_RATE_SEED } from "./pricing.ts";
 import {
   canEditArtwork,
   cashRemittanceDueAt,
+  earlyAccessEndsAt,
   editWindowExpiresAt,
   externalSalePenaltyOf,
   insuranceRecommended,
@@ -90,6 +91,16 @@ const rates = DEFAULT_RATE_SEED;
 // --- Cash sale deposit: two days -------------------------------------------------
 {
   assert.equal(cashRemittanceDueAt(new Date("2026-09-30T10:00:00.000Z")).toISOString(), "2026-10-02T10:00:00.000Z", "due two days after the sale");
+}
+
+// --- Early Artist Program: 6 months free, a year for survey respondents ----------
+{
+  const ends = (joined: string, survey: boolean) => earlyAccessEndsAt(new Date(joined), survey).toISOString();
+  assert.equal(ends("2026-10-01T09:30:00.000Z", false), "2027-04-01T09:30:00.000Z", "six months from joining");
+  assert.equal(ends("2026-10-01T09:30:00.000Z", true), "2027-10-01T09:30:00.000Z", "a survey respondent gets a full year");
+  assert.equal(ends("2026-08-31T00:00:00.000Z", false), "2027-02-28T00:00:00.000Z", "31 Aug + 6 months lands on the last day of February, not in March");
+  assert.equal(ends("2027-08-31T00:00:00.000Z", false), "2028-02-29T00:00:00.000Z", "and on the 29th in a leap year");
+  assert.equal(ends("2026-12-15T00:00:00.000Z", false), "2027-06-15T00:00:00.000Z", "a year boundary carries over");
 }
 
 console.log("packages/domain/policies.ts checks passed");

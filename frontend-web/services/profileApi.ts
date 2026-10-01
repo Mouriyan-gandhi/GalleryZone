@@ -34,6 +34,17 @@ export interface OwnProfileDto {
   earningsAbove5L: boolean;
   socialProofVideoUrl: string | null;
   companyName: string | null;
+  /** Artists only: the Early Artist Program's free period. Null for every other role. */
+  freeAccess?: FreeAccess | null;
+}
+
+export interface FreeAccess {
+  /** When the free period ends, ISO. */
+  until: string;
+  months: number;
+  /** On the survey list: a full year instead of six months. */
+  surveyRespondent: boolean;
+  active: boolean;
 }
 
 export type OwnProfilePatch = Partial<{
