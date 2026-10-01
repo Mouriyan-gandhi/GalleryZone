@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "The Marketplace | GalleryZone",
   description:
-    "Browse original, verified artwork from independent artists across India. Every piece ships with a signed certificate of authenticity.",
+    "Browse original, verified artwork from independent artists across India. Every piece comes with its own digital passport.",
 };
 
 export default function MarketplaceLayout(props: LayoutProps<"/marketplace">) {

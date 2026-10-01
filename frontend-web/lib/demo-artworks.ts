@@ -114,7 +114,6 @@ export const DEMO_ARTWORKS: ArtworkSummary[] = [0, 1, 2, 3].flatMap((round) =>
       rarityType: RANKS[n] ?? null,
       yearCreated: 2026 - (n % 7),
       dimensions,
-      coaCertificateNumber: `GZ-COA-DEMO-${String(n + 1).padStart(4, "0")}`,
       sizeBand: SIZE_OF[dimensions],
       artistLocation: artist.location,
     } satisfies ArtworkSummary;
@@ -198,7 +197,7 @@ export function demoArtwork(id: string): Artwork | undefined {
     dimensions: a.dimensions ?? null,
     yearCreated: a.yearCreated ?? null,
     images: [{ url: a.thumbnailUrl, thumbnailUrl: a.thumbnailUrl, sortOrder: 0, altText: a.title }],
-    coaCertificateNumber: a.coaCertificateNumber ?? "",
+    coaCertificateNumber: "",
     coaIssueDate: "",
     socialProofLinks: [],
     statusHistory: [{ status: a.status, changedAt: new Date(2026, 0, 1).toISOString() }],

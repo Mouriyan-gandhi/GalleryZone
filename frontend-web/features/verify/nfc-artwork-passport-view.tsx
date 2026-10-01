@@ -207,9 +207,9 @@ function ArtistVerifiedFooter({
 
 export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
   const { data: artwork, isLoading } = useArtwork(artworkId);
-  const { data: passport } = useVerifyPassport(artworkId);
+  const { data: passport, isLoading: passportLoading } = useVerifyPassport(artworkId);
 
-  if (isLoading) {
+  if (isLoading || passportLoading) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -227,6 +227,10 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
   if (!artwork) {
     notFound();
   }
+
+  // The marketplace listing doesn't carry the certificate; the passport does.
+  const coaCertificateNumber = passport?.coaCertificateNumber ?? "";
+  const coaIssueDate = passport?.coaIssuedAt ?? "";
 
   const custody = resolveCustody(artwork);
   const ownerName =
@@ -341,7 +345,7 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
                     Certificate of Authenticity
                   </p>
                   <p className="font-mono text-xs font-medium text-gold-bright">
-                    {artwork.coaCertificateNumber || "Pending issuance"}
+                    {coaCertificateNumber || "Pending issuance"}
                   </p>
                 </div>
               </div>
@@ -377,7 +381,7 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
         </section>
 
         {/* ── COA issue date ─────────────────────────────────────────────────── */}
-        {artwork.coaIssueDate && (
+        {coaIssueDate && (
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-border/50 bg-card/50 px-4 py-2.5">
             <Clock className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
             <p className="text-xs text-muted-foreground">
@@ -386,7 +390,7 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
-              }).format(new Date(artwork.coaIssueDate))}
+              }).format(new Date(coaIssueDate))}
             </p>
           </div>
         )}
@@ -407,8 +411,8 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
               medium: artwork.medium,
               dimensions: artwork.dimensions,
               yearCreated: artwork.yearCreated,
-              coaCertificateNumber: artwork.coaCertificateNumber,
-              coaIssueDate: artwork.coaIssueDate,
+              coaCertificateNumber,
+              coaIssueDate,
               ownerName,
             }}
           />

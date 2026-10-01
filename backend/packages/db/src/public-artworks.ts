@@ -45,6 +45,18 @@ export interface PublicArtworkView {
   sizeBand: "small" | "medium" | "large" | null;
 }
 
+/**
+ * What the marketplace serves: the piece without its certificate. The COA is
+ * not part of a marketplace listing; it stays on PublicArtworkView for the
+ * passport page and the owner's own views, which read it from getPublicArtwork.
+ */
+export type MarketplaceArtworkView = Omit<PublicArtworkView, "coaCertificateNumber" | "coaIssuedAt">;
+
+export function toMarketplaceView(view: PublicArtworkView): MarketplaceArtworkView {
+  const { coaCertificateNumber: _number, coaIssuedAt: _issuedAt, ...rest } = view;
+  return rest;
+}
+
 async function toPublicView(db: Firestore, id: string, artwork: ArtworkDoc): Promise<PublicArtworkView> {
   // Docs written before the projection existed get it built on first read.
   const listing = artwork.listing ?? (await refreshListing(db, id));
@@ -95,7 +107,7 @@ export interface MarketplaceQuery {
 }
 
 export interface MarketplacePage {
-  artworks: PublicArtworkView[];
+  artworks: MarketplaceArtworkView[];
   total: number;
   page: number;
   pageSize: number;
@@ -160,7 +172,7 @@ export function queryMarketplace(all: PublicArtworkView[], query: MarketplaceQue
   const prices = all.map((a) => a.displayPricePaise);
 
   return {
-    artworks: sorted.slice(start, start + pageSize),
+    artworks: sorted.slice(start, start + pageSize).map(toMarketplaceView),
     total: sorted.length,
     page,
     pageSize,
@@ -182,17 +194,17 @@ export function queryMarketplace(all: PublicArtworkView[], query: MarketplaceQue
 }
 
 /** One artist's public listings (artist page rail). */
-export async function listArtistPublicArtworks(db: Firestore, artistId: string): Promise<PublicArtworkView[]> {
+export async function listArtistPublicArtworks(db: Firestore, artistId: string): Promise<MarketplaceArtworkView[]> {
   const snap = await db
     .collection(Collections.artworks)
     .where("artistId", "==", artistId)
     .where("listing.onMarketplace", "==", true)
     .get();
   const views = await Promise.all(snap.docs.map((doc) => toPublicView(db, doc.id, doc.data() as ArtworkDoc)));
-  return views.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return views.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(toMarketplaceView);
 }
 
-/** One artwork by id, any status — a passport/COA link must resolve after the piece is sold. Null if missing. */
+/** One artwork by id, any status — a passport link must resolve after the piece is sold. Null if missing. Carries the COA; marketplace responses go through toMarketplaceView. */
 export async function getPublicArtwork(db: Firestore, id: string): Promise<PublicArtworkView | null> {
   const snap = await db.collection(Collections.artworks).doc(id).get();
   if (!snap.exists) return null;

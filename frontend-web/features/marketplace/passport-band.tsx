@@ -3,20 +3,19 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, FileCheck2, History, QrCode } from "lucide-react";
+import { ArrowRight, BadgeCheck, History, QrCode } from "lucide-react";
 import { artworkQrDataUrl } from "@/lib/qr";
 import { isPlaceholderImage } from "@/lib/api-mappers";
 import type { ArtworkSummary } from "@/types/artwork";
 
 const FEATURES = [
   { icon: BadgeCheck, label: "Verified artist identity" },
-  { icon: FileCheck2, label: "Certificate of authenticity" },
   { icon: History, label: "Provenance history" },
   { icon: QrCode, label: "Verify with one scan" },
 ];
 
-// The passport shown is a real one: this piece's certificate, and a QR code
-// that opens its public verification page.
+// The passport shown is a real one: this piece's details, and a QR code that
+// opens its public verification page.
 export function PassportBand({ artwork }: { artwork?: ArtworkSummary }) {
   const [qr, setQr] = useState<string | null>(null);
   const artworkId = artwork?.id;
@@ -45,9 +44,8 @@ export function PassportBand({ artwork }: { artwork?: ArtworkSummary }) {
             GZ Digital Passport
           </h2>
           <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-muted-foreground">
-            Every artwork comes with a digital passport: a unique certificate,
-            provenance details and artist verification, so you can collect with
-            complete confidence.
+            Every artwork comes with a digital passport: provenance details and
+            artist verification, so you can collect with complete confidence.
           </p>
           <Link
             href="/about#how-it-works"
@@ -95,7 +93,6 @@ function PassportCard({ artwork, qr }: { artwork: ArtworkSummary; qr: string | n
         </div>
 
         <dl className="flex min-w-0 flex-col gap-2.5">
-          <PassportField label="Certificate" value={artwork.coaCertificateNumber ?? "Issued on approval"} />
           <PassportField label="Title" value={artwork.title} />
           <PassportField label="Artist" value={artwork.artistName} />
         </dl>

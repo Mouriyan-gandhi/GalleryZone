@@ -76,7 +76,6 @@ export interface ArtworkSummary {
   /** Label and filter details the listing endpoint carries per row. */
   yearCreated?: number | null;
   dimensions?: string | null;
-  coaCertificateNumber?: string | null;
   sizeBand?: ArtworkSizeBand | null;
   artistLocation?: string | null;
 }

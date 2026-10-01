@@ -20,10 +20,10 @@ import { ProvenanceTimeline } from "./provenance-timeline";
 // whoever the last accepted transfer went to.
 export function ArtworkPassportView({ artworkId }: { artworkId: string }) {
   const { data: artwork, isLoading } = useArtwork(artworkId);
-  const { data: passport } = useVerifyPassport(artworkId);
+  const { data: passport, isLoading: passportLoading } = useVerifyPassport(artworkId);
   const { data: artist } = useArtistProfile(artwork?.artistId ?? "");
 
-  if (isLoading) {
+  if (isLoading || passportLoading) {
     return (
       <div className="mx-auto w-full max-w-2xl px-6 py-14 text-center text-sm text-muted-foreground">
         Loading passport…
@@ -34,6 +34,10 @@ export function ArtworkPassportView({ artworkId }: { artworkId: string }) {
   if (!artwork) {
     notFound();
   }
+
+  // The marketplace listing doesn't carry the certificate; the passport does.
+  const coaCertificateNumber = passport?.coaCertificateNumber ?? "";
+  const coaIssueDate = passport?.coaIssuedAt ?? "";
 
   const custody = resolveCustody(artwork);
   // The ledger wins over the status-derived guess once we have it.
@@ -60,8 +64,8 @@ export function ArtworkPassportView({ artworkId }: { artworkId: string }) {
           title={artwork.title}
           artistName={artwork.artistName}
           coverImageUrl={coverImage}
-          coaCertificateNumber={artwork.coaCertificateNumber}
-          coaIssueDate={artwork.coaIssueDate}
+          coaCertificateNumber={coaCertificateNumber}
+          coaIssueDate={coaIssueDate}
         />
       </div>
 
@@ -118,8 +122,8 @@ export function ArtworkPassportView({ artworkId }: { artworkId: string }) {
             medium: artwork.medium,
             dimensions: artwork.dimensions,
             yearCreated: artwork.yearCreated,
-            coaCertificateNumber: artwork.coaCertificateNumber,
-            coaIssueDate: artwork.coaIssueDate,
+            coaCertificateNumber,
+            coaIssueDate,
             ownerName,
           }}
         />
