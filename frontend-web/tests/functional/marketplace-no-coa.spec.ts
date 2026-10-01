@@ -37,13 +37,18 @@ async function stub(page: Page, listed: object = listing) {
   await page.route(/\/v1\/verify\/a1$/, (route) => route.fulfill(ok(passport)));
 }
 
-test('marketplace cards and the passport band show no COA, even if the API sends one', async ({ page }) => {
+test('marketplace cards and the slideshow show no COA, even if the API sends one', async ({ page }) => {
   await stub(page, { ...listing, coaCertificateNumber: 'GZ-COA-2026-0001', coaIssuedAt: '2026-02-01T00:00:00.000Z' });
   await page.goto('/marketplace');
   await expect(page.getByRole('heading', { name: 'Monsoon Light' }).first()).toBeVisible();
-  await expect(page.getByText('Digital Passport').first()).toBeVisible();
+  // The slideshow still tells the digital passport story...
+  await expect(page.getByRole('heading', { name: 'GZ Digital Passport' })).toBeAttached();
+  // ...but nothing on the page mentions a certificate, and the cards carry no tags.
   await expect(page.getByText('COA', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/certificate/i)).toHaveCount(0);
+  const card = page.locator('a[href="/marketplace/a1"]').first();
+  await expect(card).toBeVisible();
+  await expect(card.getByText('Digital Passport')).toHaveCount(0);
 });
 
 test('the public passport still shows the certificate, read from the passport', async ({ page }) => {

@@ -66,7 +66,7 @@ const THREE_COLUMNS =
 const TWO_COLUMNS = "grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-12";
 
 interface MarketplaceShowcaseProps {
-  /** A real listed piece with a certificate, used for the passport and tag examples. */
+  /** A real listed piece, used for the passport and tag examples. */
   artwork?: ArtworkSummary;
   /** Live count of works per rank. */
   rankCounts: Partial<Record<ArtworkRarity, number>>;
@@ -263,13 +263,12 @@ function Checklist({ items }: { items: { icon: typeof BadgeCheck; label: string 
 
 const PASSPORT_FEATURES = [
   { icon: BadgeCheck, label: "Verified artist identity" },
-  { icon: FileCheck2, label: "Certificate of authenticity" },
   { icon: History, label: "Provenance history" },
   { icon: QrCode, label: "Verify with one scan" },
 ];
 
-// The passport shown is a real one: this piece's certificate, and a QR code
-// that opens its public verification page.
+// The passport shown is a real one: this piece's details, and a QR code that
+// opens its public verification page.
 function PassportSlide({ artwork, qr }: { artwork: ArtworkSummary; qr: string | null }) {
   return (
     <div className={THREE_COLUMNS}>
@@ -277,9 +276,8 @@ function PassportSlide({ artwork, qr }: { artwork: ArtworkSummary; qr: string | 
         <p className={EYEBROW}>Trust in every artwork</p>
         <h2 className={HEADING}>GZ Digital Passport</h2>
         <p className={BODY}>
-          Every artwork comes with a digital passport: a unique certificate,
-          provenance details and artist verification, so you can collect with
-          complete confidence.
+          Every artwork comes with a digital passport: provenance details and
+          artist verification, so you can collect with complete confidence.
         </p>
         <Link href="/about#how-it-works" className={OUTLINE_CTA}>
           Learn more
