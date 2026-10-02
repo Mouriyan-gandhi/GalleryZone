@@ -4,7 +4,7 @@ import { NotFoundException } from "@nestjs/common";
 import { FirestoreRateConfigStore, getArtworkForAdmin, listArtworksForAdmin, setArtworkRarity, delistArtwork, getAuditLog, artworkRarityValues, reindexAllListings, refreshListing, Collections, type Db } from "@galleryzone/db";
 import { loadActiveRates } from "@galleryzone/config";
 import { activeHoldingForArtwork, adminPullBackHolding, decideHoldingExtension, listAggregatorHoldings, AggregatorReadError, HoldingLifecycleError } from "@galleryzone/db";
-import { adminUnlinkNfcTag, getNfcOverview, nfcStateViewOf, overrideShipmentGate } from "@galleryzone/db";
+import { NfcError, adminUnlinkNfcTag, getNfcOverview, nfcStateViewOf, overrideShipmentGate, type ArtworkDoc } from "@galleryzone/db";
 import { decideHoldingExtensionInputSchema, nfcReasonInputSchema, type DecideHoldingExtensionInput, type NfcReasonInput, type NfcStateDto } from "@galleryzone/contracts";
 import { BadRequestException } from "@nestjs/common";
 import { Roles } from "./auth/roles.decorator.ts";
@@ -94,6 +94,18 @@ export class AdminArtworksController {
     const { artistId: _artistId, ...result } = await overrideShipmentGate(this.db, { artworkId: id, reason: body.reason, adminUid: req.authUser.uid });
     this.cache.clear();
     return result;
+  }
+
+  /** Chases the artist by email to link or lock the tag (§5.3). Not a state change, so it is not audit-logged. */
+  @Roles("admin")
+  @HttpCode(200)
+  @Post("artworks/:id/nfc/remind")
+  async nfcRemind(@Param("id") id: string) {
+    const artwork = (await this.db.collection(Collections.artworks).doc(id).get()).data() as ArtworkDoc | undefined;
+    if (!artwork) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
+    if (artwork.nfcLockedAt) throw new NfcError("nfc_already_locked", "This artwork's tag is already locked, so there is nothing to remind the artist about.");
+    await this.emails.nfcLockReminder({ artworkId: id, artistId: artwork.artistId, title: artwork.title, stage: "nudge", linkedAt: artwork.nfcLinkedAt?.toDate() ?? null });
+    return { sent: true };
   }
 
   /** Counts of unlinked / linked-unlocked / locked pieces, who is still to lock, and the events that mean a chip failed or the process is being bypassed. */

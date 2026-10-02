@@ -6,6 +6,8 @@
 
 import assert from "node:assert/strict";
 import { Timestamp, type Firestore } from "firebase-admin/firestore";
+import { advanceOrderStatus } from "./admin-orders.ts";
+import { advanceShipment } from "./aggregator-sales.ts";
 import {
   NfcError,
   adminUnlinkNfcTag,
@@ -21,6 +23,7 @@ import {
   nfcStateOf,
   overrideShipmentGate,
   parseTagUid,
+  reminderStageDue,
   type NfcState,
 } from "./nfc.ts";
 
@@ -55,29 +58,50 @@ class Ref {
     const data = this.db.docs.get(this.path);
     return { id: this.id, exists: data !== undefined, data: () => (data === undefined ? undefined : { ...data }) };
   }
+  async update(patch: Data) {
+    const current = this.db.docs.get(this.path);
+    assert.ok(current, `update of a missing document: ${this.path}`);
+    this.db.docs.set(this.path, { ...current, ...patch });
+  }
 }
+
+const comparable = (v: unknown) => (v instanceof Timestamp ? v.toMillis() : v);
 
 class Query {
   readonly db: FakeDb;
   readonly col: string;
-  readonly filters: [string, unknown][];
+  readonly filters: [string, string, unknown][];
+  readonly order: [string, "asc" | "desc"] | null;
   readonly max: number;
-  constructor(db: FakeDb, col: string, filters: [string, unknown][] = [], max = Infinity) {
+  constructor(db: FakeDb, col: string, filters: [string, string, unknown][] = [], order: [string, "asc" | "desc"] | null = null, max = Infinity) {
     this.db = db;
     this.col = col;
     this.filters = filters;
+    this.order = order;
     this.max = max;
   }
   where(field: string, op: string, value: unknown) {
-    assert.equal(op, "==", "the fake only supports equality filters");
-    return new Query(this.db, this.col, [...this.filters, [field, value]], this.max);
+    assert.ok(op === "==" || op === "<=", "the fake only supports == and <=");
+    return new Query(this.db, this.col, [...this.filters, [field, op, value]], this.order, this.max);
+  }
+  orderBy(field: string, direction: "asc" | "desc" = "asc") {
+    return new Query(this.db, this.col, this.filters, [field, direction], this.max);
   }
   limit(n: number) {
-    return new Query(this.db, this.col, this.filters, n);
+    return new Query(this.db, this.col, this.filters, this.order, n);
   }
   async get() {
-    const hits = [...this.db.docs].filter(([path, data]) => path.startsWith(`${this.col}/`) && this.filters.every(([f, v]) => data[f] === v)).slice(0, this.max);
-    const docs = await Promise.all(hits.map(([path]) => new Ref(this.db, this.col, path.slice(this.col.length + 1)).get()));
+    const matches = [...this.db.docs].filter(
+      ([path, data]) =>
+        path.startsWith(`${this.col}/`) &&
+        !path.slice(this.col.length + 1).includes("/") &&
+        this.filters.every(([f, op, v]) => (op === "==" ? data[f] === v : (comparable(data[f]) as number) <= (comparable(v) as number))),
+    );
+    if (this.order) {
+      const [field, direction] = this.order;
+      matches.sort(([, a], [, b]) => ((comparable(a[field]) as number) - (comparable(b[field]) as number)) * (direction === "desc" ? -1 : 1));
+    }
+    const docs = await Promise.all(matches.slice(0, this.max).map(([path]) => new Ref(this.db, this.col, path.slice(this.col.length + 1)).get()));
     return { docs, empty: docs.length === 0 };
   }
 }
@@ -313,4 +337,83 @@ const refusal = (code: string) => (e: unknown) => e instanceof NfcError && e.cod
   await assertNfcDispatchAllowed(asFirestore(db), "a2", { channel: "aggregator", refId: "sale-1" }, { enforced: true });
 }
 
-console.log("packages/db/nfc.ts: link, replace, lock, unlink, one-chip-one-artwork, roles, shipment gate and override all hold");
+// --- The gate, through the two real dispatch paths (§5.1, §5.2b) -------------------------
+
+{
+  const quiet = console.warn;
+  console.warn = () => {}; // the would-be-blocked warning is expected output here
+  const gateWorld = (enforced: boolean) => {
+    const db = world();
+    db.docs.set("rateConfigVersions/v1", { approved: true, approvedBy: "admin-9", effectiveFrom: Timestamp.fromDate(new Date("2026-01-01")), reason: "test", rates: { nfcShipmentGateEnforced: enforced } });
+    db.docs.set("orders/ord-1", { artworkId: "a1", status: "packed" });
+    db.docs.set("orders/ord-2", { artworkId: "a1", status: "paid" });
+    db.docs.set("aggregatorSales/s1", { holdingId: "h1", artworkId: "a1", shipmentStatus: "preparing", paymentRoute: "direct_to_galleryzone" });
+    return db;
+  };
+  const orderStatus = (db: FakeDb) => db.docs.get("orders/ord-1")?.status;
+  const sale = (db: FakeDb) => db.docs.get("aggregatorSales/s1")?.shipmentStatus;
+
+  // Enforced, tag not locked: the marketplace order can't go to transit, and nothing changes.
+  const on = gateWorld(true);
+  await assert.rejects(advanceOrderStatus(asFirestore(on), "ord-1", "transit"), (e) => e instanceof NfcError && e.code === "nfc_lock_required" && e.status === 409 && /locked/.test(e.message));
+  assert.equal(orderStatus(on), "packed");
+  assert.equal([...on.docs.keys()].some((k) => k.startsWith("orders/ord-1/statusEvents/")), false, "a refused dispatch writes no status event");
+  // ...only the move to transit is gated; earlier steps are not.
+  await advanceOrderStatus(asFirestore(on), "ord-2", "confirmed");
+  assert.equal(on.docs.get("orders/ord-2")?.status, "confirmed");
+  // ...the same for the aggregator's sale, and delivery is not gated.
+  await assert.rejects(advanceShipment(asFirestore(on), "agg-1", "s1", "dispatched"), (e) => e instanceof NfcError && e.code === "nfc_lock_required");
+  assert.equal(sale(on), "preparing");
+
+  // Lock the tag: both go through.
+  await linkNfcTag(asFirestore(on), { artworkId: "a1", tagUid: UID, actor: artist1 });
+  await assert.rejects(advanceOrderStatus(asFirestore(on), "ord-1", "transit"), refusal("nfc_lock_required"), "linked but unlocked is still blocked");
+  await lockNfcTag(asFirestore(on), { artworkId: "a1", tagUid: UID, actor: artist1 });
+  await advanceOrderStatus(asFirestore(on), "ord-1", "transit");
+  assert.equal(orderStatus(on), "transit");
+  await advanceShipment(asFirestore(on), "agg-1", "s1", "dispatched", "AWB-1");
+  assert.equal(sale(on), "dispatched");
+  await advanceShipment(asFirestore(on), "agg-1", "s1", "delivered");
+
+  // Enforced, unlocked, but overridden by an admin: allowed, without a warning.
+  const overridden = gateWorld(true);
+  await overrideShipmentGate(asFirestore(overridden), { artworkId: "a1", reason: "shipped before the lock requirement", adminUid: "admin-1" });
+  const auditsBefore = audits(overridden).length;
+  await advanceOrderStatus(asFirestore(overridden), "ord-1", "transit");
+  assert.equal(orderStatus(overridden), "transit");
+  assert.equal(audits(overridden).length, auditsBefore);
+
+  // Phase 2 (flag off): the unlocked dispatch goes through, and the would-be refusal is recorded for ops.
+  const off = gateWorld(false);
+  await advanceOrderStatus(asFirestore(off), "ord-1", "transit");
+  assert.equal(orderStatus(off), "transit");
+  await advanceShipment(asFirestore(off), "agg-1", "s1", "dispatched");
+  assert.equal(sale(off), "dispatched");
+  const warnings = audits(off).filter((a) => a.action === "nfc.shipment_gate_warning");
+  assert.deepEqual(warnings.map((w) => (w.detail as Data).channel), ["marketplace", "aggregator"]);
+
+  // No rate version at all (a fresh deployment): the flag defaults to off.
+  const fresh = world();
+  fresh.docs.set("orders/ord-1", { artworkId: "a1", status: "packed" });
+  await advanceOrderStatus(asFirestore(fresh), "ord-1", "transit");
+  console.warn = quiet;
+}
+
+// --- Lock reminders (§13): 48 hours, then 7 days, never two at once ---------------------
+
+{
+  const linkedAt = new Date("2026-10-01T00:00:00Z");
+  const after = (hours: number) => new Date(linkedAt.getTime() + hours * 3_600_000);
+  const stage = (hours: number, sent48h = false, sent7d = false) => reminderStageDue({ linkedAt, now: after(hours), sent48h, sent7d });
+  assert.equal(stage(1), null);
+  assert.equal(stage(47), null);
+  assert.equal(stage(48), "48h");
+  assert.equal(stage(100), "48h");
+  assert.equal(stage(100, true), null, "already reminded at 48 hours");
+  assert.equal(stage(24 * 7), "7d");
+  assert.equal(stage(24 * 7, true), "7d", "the week mail is its own reminder");
+  assert.equal(stage(24 * 10, false, false), "7d", "overdue on both: only the week mail, not two at once");
+  assert.equal(stage(24 * 10, true, true), null);
+}
+
+console.log("packages/db/nfc.ts: link, replace, lock, unlink, one-chip-one-artwork, roles, shipment gate (order transit, gallery dispatch) and override all hold");

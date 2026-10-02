@@ -386,6 +386,59 @@ export async function assertNfcDispatchAllowed(
   }
 }
 
+// --- Lock reminders (§13) ----------------------------------------------------------
+
+export type NfcReminderStage = "48h" | "7d";
+
+const HOUR_MS = 3_600_000;
+const REMINDER_AFTER_MS: Record<NfcReminderStage, number> = { "48h": 48 * HOUR_MS, "7d": 7 * 24 * HOUR_MS };
+/** Only while the piece can still be locked: once it has sold or shipped nobody can reach the chip. */
+const STILL_LOCKABLE = new Set(["pending_approval", "marketplace", "reserved", "with_aggregator"]);
+
+export interface NfcReminderDue {
+  artworkId: string;
+  artistId: string;
+  title: string;
+  stage: NfcReminderStage;
+  linkedAt: Date;
+}
+
+/** Pure: which reminder, if any, a linked-unlocked tag is due for. The 7-day one replaces the 48-hour one when both are overdue, so nobody gets two mails at once. */
+export function reminderStageDue(input: { linkedAt: Date; now: Date; sent48h: boolean; sent7d: boolean }): NfcReminderStage | null {
+  const age = input.now.getTime() - input.linkedAt.getTime();
+  if (age >= REMINDER_AFTER_MS["7d"] && !input.sent7d) return "7d";
+  if (age >= REMINDER_AFTER_MS["48h"] && age < REMINDER_AFTER_MS["7d"] && !input.sent48h) return "48h";
+  return null;
+}
+
+/** Tags linked 48 hours or more ago and still unlocked whose artist has not yet been reminded at that stage. */
+export async function dueNfcReminders(db: Firestore, now: Date = new Date()): Promise<NfcReminderDue[]> {
+  const cutoff = Timestamp.fromMillis(now.getTime() - REMINDER_AFTER_MS["48h"]);
+  const snap = await db.collection(Collections.artworks).where("nfcLinkedAt", "<=", cutoff).select("title", "artistId", "nfcLinkedAt", "nfcLockedAt", "listing.status").get();
+  const open = snap.docs.filter((d) => {
+    const a = d.data() as Pick<ArtworkDoc, "nfcLockedAt" | "listing">;
+    return !a.nfcLockedAt && STILL_LOCKABLE.has(a.listing?.status ?? "");
+  });
+  if (!open.length) return [];
+
+  const privSnaps = await db.getAll(...open.map((d) => privateRef(db, d.id)));
+  const due: NfcReminderDue[] = [];
+  open.forEach((d, i) => {
+    const a = d.data() as Pick<ArtworkDoc, "title" | "artistId" | "nfcLinkedAt">;
+    const priv = privSnaps[i]?.data() as ArtworkNfcDoc | undefined;
+    if (!priv?.tagUid || !a.nfcLinkedAt) return;
+    const stage = reminderStageDue({ linkedAt: a.nfcLinkedAt.toDate(), now, sent48h: Boolean(priv.reminder48hAt), sent7d: Boolean(priv.reminder7dAt) });
+    if (stage) due.push({ artworkId: d.id, artistId: a.artistId, title: a.title, stage, linkedAt: a.nfcLinkedAt.toDate() });
+  });
+  return due;
+}
+
+/** Records that a reminder went out. The 7-day one also stands in for a 48-hour one that was never sent. */
+export async function markNfcReminderSent(db: Firestore, artworkId: string, stage: NfcReminderStage): Promise<void> {
+  const now = Timestamp.now();
+  await privateRef(db, artworkId).update(stage === "7d" ? { reminder48hAt: now, reminder7dAt: now } : { reminder48hAt: now });
+}
+
 // --- Admin overview (§13) --------------------------------------------------------
 
 export const NFC_WATCHED_ACTIONS = ["nfc.tag_replaced", "nfc.shipment_gate_overridden", "nfc.shipment_gate_warning"] as const;

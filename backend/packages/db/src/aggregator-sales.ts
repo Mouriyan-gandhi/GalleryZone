@@ -5,6 +5,7 @@ import { cashRemittanceFromWalletPostings, shipmentStateMachine, type ShipmentSt
 import { Collections, type AggregatorHoldingDoc, type AggregatorSaleDoc } from "./collections.ts";
 import { isAlreadyExists, postLedgerEntries } from "./ledger-repository.ts";
 import { getWalletBalance } from "./wallets.ts";
+import { assertNfcDispatchAllowed } from "./nfc.ts";
 import { DbError } from "./errors.ts";
 
 export class AggregatorSalesError extends DbError {}
@@ -51,6 +52,8 @@ export async function advanceShipment(db: Firestore, aggregatorId: string, saleI
   const sale = await ownedSale(db, saleId, aggregatorId);
   const ref = db.collection(Collections.aggregatorSales).doc(saleId);
   shipmentStateMachine.assertTransition(sale.shipmentStatus, to);
+  // The piece reached the gallery locked, so this is normally a sanity check (NFC_IMPLEMENTATION.md §5.2b).
+  if (to === "dispatched") await assertNfcDispatchAllowed(db, sale.artworkId, { channel: "aggregator", refId: saleId });
 
   const timestampField = to === "dispatched" ? "dispatchedAt" : "deliveredAt";
   await ref.update({ shipmentStatus: to, courierRef: courierRef ?? null, [timestampField]: FieldValue.serverTimestamp() });

@@ -339,7 +339,7 @@ export class Emails {
    */
   async aggregatorReserved(input: { holdingId: string; artworkId: string; aggregatorId: string; advanceAmountPaise: number; displayPricePaise: number; expiresAt: Date }) {
     const artworkSnap = await this.db.collection(Collections.artworks).doc(input.artworkId).get();
-    const artwork = artworkSnap.data() as { title?: string; artistId?: string } | undefined;
+    const artwork = artworkSnap.data() as { title?: string; artistId?: string; nfcLinkedAt?: unknown; nfcLockedAt?: unknown } | undefined;
     if (!artwork?.artistId) return;
 
     const [artist, aggregator] = await Promise.all([this.user(artwork.artistId), this.user(input.aggregatorId)]);
@@ -354,8 +354,10 @@ export class Emails {
         paragraphs: [
           `<strong>${esc(gallery)}</strong> has reserved “${esc(title)}” for display until <strong>${esc(until)}</strong>.`,
           "Pack the piece to the standard in your agreement and wait for pickup instructions. If it doesn't sell within the placement window it comes back to you and returns to the marketplace automatically.",
+          // The artist is the one with easy hands-on access to the piece (NFC_IMPLEMENTATION.md §5.2a).
+          ...(artwork.nfcLockedAt ? [] : ["The gallery is waiting on the NFC tag: lock it in the GalleryZone app before the piece leaves you. A piece can't be dispatched with an unlocked tag."]),
         ],
-        cta: { label: "See this piece", url: `${this.site}/dashboard/artworks` },
+        cta: { label: "See this piece", url: `${this.site}/dashboard/coa-nfc` },
       });
     }
 
@@ -435,6 +437,39 @@ export class Emails {
         `Your advance of <strong>${inr(input.advancePaise)}</strong> has been released. The delivery deposit is not refunded on an unsold piece.`,
       ],
       cta: { label: "See my wallet", url: `${this.site}/aggregator/wallet` },
+    });
+  }
+
+  /**
+   * A tag that was linked but never locked (NFC_IMPLEMENTATION.md §13). Sent at 48 hours and again at 7
+   * days; the lock is the one step that has to happen before the piece leaves the artist's hands.
+   * The idempotency key carries the link time, so a re-link starts the clock (and the mails) afresh.
+   */
+  async nfcLockReminder(input: { artworkId: string; artistId: string; title: string; stage: "48h" | "7d" | "nudge"; linkedAt: Date | null }) {
+    const artist = await this.user(input.artistId);
+    if (!artist) return;
+    if (input.stage === "nudge") {
+      // An admin chasing it by hand (admin-artworks.controller): always sent, since the admin chose to.
+      await this.deliver(`nfc-lock-nudge/${input.artworkId}/${Date.now().toString(36)}`, artist.email, `GalleryZone is waiting on the NFC tag for “${input.title}”`, {
+        heading: "We're waiting on your NFC tag",
+        paragraphs: [
+          `“${esc(input.title)}” can't be dispatched until its NFC tag is ${input.linkedAt ? "locked" : "linked and locked"}.`,
+          "Open the GalleryZone app, choose the piece and tap the chip. If the chip failed or you need a fresh one, reply to this email.",
+        ],
+        cta: { label: "See my pieces", url: `${this.site}/dashboard/coa-nfc` },
+      });
+      return;
+    }
+    const week = input.stage === "7d";
+    await this.deliver(`nfc-lock-reminder/${input.artworkId}/${input.stage}/${input.linkedAt?.getTime() ?? 0}`, artist.email, `Lock the NFC tag on “${input.title}”`, {
+      preheader: "A linked tag that isn't locked can be rewritten, and the piece can't ship until it is.",
+      heading: week ? "Your tag is still not locked" : "One step left on your NFC tag",
+      paragraphs: [
+        `The NFC tag on “${esc(input.title)}” was linked ${week ? "a week ago" : "two days ago"} but has not been locked. Until it is, anyone with a phone could rewrite the chip to point somewhere else.`,
+        "Locking makes the chip read-only for good, and a piece can't be dispatched to a buyer or a gallery until it's done. Open the GalleryZone app, choose the piece and tap the chip once more.",
+      ],
+      cta: { label: "See my pieces", url: `${this.site}/dashboard/coa-nfc` },
+      footnote: "Locking is permanent. If the chip failed or you need a fresh one, contact support before locking.",
     });
   }
 

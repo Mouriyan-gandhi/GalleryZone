@@ -118,10 +118,17 @@ export async function listAggregatorInventory(db: Firestore, rates: PricingRates
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/**
+ * The piece as its holder sees it: the public view plus whether its NFC tag is linked and
+ * locked (NFC_IMPLEMENTATION.md §4.7). The holder is told "locked" or "lock it before you
+ * ship"; the chip's UID is never part of it.
+ */
+export type HoldingArtworkView = PublicArtworkView & { nfcLinkedAt: string | null; nfcLockedAt: string | null };
+
 export interface AggregatorHoldingView {
   id: string;
   artworkId: string;
-  artwork: PublicArtworkView | null;
+  artwork: HoldingArtworkView | null;
   cycleMonth: number;
   advancePercent: number;
   advancePaise: number;
@@ -148,11 +155,18 @@ export interface AggregatorHoldingView {
   } | null;
 }
 
+async function holdingArtworkOf(db: Firestore, artworkId: string): Promise<HoldingArtworkView | null> {
+  const [view, doc] = await Promise.all([getPublicArtwork(db, artworkId), db.collection(Collections.artworks).doc(artworkId).get()]);
+  if (!view) return null;
+  const artwork = doc.data() as ArtworkDoc | undefined;
+  return { ...view, nfcLinkedAt: artwork?.nfcLinkedAt?.toDate().toISOString() ?? null, nfcLockedAt: artwork?.nfcLockedAt?.toDate().toISOString() ?? null };
+}
+
 async function toHoldingView(db: Firestore, id: string, h: AggregatorHoldingDoc): Promise<AggregatorHoldingView> {
   return {
     id,
     artworkId: h.artworkId,
-    artwork: await getPublicArtwork(db, h.artworkId),
+    artwork: await holdingArtworkOf(db, h.artworkId),
     cycleMonth: h.cycleMonth,
     advancePercent: h.advancePercent,
     advancePaise: h.advanceAmountPaise,

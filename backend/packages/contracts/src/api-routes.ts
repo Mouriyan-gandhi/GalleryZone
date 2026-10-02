@@ -159,6 +159,7 @@ export const apiRoutes: readonly RouteSpec[] = [
   { method: "GET", path: "/v1/admin/artworks/:id", authRole: "admin", summary: "One artwork, admin view", replaces: "adminService.getArtworkAdmin" },
   { method: "POST", path: "/v1/admin/artworks/:id/nfc/unlink", authRole: "admin", summary: "Reset an NFC link made to a defective chip, before it was locked; a reason is required", replaces: "n/a — new" },
   { method: "POST", path: "/v1/admin/artworks/:id/nfc/skip-shipment-gate", authRole: "admin", summary: "Let one piece be dispatched without a locked NFC tag (legacy pieces); a reason is required and audit-logged", replaces: "n/a — new" },
+  { method: "POST", path: "/v1/admin/artworks/:id/nfc/remind", authRole: "admin", summary: "Email the artist to link or lock the NFC tag", replaces: "n/a — new" },
   { method: "GET", path: "/v1/admin/nfc/overview", authRole: "admin", summary: "NFC catalogue counts, pieces still to lock, and recent replaced-tag, override and would-be-blocked events", replaces: "n/a — new" },
   { method: "GET", path: "/v1/admin/users/:id", authRole: "admin", summary: "One user with profile facts", replaces: "adminService.getUser" },
   { method: "GET", path: "/v1/admin/moderation/gst", authRole: "admin", summary: "GST review queue", replaces: "adminService.listGstQueue" },

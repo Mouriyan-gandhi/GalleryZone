@@ -4,6 +4,7 @@ import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { orderStateMachine, type OrderStatus } from "@galleryzone/domain";
 import { Collections, orderStatusEventsCol, type AddressDoc, type OrderDoc } from "./collections.ts";
 import { decorate, type OrderView } from "./order-listings.ts";
+import { assertNfcDispatchAllowed } from "./nfc.ts";
 import { DbError } from "./errors.ts";
 
 export class AdminOrderError extends DbError {}
@@ -30,6 +31,9 @@ export async function advanceOrderStatus(db: Firestore, orderId: string, to: Ord
   if (!snap.exists) throw new AdminOrderError(`No order ${orderId}`);
   const order = snap.data() as OrderDoc;
   orderStateMachine.assertTransition(order.status, to);
+  // Transit is the point of no return: once the courier has the piece nobody can lock the
+  // chip any more, whereas packing still happens at the artist's (NFC_IMPLEMENTATION.md §5.1).
+  if (to === "transit") await assertNfcDispatchAllowed(db, order.artworkId, { channel: "marketplace", refId: orderId });
 
   await db.runTransaction(async (tx) => {
     tx.update(ref, { status: to });

@@ -33,6 +33,7 @@ import { ImagesController } from "./images.controller.ts";
 import { Storage } from "./storage.ts";
 import { ListingBackfill } from "./listing-backfill.ts";
 import { HoldingExpirySweep } from "./holding-expiry.ts";
+import { NfcReminderSweep } from "./nfc-reminders.ts";
 import { Mailer } from "./mail/mailer.ts";
 import { Emails } from "./mail/emails.ts";
 import { PaymentsController } from "./payments/payments.controller.ts";
@@ -100,6 +101,7 @@ import { DbModule } from "./db.module.ts";
     Storage,
     ListingBackfill,
     HoldingExpirySweep,
+    NfcReminderSweep,
     Mailer,
     Emails,
     Razorpay,
