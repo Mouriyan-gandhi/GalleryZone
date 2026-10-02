@@ -9,6 +9,7 @@ import '../../../core/launch.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artist.dart';
 import '../../../data/models/artwork.dart';
+import '../../auth/providers/auth_providers.dart' show authErrorMessage;
 import '../providers/marketplace_providers.dart';
 import '../widgets/artwork_card.dart';
 import '../widgets/social_glyphs.dart';
@@ -33,10 +34,14 @@ class ArtworkDetailScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Artwork')),
       body: artwork.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
+        error: (error, stack) => EmptyState(
           icon: LucideIcons.triangleAlert,
-          title: 'Something went wrong',
-          description: "We couldn't load this artwork right now.",
+          title: "Couldn't load this artwork",
+          description: authErrorMessage(error),
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(artworkProvider(artworkId)),
+            child: const Text('Try again'),
+          ),
         ),
         data: (data) {
           if (data == null) {

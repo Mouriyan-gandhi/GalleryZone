@@ -79,6 +79,11 @@ class _Catalog implements ArtworkRepository {
   final List<ArtistProfile> artists;
   bool failArtists;
 
+  /// Each of these makes the next such read fail once, as a dropped connection would.
+  bool failArtwork = false;
+  bool failProfile = false;
+  bool failListings = false;
+
   @override
   Future<MarketplacePage> list(ArtworkFilters filters) async => MarketplacePage(
         artworks: artworks,
@@ -88,7 +93,13 @@ class _Catalog implements ArtworkRepository {
       );
 
   @override
-  Future<Artwork?> get(String id) async => artworks.where((a) => a.id == id).firstOrNull;
+  Future<Artwork?> get(String id) async {
+    if (failArtwork) {
+      failArtwork = false;
+      throw Exception("Can't reach GalleryZone. Check your connection and try again.");
+    }
+    return artworks.where((a) => a.id == id).firstOrNull;
+  }
 
   @override
   Future<List<Artwork>> getMany(Iterable<String> ids) async => [
@@ -99,11 +110,22 @@ class _Catalog implements ArtworkRepository {
   Future<List<ArtistCard>> listArtistCards() async => const [];
 
   @override
-  Future<List<Artwork>> listByArtist(String artistId) async =>
-      [for (final a in artworks) if (a.artistId == artistId) a];
+  Future<List<Artwork>> listByArtist(String artistId) async {
+    if (failListings) {
+      failListings = false;
+      throw Exception('Too many requests — wait a moment and try again.');
+    }
+    return [for (final a in artworks) if (a.artistId == artistId) a];
+  }
 
   @override
-  Future<ArtistProfile?> getArtistProfile(String id) async => artists.where((a) => a.id == id).firstOrNull;
+  Future<ArtistProfile?> getArtistProfile(String id) async {
+    if (failProfile) {
+      failProfile = false;
+      throw Exception("Can't reach GalleryZone. Check your connection and try again.");
+    }
+    return artists.where((a) => a.id == id).firstOrNull;
+  }
 
   @override
   Future<List<ArtistProfile>> listArtists() async {
@@ -217,6 +239,53 @@ void main() {
       expect(find.text('Listed price, GST included'), findsOneWidget);
       expect(find.text('March 2026'), findsOneWidget);
       expect(find.text('Oil on canvas'), findsWidgets, reason: 'mediums are written as words, not slugs');
+    });
+  });
+
+  group('a failed read is never a dead end', () {
+    testWidgets("the artwork page says why, and Try again brings it back", (tester) async {
+      _phone(tester);
+      final catalog = _Catalog(artworks: [_artwork()], artists: [_artist()])..failArtwork = true;
+      await tester.pumpWidget(_app(catalog, const ArtworkDetailScreen(artworkId: 'aw-1')));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load this artwork"), findsOneWidget);
+      expect(find.text("Can't reach GalleryZone. Check your connection and try again."), findsOneWidget);
+
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Buy Now'), findsOneWidget);
+    });
+
+    testWidgets("an artist's profile does the same", (tester) async {
+      _phone(tester);
+      final catalog = _Catalog(artists: [_artist()], artworks: [_artwork()])..failProfile = true;
+      await tester.pumpWidget(_app(catalog, const ArtistProfileScreen(artistId: 'ar-1')));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load this profile"), findsOneWidget);
+
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Coastal light in oils'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1)); // the rating read has its own mock delay
+    });
+
+    testWidgets("and so does their list of work, leaving the profile above it in place", (tester) async {
+      _phone(tester);
+      final catalog = _Catalog(artists: [_artist()], artworks: [_artwork()])..failListings = true;
+      await tester.pumpWidget(_app(catalog, const ArtistProfileScreen(artistId: 'ar-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('Coastal light in oils'), findsOneWidget);
+
+      await tester.scrollUntilVisible(find.text("Couldn't load these listings"), 300);
+      expect(find.text('Too many requests — wait a moment and try again.'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Try again'));
+      await tester.pump();
+      await tester.tap(find.text('Try again'));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't load these listings"), findsNothing);
+      expect(find.text('Monsoon, Madurai'), findsWidgets);
+      await tester.pump(const Duration(seconds: 1)); // the rating read has its own mock delay
     });
   });
 

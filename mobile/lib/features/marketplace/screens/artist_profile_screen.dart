@@ -35,10 +35,14 @@ class ArtistProfileScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Artist')),
       body: artist.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
+        error: (error, stack) => EmptyState(
           icon: LucideIcons.triangleAlert,
-          title: 'Something went wrong',
-          description: "We couldn't load this profile right now.",
+          title: "Couldn't load this profile",
+          description: authErrorMessage(error),
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(artistProfileProvider(artistId)),
+            child: const Text('Try again'),
+          ),
         ),
         data: (data) => data == null
             ? const EmptyState(
@@ -164,10 +168,14 @@ class _ArtistProfileBody extends ConsumerWidget {
                 child: CircularProgressIndicator(),
               ),
             ),
-            error: (error, stack) => const EmptyState(
+            error: (error, stack) => EmptyState(
               icon: LucideIcons.triangleAlert,
-              title: 'Something went wrong',
-              description: "We couldn't load these listings right now.",
+              title: "Couldn't load these listings",
+              description: authErrorMessage(error),
+              action: OutlinedButton(
+                onPressed: () => ref.invalidate(artworksByArtistProvider(artist.id)),
+                child: const Text('Try again'),
+              ),
             ),
             data: (results) => results.isEmpty
                 ? EmptyState(
