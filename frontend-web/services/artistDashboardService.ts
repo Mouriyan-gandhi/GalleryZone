@@ -7,7 +7,7 @@ import { ARTIST_PAYOUT_DAYS_AFTER_DELIVERY } from "@/lib/pricing";
 import { paiseToRupees, toOrder, type OrderDto } from "@/lib/api-mappers";
 import { artistArtworkApi, toOwnerArtwork, type OwnerArtworkDto, type SubmitImage } from "@/services/artistArtworkApi";
 import { artistWalletApi } from "@/services/artistWalletApi";
-import { profileApi, type OwnProfileDto, type OwnProfilePatch } from "@/services/profileApi";
+import { profileApi, type FreeAccess, type OwnProfileDto, type OwnProfilePatch } from "@/services/profileApi";
 
 // The shape the dashboard's profile/KYC screens were written against.
 export interface ArtistProfileView {
@@ -35,6 +35,7 @@ export interface ArtistProfileView {
   location: string | null;
   headline: string | null;
   joinedAt: string;
+  freeAccess: FreeAccess | null;
 }
 
 function toArtistProfileView(p: OwnProfileDto): ArtistProfileView {
@@ -61,6 +62,7 @@ function toArtistProfileView(p: OwnProfileDto): ArtistProfileView {
     location: p.location,
     headline: p.headline,
     joinedAt: p.createdAt,
+    freeAccess: p.freeAccess ?? null,
   };
 }
 import { KPI_METRICS } from "@/features/dashboard/dashboard-data";

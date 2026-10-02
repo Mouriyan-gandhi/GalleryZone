@@ -6,7 +6,7 @@
 
 import { Controller, Get, Header, Inject, NotFoundException, Param, Query } from "@nestjs/common";
 import { z } from "zod";
-import { FirestoreRateConfigStore, getPublicArtwork, loadMarketplace, queryMarketplace, type Db, type MarketplacePage } from "@galleryzone/db";
+import { FirestoreRateConfigStore, getPublicArtwork, loadMarketplace, queryMarketplace, toMarketplaceView, type Db, type MarketplacePage } from "@galleryzone/db";
 import { checkoutTotal } from "@galleryzone/domain";
 import type { CustomerArtworkDto } from "@galleryzone/contracts";
 import { Public } from "./auth/roles.decorator.ts";
@@ -93,13 +93,13 @@ export class ArtworksController {
     };
   }
 
-  /** Any status — a passport/COA link must still resolve after a sale. */
+  /** Any status — a passport link must still resolve after a sale. No COA: that isn't part of the marketplace listing. */
   @Public()
   @Get(":id")
   @Header("Cache-Control", PUBLIC_CACHE)
   async get(@Param("id") id: string): Promise<CustomerArtworkDto> {
     const artwork = await this.cache.getOrFill(CacheKeys.artwork(id), TTL.artwork, () => getPublicArtwork(this.db, id));
     if (!artwork) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
-    return artwork;
+    return toMarketplaceView(artwork);
   }
 }

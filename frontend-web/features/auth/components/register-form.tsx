@@ -38,11 +38,13 @@ import {
 import { ROLE_OPTIONS } from "@/features/auth/data/role-options";
 import { ROLE_SECTION_HOME, type SessionRole } from "@/lib/session";
 
-// A brand-new artist account still needs KYC/bank/Instagram filled in before
-// anything else is useful, so land there instead of the (empty) dashboard.
-// Every other role keeps its normal section home.
+// A brand-new artist or aggregator account still needs its profile filled in
+// (KYC, bank, GST, agreement) before anything else is useful, so land there
+// instead of the (empty) dashboard. Other roles keep their normal section home.
 function landingAfterRegister(role: SessionRole): string {
-  return role === "artist" ? "/dashboard/profile" : ROLE_SECTION_HOME[role];
+  if (role === "artist") return "/dashboard/profile";
+  if (role === "aggregator") return "/aggregator/profile";
+  return ROLE_SECTION_HOME[role];
 }
 import { buyerInviteService } from "@/services/buyerInviteService";
 

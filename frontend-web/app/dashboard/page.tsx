@@ -5,6 +5,7 @@ import { RecentActivityFeed } from "@/features/dashboard/recent-activity-feed";
 import { RevenueChart } from "@/features/dashboard/revenue-chart";
 import { RatingCard } from "@/features/dashboard/rating-card";
 import { DashboardGreeting } from "@/features/dashboard/dashboard-greeting";
+import { FreeAccessNote } from "@/features/dashboard/free-access-note";
 import { NextActionCard } from "@/features/dashboard/next-action-card";
 import { ArtworkOverviewCard } from "@/features/dashboard/artwork-overview-card";
 import { NeedsAttentionCard } from "@/features/dashboard/needs-attention-card";
@@ -21,6 +22,7 @@ export default function DashboardOverviewPage() {
           squeezed into one column. */}
       <div className="flex flex-col gap-5 lg:hidden">
         <DashboardGreeting />
+        <FreeAccessNote />
         <VerificationProgress />
         <NextActionCard />
         <ArtworkOverviewCard />
@@ -31,6 +33,7 @@ export default function DashboardOverviewPage() {
 
       {/* Desktop/tablet: unchanged. */}
       <div className="hidden lg:flex lg:flex-col lg:gap-6">
+        <FreeAccessNote />
         <KpiCards />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">

@@ -26,8 +26,9 @@ export interface ArtworkDto {
   status: ArtworkStatus;
   listingType: ListingType;
   rarityType: ArtworkRarity | null;
-  coaCertificateNumber: string | null;
-  coaIssuedAt: string | null;
+  /** Not on marketplace responses; only the owner's own views carry the certificate. */
+  coaCertificateNumber?: string | null;
+  coaIssuedAt?: string | null;
   createdAt: string;
   artistLocation?: string | null;
   sizeBand?: "small" | "medium" | "large" | null;
@@ -150,7 +151,6 @@ export function toArtworkSummary(dto: ArtworkDto): ArtworkSummary {
     rarityType: normalizeRarity(a.rarityType),
     yearCreated: a.yearCreated,
     dimensions: a.dimensions,
-    coaCertificateNumber: a.coaCertificateNumber || null,
     sizeBand: dto.sizeBand ?? null,
     artistLocation: dto.artistLocation ?? null,
   };

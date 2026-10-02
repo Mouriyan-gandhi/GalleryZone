@@ -315,7 +315,6 @@ function PassportCard({ artwork, qr }: { artwork: ArtworkSummary; qr: string | n
         </div>
 
         <dl className="flex min-w-0 flex-col gap-2.5">
-          <PassportField label="Certificate" value={artwork.coaCertificateNumber ?? "Issued on approval"} />
           <PassportField label="Title" value={artwork.title} />
           <PassportField label="Artist" value={artwork.artistName} />
         </dl>
@@ -408,9 +407,6 @@ function NfcSlide({ artwork }: { artwork: ArtworkSummary }) {
           </div>
           <p className="relative mt-3 truncate font-display text-base">{artwork.title}</p>
           <p className="relative truncate text-xs text-[#9c9686]">{artwork.artistName}</p>
-          <p className="relative mt-2 truncate text-[10px] text-[#9c9686]">
-            {artwork.coaCertificateNumber ?? "Certificate on approval"}
-          </p>
         </div>
       </div>
 

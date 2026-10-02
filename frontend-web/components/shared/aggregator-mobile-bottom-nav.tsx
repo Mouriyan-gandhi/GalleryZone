@@ -24,12 +24,10 @@ import {
   MessageSquare,
   LifeBuoy,
   Settings as SettingsIcon,
-  LogOut,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { authService } from "@/services/authService";
 import { useAggregatorMessages } from "@/hooks/useAggregatorMessages";
 import { useMounted } from "@/hooks/useMounted";
 
@@ -215,17 +213,6 @@ export function AggregatorMobileBottomNav() {
               </nav>
             </div>
           ))}
-
-          <div className="border-t border-border pt-3">
-            <button
-              type="button"
-              onClick={() => { void authService.logout(); window.location.href = "/login"; }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
-            >
-              <LogOut className="size-[18px] shrink-0" strokeWidth={1.75} />
-              Sign out
-            </button>
-          </div>
         </div>
       </div>
     </>

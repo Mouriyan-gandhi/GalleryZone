@@ -24,8 +24,8 @@ const AVATARS = [
 const BENEFITS = [
   {
     icon: Calendar,
-    title: "1 Year Free Access",
-    description: "Enjoy all premium features free for your first year.",
+    title: "6 Months Free Access",
+    description: "Enjoy all premium features free for your first six months.",
   },
   {
     icon: ShieldCheck,
@@ -99,8 +99,9 @@ export function EarlyProgramSection() {
                 <span className="text-gold-bright">Early Artist</span> Program.
               </h2>
               <p className="mt-5 max-w-md text-balance text-sm leading-relaxed text-muted-foreground">
-                Get one year of free access, exclusive verification, and all the
-                tools you need to build your art&rsquo;s presence.
+                Get six months of free access, exclusive verification, and all
+                the tools you need to build your art&rsquo;s presence. Artists
+                who filled in our survey get a full year.
               </p>
 
               <Link

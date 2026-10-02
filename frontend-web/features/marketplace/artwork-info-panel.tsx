@@ -8,7 +8,6 @@ import {
   Info,
   ScrollText,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWishlistStore } from "@/store/useWishlistStore";
@@ -37,14 +36,6 @@ const SOCIAL_LABEL: Record<SocialProofLink["platform"], string> = {
   x: "X",
   tiktok: "TikTok",
 };
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(iso));
-}
 
 interface ArtworkInfoPanelProps {
   artwork: Artwork;
@@ -200,39 +191,13 @@ export function ArtworkInfoPanel({
         {artwork.description}
       </p>
 
-      <div className="rounded-lg border border-gold/25 bg-card p-5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-gold-bright" strokeWidth={1.75} />
-          <h2 className="font-display text-sm font-semibold text-foreground">
-            Authenticity
-          </h2>
-        </div>
-        <dl className="mt-3 flex flex-col gap-2 text-sm">
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Certificate number</dt>
-            <dd className="font-medium whitespace-nowrap tabular-nums text-foreground">
-              {artwork.coaCertificateNumber || "Issued on approval"}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Issued</dt>
-            <dd className="font-medium text-foreground">
-              {artwork.coaIssueDate ? formatDate(artwork.coaIssueDate) : "—"}
-            </dd>
-          </div>
-        </dl>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          Hand-signed by the artist and shipped with full chain-of-custody
-          documentation confirming its origin.
-        </p>
-        <Link
-          href={`/verify/${artwork.id}`}
-          className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-gold-bright hover:underline"
-        >
-          <ScrollText className="size-3.5" strokeWidth={1.75} />
-          View this artwork&rsquo;s digital passport
-        </Link>
-      </div>
+      <Link
+        href={`/verify/${artwork.id}`}
+        className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-gold-bright hover:underline"
+      >
+        <ScrollText className="size-3.5" strokeWidth={1.75} />
+        View this artwork&rsquo;s digital passport
+      </Link>
 
       {artwork.socialProofLinks.length > 0 && (
         <div>

@@ -47,13 +47,11 @@ function MarketplacePageContent() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // The unfiltered first page, newest first: its facets feed the hero's
-  // category pills, and it picks the real certificate the passport band shows
-  // (a piece with a photo, when there is one).
+  // category pills, and it picks the piece the passport band shows (one with a
+  // photo, when there is one).
   const overview = useMarketplaceOverview().data;
   const artworks = overview?.artworks ?? [];
-  const passportPiece =
-    artworks.find((a) => a.coaCertificateNumber && !isPlaceholderImage(a.thumbnailUrl)) ??
-    artworks.find((a) => a.coaCertificateNumber);
+  const passportPiece = artworks.find((a) => !isPlaceholderImage(a.thumbnailUrl)) ?? artworks[0];
 
   // Pills act like tabs: one category at a time, or All. The sidebar still
   // allows several at once.

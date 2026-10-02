@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Inject, Logger, Param, Patch, Post, Query } from "@nestjs/common";
 import { z } from "zod";
 import { NotFoundException } from "@nestjs/common";
-import { FirestoreRateConfigStore, suggestEarningsAbove5L, adminKpis, listCategories, createCategory, updateCategory, deleteCategory, getUserForAdmin, listModerationQueue, listUsersForAdmin, listWithdrawalsForAdmin, setUserStatus, userRoleValues, userStatusValues, type Db, type UserRole } from "@galleryzone/db";
+import { FirestoreRateConfigStore, addSurveyRespondents, listSurveyRespondents, suggestEarningsAbove5L, adminKpis, listCategories, createCategory, updateCategory, deleteCategory, getUserForAdmin, listModerationQueue, listUsersForAdmin, listWithdrawalsForAdmin, setUserStatus, userRoleValues, userStatusValues, type Db, type UserRole } from "@galleryzone/db";
 import { loadActiveRates } from "@galleryzone/config";
 import { Roles } from "./auth/roles.decorator.ts";
 import { Emails } from "./mail/emails.ts";
@@ -13,6 +13,10 @@ type NameBody = z.infer<typeof nameSchema>;
 
 const statusSchema = z.object({ status: z.enum([...userStatusValues]) }).strict();
 type StatusBody = z.infer<typeof statusSchema>;
+
+// 500 is one Firestore batch; send a longer list in several calls.
+const surveyEmailsSchema = z.object({ emails: z.array(z.string().trim().email()).min(1).max(500) }).strict();
+type SurveyEmailsBody = z.infer<typeof surveyEmailsSchema>;
 
 @Controller("v1/admin")
 export class AdminController {
@@ -45,6 +49,19 @@ export class AdminController {
   @Get("moderation/kyc")
   async kycQueue() {
     return { users: await listModerationQueue(this.db, "kyc") };
+  }
+
+  /** Artists on this list get a year of free access instead of six months, counted from when they joined. */
+  @Roles("admin")
+  @Post("early-access/survey-emails")
+  addSurveyEmails(@Body(new ZodValidationPipe(surveyEmailsSchema)) body: SurveyEmailsBody) {
+    return addSurveyRespondents(this.db, body.emails);
+  }
+
+  @Roles("admin")
+  @Get("early-access/survey-emails")
+  async surveyEmails() {
+    return { emails: await listSurveyRespondents(this.db) };
   }
 
   @Roles("admin")

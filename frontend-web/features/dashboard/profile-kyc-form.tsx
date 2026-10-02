@@ -25,6 +25,8 @@ import {
   Palette,
   Landmark,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -83,7 +85,24 @@ type ArtistAccountProfile = NonNullable<
 // initializer (no effect needed) because the body only ever mounts after
 // `profile` exists, matching every other query-backed form in this codebase.
 export function ProfileKycForm() {
-  const { data: profile } = useArtistAccountProfile();
+  const { data: profile, isError, error, refetch, isFetching } = useArtistAccountProfile();
+
+  // A failed load used to fall through to the skeleton below and sit there
+  // forever — a blank page with no hint of what went wrong.
+  if (!profile && isError) {
+    return (
+      <EmptyState
+        icon={TriangleAlert}
+        title="Couldn't load your profile"
+        description={error instanceof Error ? error.message : "Something went wrong loading your profile."}
+        action={
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? "Trying again…" : "Try again"}
+          </Button>
+        }
+      />
+    );
+  }
 
   if (!profile) {
     return (

@@ -21,6 +21,8 @@ import { ROLE_SECTION_HOME, type SessionRole } from "@/lib/session";
 
 // An artist signing back in has already done onboarding — send them to the
 // marketplace like any other visitor rather than straight to the dashboard.
+// An aggregator opens on My Profile: the GST number, agreement and bank details
+// that gate reserving a piece live there, so it's the first thing to check.
 // Every other role keeps its normal section home.
 function landingAfterLogin(role: SessionRole): string {
   // proxy.ts and checkout send people here with ?next=<where they were going>.
@@ -48,7 +50,9 @@ function landingAfterLogin(role: SessionRole): string {
       // Malformed ?next value — fall through to the role's normal home.
     }
   }
-  return role === "artist" ? "/marketplace" : ROLE_SECTION_HOME[role];
+  if (role === "artist") return "/marketplace";
+  if (role === "aggregator") return "/aggregator/profile";
+  return ROLE_SECTION_HOME[role];
 }
 import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth-schemas";
 

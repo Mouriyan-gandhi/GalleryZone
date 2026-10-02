@@ -201,13 +201,12 @@ function DangerZone() {
   );
 }
 
-// Every artist is on the founding-member plan (free for the first year) —
-// a platform policy, not per-user data. The one per-user fact, the renewal
-// date, is a year after the account was created.
+// The Early Artist Program's free period comes from the profile: six months
+// from joining, a full year for artists who filled in the survey.
 function SubscriptionCard() {
   const { data: profile } = useArtistAccountProfile();
-  const startedOn = profile?.joinedAt ?? new Date().toISOString();
-  const renewsOn = new Date(new Date(startedOn).setFullYear(new Date(startedOn).getFullYear() + 1)).toISOString();
+  const access = profile?.freeAccess;
+  if (!access) return null;
   return (
     <div className="rounded-lg border border-gold/30 bg-gold/5 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -220,12 +219,12 @@ function SubscriptionCard() {
               {SUBSCRIPTION.planName} plan
             </h2>
             <p className="text-sm text-gold-bright">
-              {SUBSCRIPTION.priceLabel}
+              {access.surveyRespondent ? "Free for your first year" : "Free for your first six months"}
             </p>
           </div>
         </div>
         <span className="rounded-full border border-gold/40 px-2.5 py-1 text-xs font-medium text-gold-bright">
-          Active
+          {access.active ? "Active" : "Ended"}
         </span>
       </div>
 
@@ -242,9 +241,9 @@ function SubscriptionCard() {
       </ul>
 
       <p className="mt-4 border-t border-gold/20 pt-3 text-xs text-muted-foreground">
-        Renews {formatPlanDate(renewsOn)} at{" "}
-        {SUBSCRIPTION.renewalPriceLabel}. Nothing to pay until then, and we
-        will tell you well before anything changes.
+        {access.active
+          ? `Free until ${formatPlanDate(access.until)}, then ${SUBSCRIPTION.renewalPriceLabel}. Nothing to pay until then, and we will tell you well before anything changes.`
+          : `Your free period ended on ${formatPlanDate(access.until)}. The plan is ${SUBSCRIPTION.renewalPriceLabel}.`}
       </p>
     </div>
   );

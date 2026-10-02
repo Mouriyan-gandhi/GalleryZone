@@ -9,7 +9,3 @@ build/
 # Firebase Admin SDK service-account keys — real credentials, never committed.
 *firebase-adminsdk*.json
 *service-account*.json
-
-# Firebase emulator logs (npm run demo:emulators)
-*-debug.log
-scripts/demo/ids.json

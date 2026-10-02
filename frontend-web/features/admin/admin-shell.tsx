@@ -1,8 +1,5 @@
 "use client";
 
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { UserAvatar } from "@/components/shared/user-avatar";
-
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,14 +25,12 @@ import {
   Menu,
   X,
   ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from "lucide-react";
-import { SidebarBrand } from "@/components/shared/sidebar-brand";
+import { SidebarHeader } from "@/components/shared/sidebar-brand";
 import { cn } from "@/lib/utils";
 import { SwitchMode } from "@/components/switch-mode";
 import { NotificationsPopover } from "@/components/notifications-popover";
-import { SignOutButton } from "@/components/shared/sign-out-button";
+import { AccountMenu } from "@/components/shared/account-menu";
 import { useAdminKpis } from "@/hooks/useAdminDashboard";
 
 // The fourth independent copy-and-adapt of the shell pattern established by
@@ -195,7 +190,6 @@ function Sidebar({
   mobileOpen: boolean;
   onClose: () => void;
 }) {
-  const { data: me } = useCurrentUser();
   const pathname = usePathname();
   const { data: kpis } = useAdminKpis();
   const [collapsed, setCollapsed] = useState(false);
@@ -234,8 +228,10 @@ function Sidebar({
           collapsed ? "lg:w-20" : "lg:w-64",
         )}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between px-5">
-          <SidebarBrand collapsed={collapsed} />
+        <SidebarHeader
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((c) => !c)}
+        >
           <button
             aria-label="Close menu"
             onClick={onClose}
@@ -243,18 +239,7 @@ function Sidebar({
           >
             <X className="size-5" />
           </button>
-          <button
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => setCollapsed((c) => !c)}
-            className="hidden rounded-md p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground lg:inline-flex"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4" />
-            ) : (
-              <PanelLeftClose className="size-4" />
-            )}
-          </button>
-        </div>
+        </SidebarHeader>
 
         <span
           className={cn(
@@ -266,8 +251,7 @@ function Sidebar({
         </span>
 
         {/* 15 sections don't fit a 100dvh sidebar on a laptop, so the nav
-            scrolls independently while the brand header and profile card stay
-            pinned. */}
+            scrolls independently while the brand header stays pinned. */}
         <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-2 pb-4">
           {NAV_GROUPS.map((group, groupIndex) => {
             const heading = group.heading;
@@ -367,26 +351,6 @@ function Sidebar({
             );
           })}
         </nav>
-
-        {/* Static "signed in as" card, matching the other three shells. Not a
-            Link: there is no admin profile/settings route (platform settings
-            live in the nav above and are not this account's settings). */}
-        <div
-          className={cn(
-            "mx-3 mb-4 flex shrink-0 items-center gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/40 px-3 py-3",
-            collapsed && "lg:justify-center lg:px-2",
-          )}
-        >
-          <UserAvatar name={me?.name} className="size-9" />
-          <div className={cn("min-w-0", collapsed && "lg:hidden")}>
-            <p className="truncate text-sm font-medium text-sidebar-foreground">
-              {me?.name ?? "Admin"}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {me?.email ?? ""}
-            </p>
-          </div>
-        </div>
       </aside>
     </>
   );
@@ -423,7 +387,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       <div className="flex items-center gap-2">
         <NotificationsPopover />
         <SwitchMode />
-        <SignOutButton />
+        <AccountMenu role="Admin" />
       </div>
     </header>
   );

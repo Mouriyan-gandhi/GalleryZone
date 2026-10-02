@@ -103,3 +103,23 @@ export function financialYearStart(asOf: Date): Date {
 export function tdsAppliesOnSale(salesSoFarPaise: number, artistPricePaise: number, rates: PricingRates): boolean {
   return salesSoFarPaise + artistPricePaise > rates.earningsAbove5LThresholdPaise;
 }
+
+/**
+ * Early Artist Program (owner, 1 Oct 2026): every artist's first 6 months are
+ * free, counted from the day they join. An artist who filled in the artist
+ * survey before launch gets a full year instead.
+ */
+export const EARLY_ACCESS_MONTHS = 6;
+export const EARLY_ACCESS_SURVEY_MONTHS = 12;
+
+/** When free access ends: `joinedAt` plus the months, by calendar. A 31st joined into a shorter month ends on that month's last day. */
+export function earlyAccessEndsAt(joinedAt: Date, surveyRespondent: boolean): Date {
+  const months = surveyRespondent ? EARLY_ACCESS_SURVEY_MONTHS : EARLY_ACCESS_MONTHS;
+  const end = new Date(joinedAt);
+  const day = end.getUTCDate();
+  end.setUTCDate(1);
+  end.setUTCMonth(end.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)).getUTCDate();
+  end.setUTCDate(Math.min(day, lastDay));
+  return end;
+}

@@ -52,4 +52,9 @@ assert.ok(
   "sanity check failed: OwnerArtworkDto should contain artistPricePaise — if it doesn't, this test can't be trusted",
 );
 
-console.log("packages/contracts/artwork-dto.ts: price-leak contract test passed (CustomerArtworkDto is clean)");
+// The COA is not part of a marketplace listing: the customer shape has no
+// certificate fields, the owner's does (the same sanity check as above).
+assert.ok(!/coa/i.test(customerBody), `CustomerArtworkDto must not carry the COA:\n${customerBody}`);
+assert.ok(/coaCertificateNumber/.test(ownerBody), "sanity check failed: OwnerArtworkDto should carry the COA");
+
+console.log("packages/contracts/artwork-dto.ts: price-leak contract test passed (CustomerArtworkDto is clean, and has no COA)");

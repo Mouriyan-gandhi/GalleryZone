@@ -22,8 +22,6 @@ export interface CustomerArtworkDto {
   status: string;
   listingType: string;
   rarityType: string | null;
-  coaCertificateNumber: string | null;
-  coaIssuedAt: string | null;
   createdAt: string;
   /** The artist's public location; an artwork has none of its own. */
   artistLocation: string | null;
@@ -36,6 +34,9 @@ export interface CustomerArtworkDto {
 // piece, or an admin. Never serialized into any response reachable by a
 // plain customer session.
 export interface OwnerArtworkDto extends CustomerArtworkDto {
+  /** The certificate belongs to the owner's views, not the marketplace listing. */
+  coaCertificateNumber: string | null;
+  coaIssuedAt: string | null;
   artistPricePaise: number;
   artistNet: {
     marketplace: number;

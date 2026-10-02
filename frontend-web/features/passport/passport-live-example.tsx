@@ -8,7 +8,6 @@ import { useArtwork } from "@/hooks/useArtwork";
 import { useVerifyPassport } from "@/hooks/useVerify";
 import { ArtworkQr } from "@/features/verify/artwork-qr";
 import { isPlaceholderImage } from "@/lib/api-mappers";
-import { isDemoId } from "@/lib/demo-artworks-flag";
 import type { PassportTopicSlug } from "./passport-topics";
 
 export function formatDate(iso: string | null | undefined): string {
@@ -16,13 +15,11 @@ export function formatDate(iso: string | null | undefined): string {
   return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 }
 
-// A real listed piece with a certificate, so the example is a passport anyone
-// can open rather than a mock-up. Demo listings have no passport behind them.
+// A real listed piece, so the example is a passport anyone can open rather than
+// a mock-up.
 function useSamplePiece() {
   const overview = useMarketplaceOverview();
-  const candidates = (overview.data?.artworks ?? []).filter(
-    (a) => a.coaCertificateNumber && !isDemoId(a.id),
-  );
+  const candidates = overview.data?.artworks ?? [];
   const sample = candidates.find((a) => !isPlaceholderImage(a.thumbnailUrl)) ?? candidates[0];
   return { sample, loading: overview.isPending };
 }
@@ -43,8 +40,9 @@ export function PassportLiveExample({ topic }: { topic: PassportTopicSlug }) {
   const facts: { label: string; value: string }[] =
     topic === "certificate"
       ? [
-          { label: "Certificate number", value: artwork?.coaCertificateNumber || "Pending" },
-          { label: "Issued", value: formatDate(artwork?.coaIssueDate) },
+          // The marketplace doesn't carry the certificate; the passport does.
+          { label: "Certificate number", value: passport?.coaCertificateNumber || "Pending" },
+          { label: "Issued", value: formatDate(passport?.coaIssuedAt) },
         ]
       : topic === "provenance"
         ? [

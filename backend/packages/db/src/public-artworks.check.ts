@@ -1,7 +1,7 @@
 // queryMarketplace() is pure — filter, sort, page, facets over an
 // in-memory marketplace. Run: node --experimental-strip-types public-artworks.check.ts
 import assert from "node:assert/strict";
-import { queryMarketplace, type PublicArtworkView } from "./public-artworks.ts";
+import { queryMarketplace, toMarketplaceView, type PublicArtworkView } from "./public-artworks.ts";
 import { sizeBandOf } from "./listing-projection.ts";
 import { normalizeRarity } from "./collections.ts";
 
@@ -34,7 +34,14 @@ const all = [
   piece({ id: "b", displayPricePaise: 100_00, category: "Sculpture", medium: "Bronze", rarityType: "R", createdAt: "2026-01-01T00:00:00.000Z", title: "Bull" }),
   piece({ id: "c", displayPricePaise: 200_00, artistId: "art2", artistName: "Ravi", artistLocation: "Pune", sizeBand: "large", createdAt: "2026-01-02T00:00:00.000Z" }),
 ];
-const ids = (page: { artworks: PublicArtworkView[] }) => page.artworks.map((a) => a.id);
+const ids = (page: { artworks: { id: string }[] }) => page.artworks.map((a) => a.id);
+
+// The marketplace listing carries no certificate, even for a piece that has one.
+const certified = piece({ id: "z", coaCertificateNumber: "GZ-COA-2026-0001", coaIssuedAt: "2026-02-01T00:00:00.000Z" });
+for (const listed of queryMarketplace([certified], {}).artworks.concat(toMarketplaceView(certified))) {
+  assert.ok(!("coaCertificateNumber" in listed) && !("coaIssuedAt" in listed), "marketplace views never carry the COA");
+}
+assert.equal(certified.coaCertificateNumber, "GZ-COA-2026-0001", "the source view keeps it for the passport page");
 
 assert.deepEqual(ids(queryMarketplace(all, {})), ["a", "c", "b"], "newest first by default");
 assert.deepEqual(ids(queryMarketplace(all, { sort: "price_asc" })), ["b", "c", "a"]);
