@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/format.dart';
+import '../../../core/artist_score.dart';
 import '../../../data/mock/seed/artist_seed.dart' show currentArtistId;
 import '../../../data/models/artist_network.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/artist_network_providers.dart';
+import '../providers/artist_providers.dart';
 
 /// Five stars filled to the nearest fraction. Half-fill is done by clipping a
 /// filled row over an empty one — there is no half-star glyph, and rounding to
@@ -73,107 +75,154 @@ class _FractionClipper extends CustomClipper<Rect> {
       oldClipper.fraction != fraction;
 }
 
-/// The artist's own rating. Buyers leave one after a delivered order; this is
-/// the read side of that. There is no backend yet, so the reviews are seeded
-/// rather than collected — see `seed/artist_network_seed.dart`.
+/// The artist's own rating, on their dashboard. Buyers leave a rating after a
+/// delivered order; this is the read side of that. Collector reviews are not
+/// collected yet, so against the real service the count is an honest zero.
+///
+/// Shows the 0-10 composite - customer ratings, profile completion and artwork
+/// count combined (see `core/artist_score.dart`) - as the website's card does.
+/// Port of `features/dashboard/rating-card.tsx`; "Latest reviews" came off the
+/// card at the client's request and is not shown here either.
 class RatingCard extends ConsumerWidget {
   const RatingCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final ratingAsync = ref.watch(artistRatingProvider(currentArtistId));
-    final reviewsAsync = ref.watch(artistReviewsProvider(currentArtistId));
+    final artistId = ref.watch(accountProvider).value?.uid ?? currentArtistId;
+    final ratingAsync = ref.watch(artistRatingProvider(artistId));
+    final rating = ratingAsync.value;
+    final profile = ref.watch(artistProfileDetailsProvider).value;
+    final artworks = ref.watch(artistArtworksProvider).value;
 
-    return ratingAsync.when(
-      loading: () => const PortalCard(
+    if (rating == null || profile == null || artworks == null) {
+      return PortalCard(
         child: SizedBox(
           height: 120,
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(
+            child: ratingAsync.hasError
+                ? Text('Could not load your rating.', style: theme.textTheme.bodySmall)
+                : const CircularProgressIndicator(),
+          ),
         ),
-      ),
-      error: (error, _) => PortalCard(
-        child: Text(
-          'Could not load your rating.',
-          style: theme.textTheme.bodySmall,
-        ),
-      ),
-      data: (rating) {
-        final reviews = reviewsAsync.value ?? const <ArtistReview>[];
-        return PortalCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      );
+    }
+
+    final factors = (
+      customerRating: rating.average * 2,
+      profileCompletion: profileCompletionScore(profile),
+      artworkCount: artworkCountScore(artworks.length),
+    );
+    final composite = scoreArtist(
+      customerRating: factors.customerRating,
+      profileCompletion: factors.profileCompletion,
+      artworkCount: factors.artworkCount,
+    );
+
+    return PortalCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Your rating', style: theme.textTheme.titleMedium),
-                  Text(
-                    rating.count == 0
-                        ? 'No ratings yet'
-                        : '${rating.count} ${rating.count == 1 ? "rating" : "ratings"}',
-                    style: theme.textTheme.labelSmall,
-                  ),
-                ],
+              Text('Your rating', style: theme.textTheme.titleMedium),
+              Text(
+                rating.count == 0
+                    ? 'No ratings yet'
+                    : '${rating.count} ${rating.count == 1 ? "rating" : "ratings"}',
+                style: theme.textTheme.labelSmall,
               ),
-              const SizedBox(height: 12),
-              if (rating.count == 0)
-                Text(
-                  'Buyers can rate you once an order is delivered. Your first '
-                  'rating will show here.',
-                  style: theme.textTheme.bodySmall,
-                )
-              else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      rating.average.toStringAsFixed(1),
-                      style: theme.textTheme.displaySmall?.copyWith(
-                        color: theme.colorScheme.tertiary,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        StarRow(value: rating.average),
-                        const SizedBox(height: 2),
-                        Text('out of 5', style: theme.textTheme.labelSmall),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                for (final star in starValues)
-                  _BreakdownBar(
-                    star: star,
-                    count: rating.breakdown[star] ?? 0,
-                    total: rating.count,
-                  ),
-                if (reviews.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Text(
-                    'LATEST REVIEWS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  for (final review in reviews.take(3))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ReviewRow(review: review),
-                    ),
-                ],
-              ],
             ],
           ),
-        );
-      },
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                composite.toStringAsFixed(1),
+                style: theme.textTheme.displaySmall?.copyWith(color: theme.colorScheme.tertiary),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  StarRow(value: composite / 2),
+                  const SizedBox(height: 2),
+                  Text('out of 10', style: theme.textTheme.labelSmall),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _FactorBar(label: 'Customer rating', value: factors.customerRating),
+          _FactorBar(label: 'Profile completion', value: factors.profileCompletion),
+          _FactorBar(label: 'Artworks posted', value: factors.artworkCount),
+          const Divider(height: 24),
+          if (rating.count == 0)
+            Column(
+              children: [
+                Icon(LucideIcons.star, size: 24, color: theme.colorScheme.outline),
+                const SizedBox(height: 8),
+                Text(
+                  'Buyers can rate you once an order is delivered. Your first rating will show here.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+                ),
+              ],
+            )
+          else ...[
+            Text(
+              'CUSTOMER RATING BREAKDOWN',
+              style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1),
+            ),
+            const SizedBox(height: 8),
+            for (final star in starValues)
+              _BreakdownBar(star: star, count: rating.breakdown[star] ?? 0, total: rating.count),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One factor of the composite, as a bar out of ten with its figure.
+class _FactorBar extends StatelessWidget {
+  const _FactorBar({required this.label, required this.value});
+
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 124,
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelSmall),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: (value / 10).clamp(0.0, 1.0),
+                minHeight: 6,
+                backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation(theme.colorScheme.tertiary),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 30,
+            child: Text(value.toStringAsFixed(1), style: theme.textTheme.labelSmall, textAlign: TextAlign.right),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -234,38 +283,6 @@ class _BreakdownBar extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ReviewRow extends StatelessWidget {
-  const _ReviewRow({required this.review});
-
-  final ArtistReview review;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            StarRow(value: review.rating.toDouble(), size: 13),
-            Text(review.reviewerName, style: theme.textTheme.bodySmall),
-            Text(
-              formatShortDate(review.createdAt),
-              style: theme.textTheme.labelSmall,
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text('“${review.comment}”', style: theme.textTheme.bodySmall),
-        const SizedBox(height: 2),
-        Text('on ${review.artworkTitle}', style: theme.textTheme.labelSmall),
-      ],
     );
   }
 }

@@ -31,6 +31,7 @@ import '../../features/aggregator/screens/aggregator_operations_screens.dart';
 import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
 import '../../features/artist/screens/artist_account_screens.dart';
+import '../../features/artist/screens/artist_analytics_screen.dart';
 import '../../features/artist/screens/artist_kyc_screen.dart';
 import '../../features/artist/screens/artist_settlements_screen.dart';
 import '../../features/artist/screens/artist_artworks_screen.dart';
@@ -337,6 +338,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'settlements',
                     builder: (context, state) => const ArtistSettlementsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'analytics',
+                    builder: (context, state) => const ArtistAnalyticsScreen(),
                   ),
                   GoRoute(
                     path: 'verification',

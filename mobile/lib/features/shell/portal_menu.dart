@@ -174,6 +174,12 @@ final artistMenu = <PortalMenuSection>[
         subtitle: 'Payout records per sale',
         route: '/dashboard/settlements',
       ),
+      PortalMenuItem(
+        icon: LucideIcons.chartLine,
+        label: 'Analytics',
+        subtitle: 'Earnings, categories and your pipeline',
+        route: '/dashboard/analytics',
+      ),
     ],
   ),
   const PortalMenuSection(
