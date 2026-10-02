@@ -47,6 +47,8 @@
 				</array>
 			</dict>
 		</dict>
+		<key>NFCReaderUsageDescription</key>
+		<string>GalleryZone uses NFC to write and lock the tag on your artwork, so a collector can scan it and see its record.</string>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>UILaunchStoryboardName</key>

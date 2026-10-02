@@ -17,6 +17,12 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
+    <!-- NFC tags (NFC_IMPLEMENTATION.md section 7.3): the artist links and locks the chip
+         on a piece from this app. `required="false"` so a phone without NFC can still
+         install it; it just isn't offered the Link and Lock buttons. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
     <application
         android:label="GalleryZone"
         android:name="${applicationName}"
@@ -41,6 +47,19 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Android App Links (NFC_IMPLEMENTATION.md section 7.6). A tag, a printed QR code
+                 or a shared link to https://www.galleryzone.art/verify/<id> opens the passport
+                 here instead of the browser, once the site's /.well-known/assetlinks.json names
+                 this app's signing key (ANDROID_APP_SHA256_FINGERPRINTS on the web host).
+                 Flutter hands the URL to go_router, which already has the /verify/:id route.
+                 The host is the one the chips are written with (AppConfig.siteUrl): it is
+                 permanent on a locked chip, and the apex domain redirects, so only www is claimed. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="www.galleryzone.art" android:pathPrefix="/verify/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
