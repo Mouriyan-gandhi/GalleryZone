@@ -29,7 +29,7 @@ class _Gateway implements PaymentGateway {
   }
 }
 
-Map<String, dynamic> _holding(String id, {String status = 'reserved', int month = 1}) => {
+Map<String, dynamic> _holding(String id, {String status = 'reserved', int month = 1, int displayPricePaise = 13650000}) => {
       'id': id,
       'artworkId': 'aw1',
       'artwork': {
@@ -48,7 +48,7 @@ Map<String, dynamic> _holding(String id, {String status = 'reserved', int month 
       'advancePercent': 5,
       'advancePaise': 682500,
       'deliveryDepositPaise': 250000,
-      'displayPricePaise': 13650000,
+      'displayPricePaise': displayPricePaise,
       'assignmentSource': 'self_reserved',
       'assignedAt': '2026-10-01T00:00:00.000Z',
       'expiresAt': '2026-10-31T00:00:00.000Z',
@@ -474,14 +474,58 @@ void main() {
             _holding('c', status: 'returned'),
             _holding('d', status: 'returned'),
           ],
-        });
+        })
+        ..json('GET /v1/aggregator/sales', [_sale('s1', holdingId: 'b')])
+        ..json('GET /v1/aggregator/wallet/transactions', {'transactions': <Object>[]});
       final summary = await repoFor(api).getDashboardSummary();
       expect(summary.activeReservations, 1);
       expect(summary.pendingSettlements, 1);
       expect(summary.conversionRate, 33, reason: '1 sold of 3 finished; the live one does not count');
 
-      final none = FakeApi()..json('GET /v1/aggregator/holdings', {'holdings': [_holding('a')]});
-      expect((await repoFor(none).getDashboardSummary()).conversionRate, isNull);
+      final none = FakeApi()
+        ..json('GET /v1/aggregator/holdings', {'holdings': [_holding('a')]})
+        ..json('GET /v1/aggregator/sales', <Object>[])
+        ..json('GET /v1/aggregator/wallet/transactions', {'transactions': <Object>[]});
+      final empty = await repoFor(none).getDashboardSummary();
+      expect(empty.conversionRate, isNull, reason: 'a rate over nothing is not 0%');
+      expect(empty.commissionEarned, 0);
+    });
+
+    test("the dashboard's commission earned is what the sales earned - the website's tile is a fixed 0", () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/holdings', {
+          'holdings': [_holding('h1', status: 'sold_pending_settlement'), _holding('h2', status: 'sold_pending_settlement')],
+        })
+        ..json('GET /v1/aggregator/sales', [_sale('s1', holdingId: 'h1'), _sale('s2', holdingId: 'h2')])
+        ..json('GET /v1/aggregator/wallet/transactions', {
+          'transactions': [
+            {'id': 't1', 'amountPaise': 1234500, 'reason': 'aggregator_commission', 'holdingId': 'h1', 'at': '2026-10-02T00:00:00.000Z'},
+          ],
+        });
+      final summary = await repoFor(api).getDashboardSummary();
+      // h1 by the ledger, h2 (no credit in the feed) by the rule.
+      expect(summary.commissionEarned, 12345 + 6000);
+      expect(summary.pendingSettlements, 2);
+      expect(summary.conversionRate, 100);
+    });
+
+    test("average display markup is rupees above GalleryZone's own price, and a lower price counts as none", () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/holdings', {
+          'holdings': [
+            _holding('h1', status: 'sold_pending_settlement', displayPricePaise: 15750000), // 1,57,500: 21,000 above 1,36,500
+            _holding('h2', status: 'sold_pending_settlement'), // at it
+            _holding('h3', status: 'sold_pending_settlement', displayPricePaise: 13000000), // month 3: below it
+          ],
+        })
+        ..json('GET /v1/aggregator/sales', [
+          _sale('s1', holdingId: 'h1'),
+          _sale('s2', holdingId: 'h2'),
+          _sale('s3', holdingId: 'h3'),
+        ]);
+      final analytics = await repoFor(api).getAnalytics();
+      expect(analytics.salesCount, 3);
+      expect(analytics.averageDisplayMarkup, 7000);
     });
 
     test('adding premises sends only what was filled in', () async {

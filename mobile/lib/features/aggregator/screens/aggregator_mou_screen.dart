@@ -7,7 +7,7 @@ import '../../marketplace/widgets/artwork_card.dart' show EmptyState;
 import '../../shell/mou/mou_agreement_page.dart';
 import '../aggregator_mou_data.dart';
 import '../providers/aggregator_providers.dart';
-import 'aggregator_account_screens.dart';
+import 'aggregator_profile_screen.dart';
 
 /// The aggregator's partner agreement with GalleryZone: the website's document,
 /// word for word, with the business's details filled in from the profile; read

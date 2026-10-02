@@ -6,6 +6,7 @@ import '../../../data/models/artist_portal.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/models/mou.dart' show MouState;
 import '../../../data/repositories/aggregator_repository.dart';
+import '../aggregator_stats.dart';
 
 final aggregatorRepositoryProvider = Provider<AggregatorRepository>((ref) {
   return MockAggregatorRepository();
@@ -96,6 +97,27 @@ final aggregatorMouStateProvider = FutureProvider.autoDispose<MouState>((ref) {
   return ref.watch(aggregatorRepositoryProvider).getMouState();
 });
 
+/// The Profile page's summary - held, sold, owed - worked out from the lists the
+/// rest of the portal already loads. They start together, so it costs no extra wait.
+final aggregatorStatsProvider = FutureProvider.autoDispose<AggregatorStats>((ref) async {
+  final loaded = await Future.wait<Object>([
+    ref.watch(aggregatorCollectionProvider.future),
+    ref.watch(aggregatorSalesProvider.future),
+    ref.watch(aggregatorGallerySpacesProvider.future),
+    ref.watch(aggregatorWalletProvider.future),
+    ref.watch(aggregatorProfileProvider.future),
+    ref.watch(aggregatorSaleCommissionsProvider.future),
+  ]);
+  return aggregatorStatsOf(
+    holdings: loaded[0] as List<AggregatorHoldingView>,
+    sales: loaded[1] as List<AggregatorSale>,
+    spaces: loaded[2] as List<GallerySpace>,
+    wallet: loaded[3] as WalletSummary,
+    profile: loaded[4] as AggregatorProfile,
+    commissions: loaded[5] as Map<String, double>,
+  );
+});
+
 final aggregatorSettingsProvider = FutureProvider.autoDispose<AggregatorSettings>((ref) {
   return ref.watch(aggregatorRepositoryProvider).getSettings();
 });
@@ -133,5 +155,6 @@ void invalidateAggregatorSaleFlowIn(ProviderContainer container) {
     ..invalidate(aggregatorWalletTransactionsProvider)
     ..invalidate(aggregatorSettlementsProvider)
     ..invalidate(aggregatorAnalyticsProvider)
-    ..invalidate(aggregatorCategoryPerformanceProvider);
+    ..invalidate(aggregatorCategoryPerformanceProvider)
+    ..invalidate(aggregatorStatsProvider);
 }

@@ -9,6 +9,7 @@ import '../models/customer.dart';
 import '../models/mou.dart';
 import '../../features/aggregator/aggregator_mou_data.dart' show aggregatorMouVersion;
 import '../../features/shell/mou/mou_document.dart' show mouDetailLabel, mouPartyDetailsFor;
+import '../../features/shell/portal_widgets.dart' show gstinPattern;
 import '../repositories/aggregator_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_artist_repository.dart'
@@ -253,11 +254,16 @@ class MockAggregatorRepository implements AggregatorRepository {
             artistPrice: artistPriceOf(artwork),
           );
         }
+        // Of the pieces that have finished (sold or sent back), the share that sold;
+        // one still on display is neither, so it isn't in the denominator.
+        final returned = holdings.where((h) => h.status == HoldingStatus.returned).length;
+        final finished = sold.length + returned;
         return AggregatorDashboardSummary(
           activeReservations:
               holdings.where((h) => h.status == HoldingStatus.reserved).length,
           commissionEarned: commission,
           pendingSettlements: sold.length,
+          conversionRate: finished == 0 ? null : (sold.length / finished * 100).round(),
         );
       });
 
@@ -961,9 +967,28 @@ class MockAggregatorRepository implements AggregatorRepository {
   @override
   Future<AggregatorProfile> updateProfile(AggregatorProfile profile) {
     if (profile.companyName.trim().isEmpty) return mockError('Enter your company name');
+    final gst = profile.gstNumber.trim().toUpperCase();
+    if (gst.isNotEmpty && !gstinPattern.hasMatch(gst)) {
+      return mockError('GSTIN must be the 15-character registration number');
+    }
     return mockDelay(() {
-      _writeSingle(_profileKey, profile, (p) => p.toJson());
-      return profile;
+      final current = _readProfile();
+      // What a client may not set stays as it was: GalleryZone decides the GST
+      // verdict, the agreement is signed through its own call, and a different
+      // number goes back under review - as on the API.
+      final next = profile.copyWith(
+        gstNumber: gst,
+        gstStatus: gst == current.gstNumber
+            ? current.gstStatus
+            : (gst.isEmpty ? ReviewStatus.notSubmitted : ReviewStatus.submitted),
+        mouAcceptance: current.mouAcceptance,
+        securityDepositStatus: current.securityDepositStatus,
+        bankAccountMasked: current.bankAccountMasked,
+        aadhaarStatus: current.aadhaarStatus,
+        aadhaarMasked: current.aadhaarMasked,
+      );
+      _writeSingle(_profileKey, next, (p) => p.toJson());
+      return next;
     });
   }
 

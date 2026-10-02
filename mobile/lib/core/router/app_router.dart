@@ -22,6 +22,7 @@ import '../../features/account/screens/wallet_screen.dart';
 import '../../features/account/screens/wishlist_screen.dart';
 import '../../features/account/widgets/customer_shell.dart';
 import '../../features/aggregator/screens/aggregator_account_screens.dart';
+import '../../features/aggregator/screens/aggregator_analytics_screen.dart';
 import '../../features/aggregator/screens/aggregator_collection_screen.dart';
 import '../../features/aggregator/screens/aggregator_dashboard_screen.dart';
 import '../../features/aggregator/screens/aggregator_finance_screens.dart';
@@ -29,6 +30,7 @@ import '../../features/aggregator/screens/aggregator_holding_screen.dart';
 import '../../features/aggregator/screens/aggregator_inventory_screen.dart';
 import '../../features/aggregator/screens/aggregator_mou_screen.dart';
 import '../../features/aggregator/screens/aggregator_operations_screens.dart';
+import '../../features/aggregator/screens/aggregator_profile_screen.dart';
 import '../../features/aggregator/screens/aggregator_reserve_screen.dart';
 import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
@@ -423,6 +425,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'orders',
                     builder: (context, state) => const AggregatorOrdersScreen(),
+                  ),
+                  GoRoute(
+                    path: 'analytics',
+                    builder: (context, state) => const AggregatorAnalyticsScreen(),
                   ),
                   GoRoute(
                     path: 'customers',

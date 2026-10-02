@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
+import '../../../core/input_formatters.dart';
 import '../../../core/launch.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/mock/seed/artist_seed.dart' show currentArtistId;
@@ -770,7 +771,7 @@ class _PublicProfileFormState extends ConsumerState<_PublicProfileForm> {
           autocorrect: false,
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [
-            _UpperCaseFormatter(),
+            const UpperCaseFormatter(),
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
           ],
           style: const TextStyle(fontFamily: 'monospace'),
@@ -806,7 +807,7 @@ class _PublicProfileFormState extends ConsumerState<_PublicProfileForm> {
           autocorrect: false,
           textCapitalization: TextCapitalization.characters,
           inputFormatters: [
-            _UpperCaseFormatter(),
+            const UpperCaseFormatter(),
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
           ],
           style: const TextStyle(fontFamily: 'monospace'),
@@ -857,14 +858,6 @@ class _PublicProfileFormState extends ConsumerState<_PublicProfileForm> {
       ],
     );
   }
-}
-
-class _UpperCaseFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) => newValue.copyWith(text: newValue.text.toUpperCase());
 }
 
 // --- Identity ----------------------------------------------------------------------------------------------------
@@ -1339,7 +1332,7 @@ class _PayoutFormState extends ConsumerState<_PayoutForm> {
           textCapitalization: TextCapitalization.characters,
           maxLength: 11,
           inputFormatters: [
-            _UpperCaseFormatter(),
+            const UpperCaseFormatter(),
             FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
           ],
           decoration: InputDecoration(

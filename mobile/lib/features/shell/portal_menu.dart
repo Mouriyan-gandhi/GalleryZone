@@ -270,6 +270,12 @@ final aggregatorMenu = <PortalMenuSection>[
         subtitle: 'Commission records per sale',
         route: '/aggregator/dashboard/settlements',
       ),
+      PortalMenuItem(
+        icon: LucideIcons.chartLine,
+        label: 'Analytics',
+        subtitle: 'Sales, revenue and the categories that moved',
+        route: '/aggregator/dashboard/analytics',
+      ),
     ],
   ),
   const PortalMenuSection(

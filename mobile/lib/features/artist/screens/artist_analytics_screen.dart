@@ -5,11 +5,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart' show SocialProofPlatform;
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart' show EmptyState;
 import '../../marketplace/widgets/social_glyphs.dart';
+import '../../shell/chart_widgets.dart';
 import '../../shell/portal_widgets.dart';
 import '../analytics.dart';
 import '../providers/artist_providers.dart';
@@ -64,16 +64,16 @@ class ArtistAnalyticsScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         const _InstagramCard(),
                         const SizedBox(height: 12),
-                        _ChartCard(
+                        ChartCard(
                           title: 'Revenue trend',
                           description: 'Your settled earnings, last 6 months.',
                           child: _RevenueChart(series: revenueSeries(transactionsAsync.value ?? const [])),
                         ),
                         const SizedBox(height: 12),
-                        _ChartCard(
+                        ChartCard(
                           title: 'Revenue by category',
                           description: 'Your own settled sales, by category.',
-                          child: _Bars(
+                          child: BarList(
                             emptyTitle: 'No category revenue yet',
                             emptyDescription: 'No category has recorded a settled sale.',
                             rows: [
@@ -83,10 +83,10 @@ class ArtistAnalyticsScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _ChartCard(
+                        ChartCard(
                           title: 'Artwork status',
                           description: 'Where your artworks currently sit, by count.',
-                          child: _Bars(
+                          child: BarList(
                             emptyTitle: 'No artworks submitted yet',
                             emptyDescription: 'Nothing has entered the lifecycle so far.',
                             fade: true,
@@ -113,7 +113,7 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget stat(String label, String value) => Expanded(child: _Stat(label: label, value: value));
+    Widget stat(String label, String value) => Expanded(child: StatCard(label: label, value: value));
     return Column(
       children: [
         Row(
@@ -134,37 +134,6 @@ class _Summary extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return PortalCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 0.8),
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(value, style: theme.textTheme.titleLarge),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -301,34 +270,6 @@ class _InstagramCardState extends ConsumerState<_InstagramCard> {
   }
 }
 
-/// The frame every chart on this page sits in: a title, one line on what is
-/// plotted, and the plot.
-class _ChartCard extends StatelessWidget {
-  const _ChartCard({required this.title, required this.description, required this.child});
-
-  final String title;
-  final String description;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return PortalCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 2),
-          Text(description, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
 /// Monthly settled earnings as an area under a line. Nothing is invented: a
 /// month without a sale sits on the floor.
 class _RevenueChart extends StatelessWidget {
@@ -341,7 +282,7 @@ class _RevenueChart extends StatelessWidget {
     final theme = Theme.of(context);
     final total = series.fold<double>(0, (sum, p) => sum + p.amount);
     if (total == 0) {
-      return const _Empty(title: 'No revenue yet', description: 'Settled sales will show up here.');
+      return const ChartEmpty(title: 'No revenue yet', description: 'Settled sales will show up here.');
     }
     final top = series.map((p) => p.amount).reduce((a, b) => a > b ? a : b);
     final gold = theme.colorScheme.tertiary;
@@ -417,97 +358,6 @@ class _RevenueChart extends StatelessWidget {
           ),
           duration: Duration.zero,
         ),
-      ),
-    );
-  }
-}
-
-typedef _BarRow = ({String label, double value, String text});
-
-/// Horizontal bars, every one the same colour and each labelled with its own
-/// figure, so the number is there without hovering. The funnel fades down the
-/// pipeline ([fade]): the stages are in order, and the intensity says so.
-class _Bars extends StatelessWidget {
-  const _Bars({required this.rows, required this.emptyTitle, required this.emptyDescription, this.fade = false});
-
-  final List<_BarRow> rows;
-  final String emptyTitle;
-  final String emptyDescription;
-  final bool fade;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final top = rows.fold<double>(0, (max, r) => r.value > max ? r.value : max);
-    // A funnel with nothing in any stage has nothing to show.
-    if (rows.isEmpty || top == 0) return _Empty(title: emptyTitle, description: emptyDescription);
-
-    return Semantics(
-      label: rows.map((r) => '${r.label} ${r.text}').join(', '),
-      child: Column(
-        children: [
-          for (var i = 0; i < rows.length; i++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 104,
-                    child: Text(rows[i].label, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.labelMedium),
-                  ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth * (rows[i].value / top);
-                        return Align(
-                          alignment: Alignment.centerLeft,
-                          child: Container(
-                            width: width < 3 && rows[i].value > 0 ? 3 : width,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.tertiary.withValues(
-                                alpha: fade ? (1 - i * 0.2).clamp(0.3, 1.0) : 0.9,
-                              ),
-                              borderRadius: const BorderRadius.horizontal(right: Radius.circular(AppRadius.sm)),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 52,
-                    child: Text(rows[i].text, textAlign: TextAlign.right, style: theme.textTheme.labelSmall),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  const _Empty({required this.title, required this.description});
-
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        children: [
-          Icon(LucideIcons.chartNoAxesColumn, size: 24, color: theme.colorScheme.outline),
-          const SizedBox(height: 8),
-          Text(title, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 2),
-          Text(description, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
-        ],
       ),
     );
   }

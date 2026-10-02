@@ -138,17 +138,34 @@ void main() {
     final profile = await repository.getProfile();
     expect(profile.gstStatus, ReviewStatus.approved, reason: 'the demo aggregator starts approved');
 
-    for (final status in [ReviewStatus.notSubmitted, ReviewStatus.submitted, ReviewStatus.rejected]) {
-      await repository.updateProfile(profile.copyWith(gstStatus: status));
-      await expectLater(
-        repository.reserve(item.artwork.id),
-        throwsA(isA<Exception>().having((e) => '$e', 'message', contains('GST number'))),
-        reason: status.name,
-      );
-    }
+    // GalleryZone's verdict is not the client's to set, so the states are reached the
+    // way they are for real: a new number is under review, none is not started, and a
+    // rejection is the admin's - written here straight into the store.
+    Future<void> expectRefused(String why) => expectLater(
+          repository.reserve(item.artwork.id),
+          throwsA(isA<Exception>().having((e) => '$e', 'message', contains('GST number'))),
+          reason: why,
+        );
+
+    await repository.updateProfile(profile.copyWith(gstNumber: '27ABCDE1234F1Z7'));
+    await expectRefused('under review');
+
+    await repository.updateProfile(profile.copyWith(gstNumber: ''));
+    await expectRefused('not started');
+
+    MockDb.setCollection(
+      'aggregatorProfile',
+      [(await repository.getProfile()).copyWith(gstStatus: ReviewStatus.rejected)],
+      (p) => p.toJson(),
+    );
+    await expectRefused('rejected');
     expect((await repository.getWallet()).lockedBalance, 0, reason: 'a refusal holds nothing');
 
-    await repository.updateProfile(profile.copyWith(gstStatus: ReviewStatus.approved));
+    MockDb.setCollection(
+      'aggregatorProfile',
+      [(await repository.getProfile()).copyWith(gstStatus: ReviewStatus.approved)],
+      (p) => p.toJson(),
+    );
     expect((await repository.reserve(item.artwork.id)).status, HoldingStatus.reserved);
   });
 
@@ -498,6 +515,79 @@ void main() {
       await repository.markRemitted(owed.id, via: RemitVia.bank);
       await expectLater(repository.markRemitted(owed.id, via: RemitVia.bank), throwsA(isA<Exception>()));
       await expectLater(repository.markRemitted('nope'), throwsA(isA<Exception>()));
+    });
+  });
+
+  group('the profile', () {
+    test('a client cannot award itself an approved GST number, the agreement or a bank account', () async {
+      final before = await repository.getProfile();
+      expect(before.gstStatus, ReviewStatus.approved, reason: 'the demo aggregator starts approved');
+      expect(before.mouAcceptance, isNotNull, reason: 'setUp signed it');
+
+      final saved = await repository.updateProfile(
+        before.copyWith(
+          companyName: 'Verandah Art Co',
+          gstStatus: ReviewStatus.rejected,
+          mouAcceptance: null,
+          bankAccountMasked: '•••• •••• •••• 0000',
+          aadhaarStatus: ReviewStatus.approved,
+          aadhaarMasked: 'XXXX XXXX 1111',
+        ),
+      );
+
+      expect(saved.companyName, 'Verandah Art Co');
+      expect(saved.gstStatus, ReviewStatus.approved);
+      expect(saved.mouAcceptance, isNotNull);
+      expect(saved.bankAccountMasked, before.bankAccountMasked);
+      expect(saved.aadhaarMasked, before.aadhaarMasked);
+      expect(saved.aadhaarStatus, before.aadhaarStatus);
+    });
+
+    test('a different GST number goes back under review; the same one keeps its verdict; none clears it', () async {
+      final profile = await repository.getProfile();
+
+      final same = await repository.updateProfile(profile.copyWith(gstNumber: profile.gstNumber.toLowerCase()));
+      expect(same.gstStatus, ReviewStatus.approved, reason: 'capitals do not make it a different number');
+
+      final changed = await repository.updateProfile(profile.copyWith(gstNumber: '27ABCDE1234F1Z7'));
+      expect(changed.gstNumber, '27ABCDE1234F1Z7');
+      expect(changed.gstStatus, ReviewStatus.submitted);
+
+      final cleared = await repository.updateProfile(changed.copyWith(gstNumber: ''));
+      expect(cleared.gstStatus, ReviewStatus.notSubmitted);
+      await expectLater(
+        repository.reserve((await repository.listReservableInventory()).first.artwork.id),
+        throwsA(isA<Exception>().having((e) => '$e', 'message', contains('GST number'))),
+      );
+    });
+
+    test('a GST number that is not a GSTIN is refused, as the API refuses it', () async {
+      final profile = await repository.getProfile();
+      await expectLater(
+        repository.updateProfile(profile.copyWith(gstNumber: 'NOT-A-GSTIN')),
+        throwsA(isA<Exception>().having((e) => '$e', 'message', contains('15-character'))),
+      );
+      expect((await repository.getProfile()).gstNumber, profile.gstNumber, reason: 'a refusal changes nothing');
+    });
+
+    test('the conversion rate is over pieces that finished - sold or sent back - and not those still on display', () async {
+      final seeded = seedHoldingsCollection();
+      final sold = seeded.where((h) => h.status == HoldingStatus.soldPendingSettlement).length;
+      final returned = seeded.where((h) => h.status == HoldingStatus.returned).length;
+      int rate(int soldCount, int returnedCount) => (soldCount / (soldCount + returnedCount) * 100).round();
+      expect(sold, greaterThan(0), reason: 'the demo has sales already');
+      expect((await repository.getDashboardSummary()).conversionRate, rate(sold, returned));
+
+      final pieces = (await repository.listReservableInventory()).take(2).toList();
+      final first = await repository.reserve(pieces[0].artwork.id);
+      await repository.reserve(pieces[1].artwork.id);
+      expect((await repository.getDashboardSummary()).conversionRate, rate(sold, returned), reason: 'on display is neither');
+
+      await repository.releaseHolding(first.id);
+      expect((await repository.getDashboardSummary()).conversionRate, rate(sold, returned + 1));
+
+      await repository.recordSale(_sale(pieces[1].artwork.id));
+      expect((await repository.getDashboardSummary()).conversionRate, rate(sold + 1, returned + 1));
     });
   });
 

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/json_utils.dart';
@@ -71,16 +73,20 @@ class RemoteAggregatorRepository implements AggregatorRepository {
 
   @override
   Future<AggregatorDashboardSummary> getDashboardSummary() async {
-    final holdings = (await _holdings()).map((view) => view.holding).toList();
+    final results = await Future.wait([_holdings(), _sales(), _creditedCommissions()]);
+    final views = results[0] as List<AggregatorHoldingView>;
+    final holdings = views.map((view) => view.holding).toList();
     final active = holdings.where((h) => h.status == HoldingStatus.reserved).length;
     final sold = holdings.where((h) => h.status == HoldingStatus.soldPendingSettlement).length;
     final returned = holdings.where((h) => h.status == HoldingStatus.returned).length;
     final finished = sold + returned;
+    // The website's own tile is a fixed 0 ("the wallet shows the credited amount");
+    // here it is that amount: what each recorded sale earned, by the ledger where
+    // it still reaches and by the rule where it doesn't.
+    final commissions = _commissionsOf(results[1] as List<AggregatorSale>, views, results[2] as Map<String, double>);
     return AggregatorDashboardSummary(
       activeReservations: active,
-      // Commission is settled by GalleryZone after the sale; the wallet shows
-      // what has actually been credited.
-      commissionEarned: 0,
+      commissionEarned: commissions.values.fold(0.0, (sum, amount) => sum + amount),
       pendingSettlements: sold,
       conversionRate: finished == 0 ? null : (sold / finished * 100).round(),
     );
@@ -421,12 +427,16 @@ class RemoteAggregatorRepository implements AggregatorRepository {
     final sales = results[0] as List<AggregatorSale>;
     final holdings = results[1] as List<AggregatorHoldingView>;
     final revenue = sales.fold<double>(0, (sum, sale) => sum + sale.soldPrice);
+    // How far above GalleryZone's own price each piece was displayed, in rupees,
+    // and nothing for one displayed at or below it. (The website works a ratio of
+    // sold to display price - always 0, since a sale is at the display price - and
+    // then prints it as rupees.)
     final markups = [
       for (final sale in sales)
         () {
           final view = holdings.where((h) => h.holding.id == sale.holdingId).firstOrNull;
-          final base = view?.holding.displayPrice ?? 0;
-          return base > 0 ? (sale.soldPrice - base) / base : 0.0;
+          if (view == null) return 0.0;
+          return math.max(0.0, view.holding.displayPrice - view.artwork.customerPrice);
         }(),
     ];
     return AggregatorAnalyticsSummary(
@@ -437,7 +447,7 @@ class RemoteAggregatorRepository implements AggregatorRepository {
       customerCount: sales.map((s) => s.buyerEmail).toSet().length,
       activeReservations: holdings.where((h) => h.holding.status == HoldingStatus.reserved).length,
       averageSoldPrice: sales.isEmpty ? 0 : (revenue / sales.length).roundToDouble(),
-      averageDisplayMarkup: markups.isEmpty ? 0 : markups.reduce((a, b) => a + b) / markups.length,
+      averageDisplayMarkup: markups.isEmpty ? 0 : (markups.reduce((a, b) => a + b) / markups.length).roundToDouble(),
     );
   }
 
