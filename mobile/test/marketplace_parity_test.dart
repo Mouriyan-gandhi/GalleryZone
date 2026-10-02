@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/models/artist.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
+import 'package:gallery_zone/data/models/auth.dart' show Role;
+import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/models/marketplace.dart';
 import 'package:gallery_zone/data/repositories/artwork_repository.dart';
@@ -113,9 +116,9 @@ class _Catalog implements ArtworkRepository {
   Future<List<ArtistProfile>> listArtists() async => const [];
 }
 
-Widget _app(_Catalog catalog, {Widget? home}) => ProviderScope(
+Widget _app(_Catalog catalog, {Widget? home, Role? role}) => ProviderScope(
       retry: (retryCount, error) => null,
-      overrides: [artworkRepositoryProvider.overrideWithValue(catalog)],
+      overrides: [artworkRepositoryProvider.overrideWithValue(catalog), initialRoleProvider.overrideWithValue(role)],
       child: MaterialApp(theme: AppTheme.light, home: home ?? const MarketplaceScreen()),
     );
 
@@ -126,6 +129,67 @@ void _phone(WidgetTester tester) {
 }
 
 void main() {
+  group('the way out of the shop', () {
+    // An artist signs in and lands on the marketplace, as on the website. The marketplace
+    // had no way on to a dashboard, and a visitor no way to sign in.
+    Widget shop(WidgetTester tester, {Role? role, double width = 390}) {
+      tester.view.physicalSize = Size(width * 3, 844 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final router = GoRouter(
+        routes: [
+          GoRoute(path: '/', builder: (context, state) => const MarketplaceScreen()),
+          GoRoute(path: '/login', builder: (context, state) => const Scaffold(body: Text('LOGIN PAGE'))),
+          GoRoute(path: '/dashboard', builder: (context, state) => const Scaffold(body: Text('ARTIST DASHBOARD'))),
+          GoRoute(path: '/aggregator/dashboard', builder: (context, state) => const Scaffold(body: Text('AGGREGATOR DASHBOARD'))),
+          GoRoute(path: '/account', builder: (context, state) => const Scaffold(body: Text('CUSTOMER ACCOUNT'))),
+        ],
+      );
+      addTearDown(router.dispose);
+      return ProviderScope(
+        retry: (retryCount, error) => null,
+        overrides: [artworkRepositoryProvider.overrideWithValue(_Catalog(const [])), initialRoleProvider.overrideWithValue(role)],
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+      );
+    }
+
+    testWidgets('a visitor is offered Sign in, and it goes to the sign-in page', (tester) async {
+      await tester.pumpWidget(shop(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('marketplace-account')), findsNothing);
+      await tester.tap(find.byKey(const Key('marketplace-sign-in')));
+      await tester.pumpAndSettle();
+      expect(find.text('LOGIN PAGE'), findsOneWidget);
+    });
+
+    for (final (role, label, page) in [
+      (Role.artist, 'My dashboard', 'ARTIST DASHBOARD'),
+      (Role.aggregator, 'My dashboard', 'AGGREGATOR DASHBOARD'),
+      (Role.customer, 'My account', 'CUSTOMER ACCOUNT'),
+    ]) {
+      testWidgets('a signed-in ${role.name} is taken to their own home', (tester) async {
+        await tester.pumpWidget(shop(tester, role: role));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('marketplace-sign-in')), findsNothing);
+        expect(find.byTooltip(label), findsOneWidget);
+        await tester.tap(find.byKey(const Key('marketplace-account')));
+        await tester.pumpAndSettle();
+        expect(find.text(page), findsOneWidget);
+      });
+    }
+
+    testWidgets('all three actions and the title fit a 320-wide phone', (tester) async {
+      await tester.pumpWidget(shop(tester, role: Role.artist, width: 320));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'no overflow');
+      expect(find.byKey(const Key('marketplace-account')), findsOneWidget);
+      expect(find.byTooltip('Artists'), findsOneWidget);
+      expect(find.byTooltip('About'), findsOneWidget);
+    });
+  });
+
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     MockDb.resetForTesting();

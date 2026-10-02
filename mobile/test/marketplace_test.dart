@@ -5,6 +5,7 @@ import 'package:gallery_zone/core/format.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/models/artist.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
+import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/data/models/artwork_filters.dart';
 import 'package:gallery_zone/data/models/marketplace.dart';
 import 'package:gallery_zone/data/repositories/artwork_repository.dart';
@@ -169,7 +170,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [artworkRepositoryProvider.overrideWithValue(repository)],
+        overrides: [artworkRepositoryProvider.overrideWithValue(repository), initialRoleProvider.overrideWithValue(null)],
         child: MaterialApp(theme: AppTheme.dark, home: const MarketplaceScreen()),
       ),
     );
@@ -187,7 +188,7 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [artworkRepositoryProvider.overrideWithValue(repository)],
+        overrides: [artworkRepositoryProvider.overrideWithValue(repository), initialRoleProvider.overrideWithValue(null)],
         child: MaterialApp(theme: AppTheme.dark, home: const MarketplaceScreen()),
       ),
     );

@@ -9,7 +9,11 @@ import '../../../core/format.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/artwork_filters.dart';
+import '../../../data/models/auth.dart' show Role;
 import '../../../data/models/marketplace.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../auth/role_options.dart';
+import '../../auth/screens/login_screen.dart';
 import '../../marketing/screens/about_screen.dart';
 import '../filter_options.dart';
 import '../providers/marketplace_providers.dart';
@@ -171,6 +175,10 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
       appBar: AppBar(
         title: const Text('The Marketplace'),
         actions: [
+          // The way out of the shop. An artist signs in and lands HERE (as on the website),
+          // so without this there was no way on to their dashboard, and a visitor had no
+          // way to sign in at all.
+          const _AccountAction(),
           IconButton(
             onPressed: () => context.push(ArtistsDirectoryScreen.path),
             tooltip: 'Artists',
@@ -328,6 +336,30 @@ class _ActiveChip {
 }
 
 /// The page's opening: what GalleryZone is, the search, and the category pills.
+/// Sign in, for someone who isn't; their own dashboard or account, for someone who is.
+class _AccountAction extends ConsumerWidget {
+  const _AccountAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(sessionProvider);
+    if (role == null) {
+      return TextButton(
+        key: const Key('marketplace-sign-in'),
+        onPressed: () => context.go(LoginScreen.path),
+        child: const Text('Sign in'),
+      );
+    }
+    final account = role == Role.customer;
+    return IconButton(
+      key: const Key('marketplace-account'),
+      onPressed: () => context.go(role.home),
+      tooltip: account ? 'My account' : 'My dashboard',
+      icon: Icon(account ? LucideIcons.circleUser : LucideIcons.layoutDashboard),
+    );
+  }
+}
+
 class _Hero extends StatelessWidget {
   const _Hero({
     required this.controller,
