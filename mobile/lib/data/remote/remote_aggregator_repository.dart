@@ -40,6 +40,17 @@ class RemoteAggregatorRepository implements AggregatorRepository {
   Future<List<AggregatorHoldingView>> listCollection() => _holdings();
 
   @override
+  Future<AggregatorHoldingView?> getHolding(String holdingId) async {
+    try {
+      final json = await api.getMap('/v1/aggregator/holdings/${Uri.encodeComponent(holdingId)}');
+      return holdingViewFromApi(json);
+    } on ApiError catch (error) {
+      if (error.isNotFound) return null;
+      rethrow;
+    }
+  }
+
+  @override
   Future<AggregatorDashboardSummary> getDashboardSummary() async {
     final holdings = (await _holdings()).map((view) => view.holding).toList();
     final active = holdings.where((h) => h.status == HoldingStatus.reserved).length;

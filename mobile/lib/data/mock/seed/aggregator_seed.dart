@@ -1,5 +1,6 @@
 import '../../models/aggregator.dart';
 import '../../models/artist_portal.dart';
+import '../../models/artwork.dart' show ReviewStatus;
 import '../../models/customer.dart';
 import 'artist_seed.dart' show seedArtistHoldings;
 
@@ -129,6 +130,7 @@ AggregatorProfile seedAggregatorProfile() => const AggregatorProfile(
       contactPerson: currentAggregatorContact,
       avatar: '/early-program/avatar-2.png',
       gstNumber: '29ABCDE1234F1Z5',
+      gstStatus: ReviewStatus.approved,
       phone: '+91 98450 12345',
       addressLine1: '14 Church Street',
       addressCity: 'Bengaluru',

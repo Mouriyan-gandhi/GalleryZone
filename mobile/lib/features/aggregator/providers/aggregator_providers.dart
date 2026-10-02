@@ -28,6 +28,13 @@ final aggregatorCollectionProvider =
   return ref.watch(aggregatorRepositoryProvider).listCollection();
 });
 
+/// One holding with its artwork, returned ones included - the detail page's
+/// source. Null when it isn't this aggregator's.
+final aggregatorHoldingProvider =
+    FutureProvider.autoDispose.family<AggregatorHoldingView?, String>((ref, holdingId) {
+  return ref.watch(aggregatorRepositoryProvider).getHolding(holdingId);
+});
+
 final aggregatorSalesProvider = FutureProvider.autoDispose<List<AggregatorSale>>((ref) {
   return ref.watch(aggregatorRepositoryProvider).listSales();
 });
@@ -101,16 +108,23 @@ final aggregatorSupportTicketsProvider =
 /// shipment or processing a settlement moves the holding, the sale, the
 /// wallet, the customer roll-up and the KPIs at once; invalidating them
 /// one-by-one at each call site is how one gets forgotten.
-void invalidateAggregatorSaleFlow(WidgetRef ref) {
-  ref.invalidate(aggregatorDashboardProvider);
-  ref.invalidate(aggregatorInventoryProvider);
-  ref.invalidate(aggregatorCollectionProvider);
-  ref.invalidate(aggregatorSalesProvider);
-  ref.invalidate(aggregatorRemittancesDueProvider);
-  ref.invalidate(aggregatorCustomersProvider);
-  ref.invalidate(aggregatorWalletProvider);
-  ref.invalidate(aggregatorWalletTransactionsProvider);
-  ref.invalidate(aggregatorSettlementsProvider);
-  ref.invalidate(aggregatorAnalyticsProvider);
-  ref.invalidate(aggregatorCategoryPerformanceProvider);
+void invalidateAggregatorSaleFlow(WidgetRef ref) =>
+    invalidateAggregatorSaleFlowIn(ProviderScope.containerOf(ref.context));
+
+/// The same, from a container taken before an await - for a sheet or dialog
+/// whose screen may be gone by the time its request returns.
+void invalidateAggregatorSaleFlowIn(ProviderContainer container) {
+  container
+    ..invalidate(aggregatorDashboardProvider)
+    ..invalidate(aggregatorInventoryProvider)
+    ..invalidate(aggregatorCollectionProvider)
+    ..invalidate(aggregatorHoldingProvider)
+    ..invalidate(aggregatorSalesProvider)
+    ..invalidate(aggregatorRemittancesDueProvider)
+    ..invalidate(aggregatorCustomersProvider)
+    ..invalidate(aggregatorWalletProvider)
+    ..invalidate(aggregatorWalletTransactionsProvider)
+    ..invalidate(aggregatorSettlementsProvider)
+    ..invalidate(aggregatorAnalyticsProvider)
+    ..invalidate(aggregatorCategoryPerformanceProvider);
 }

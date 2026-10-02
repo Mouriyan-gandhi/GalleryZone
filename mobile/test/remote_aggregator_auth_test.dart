@@ -144,6 +144,17 @@ void main() {
       expect(bodies[1], {'artworkId': 'aw1', 'sellingPricePaise': 14000000});
     });
 
+    test('one holding comes with its artwork - a returned one too; one that is not theirs is null', () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/holdings/h1', _holding('h1', status: 'returned'))
+        ..problem('GET /v1/aggregator/holdings/nope', 404, 'not_found', 'Not found');
+      final repo = repoFor(api);
+      final view = await repo.getHolding('h1');
+      expect(view!.holding.status, HoldingStatus.returned);
+      expect(view.artwork.title, 'Monsoon');
+      expect(await repo.getHolding('nope'), isNull);
+    });
+
     test('the API\'s own reason reaches the person when reserving is refused', () async {
       final api = FakeApi()
         ..problem(

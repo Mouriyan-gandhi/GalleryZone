@@ -25,9 +25,11 @@ import '../../features/aggregator/screens/aggregator_account_screens.dart';
 import '../../features/aggregator/screens/aggregator_collection_screen.dart';
 import '../../features/aggregator/screens/aggregator_dashboard_screen.dart';
 import '../../features/aggregator/screens/aggregator_finance_screens.dart';
+import '../../features/aggregator/screens/aggregator_holding_screen.dart';
 import '../../features/aggregator/screens/aggregator_inventory_screen.dart';
 import '../../features/aggregator/screens/aggregator_mou_screen.dart';
 import '../../features/aggregator/screens/aggregator_operations_screens.dart';
+import '../../features/aggregator/screens/aggregator_reserve_screen.dart';
 import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
 import '../../features/artist/screens/artist_account_screens.dart';
@@ -467,6 +469,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AggregatorBrowseScreen.path,
                 builder: (context, state) => const AggregatorBrowseScreen(),
+                routes: [
+                  GoRoute(
+                    path: AggregatorReserveScreen.subPath,
+                    builder: (context, state) =>
+                        AggregatorReserveScreen(artworkId: state.pathParameters['artworkId']!),
+                  ),
+                ],
               ),
             ],
           ),
@@ -475,6 +484,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: AggregatorCollectionScreen.path,
                 builder: (context, state) => const AggregatorCollectionScreen(),
+                routes: [
+                  GoRoute(
+                    path: AggregatorHoldingScreen.subPath,
+                    builder: (context, state) =>
+                        AggregatorHoldingScreen(holdingId: state.pathParameters['holdingId']!),
+                  ),
+                ],
               ),
             ],
           ),

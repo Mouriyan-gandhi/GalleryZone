@@ -6,467 +6,581 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/format.dart';
 import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/models/artwork.dart';
+import '../../../data/models/aggregator.dart';
+import '../../../data/models/artist_portal.dart';
 import '../../../data/repositories/aggregator_repository.dart';
-import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
+import '../reserve_requirements.dart';
+import '../widgets/aggregator_widgets.dart';
 
-/// Port of `app/aggregator/inventory/page.tsx` — the web's "Browse
-/// GalleryZone". Artworks eligible for aggregator display that nobody has
-/// claimed yet; reserving one pays the advance and moves it to Inventory.
-class AggregatorBrowseScreen extends ConsumerWidget {
+/// Port of `app/aggregator/inventory/page.tsx` + `reservable-inventory-grid.tsx` -
+/// the web's "Browse GalleryZone". Artworks eligible for aggregator display that
+/// nobody has claimed yet; reserving one pays the advance and moves it to
+/// Inventory.
+///
+/// The web's search box, category chips and sort menu are decorative there (they
+/// filter and sort nothing); here they work.
+class AggregatorBrowseScreen extends ConsumerStatefulWidget {
   const AggregatorBrowseScreen({super.key});
 
   static const path = '/aggregator/inventory';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AggregatorBrowseScreen> createState() => _AggregatorBrowseScreenState();
+}
+
+enum _Sort {
+  newest('Newest'),
+  priceAsc('Price: Low to High'),
+  priceDesc('Price: High to Low');
+
+  const _Sort(this.label);
+  final String label;
+}
+
+class _AggregatorBrowseScreenState extends ConsumerState<AggregatorBrowseScreen> {
+  final _search = TextEditingController();
+  String _query = '';
+  String? _category;
+  _Sort _sort = _Sort.newest;
+  bool _grid = true;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<ReservableArtwork> _visible(List<ReservableArtwork> all) {
+    final query = _query.trim().toLowerCase();
+    final shown = [
+      for (final item in all)
+        if ((_category == null || item.artwork.category == _category) &&
+            (query.isEmpty ||
+                [
+                  item.artwork.title,
+                  item.artwork.artistName,
+                  item.artwork.medium,
+                  item.artwork.category,
+                  item.artwork.paintingStyle ?? '',
+                ].any((field) => field.toLowerCase().contains(query))))
+          item,
+    ];
+    switch (_sort) {
+      case _Sort.newest:
+        break; // the service's own order
+      case _Sort.priceAsc:
+        shown.sort((a, b) => a.offer.offerPrice.compareTo(b.offer.offerPrice));
+      case _Sort.priceDesc:
+        shown.sort((a, b) => b.offer.offerPrice.compareTo(a.offer.offerPrice));
+    }
+    return shown;
+  }
+
+  void _reserve(ReservableArtwork item) {
+    final requirements = ref.read(reserveRequirementsProvider);
+    if (requirements.blockedReason != null) {
+      showReserveBlockedDialog(context, requirements);
+      return;
+    }
+    context.push('/aggregator/inventory/${item.artwork.id}/reserve');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final inventory = ref.watch(aggregatorInventoryProvider);
+    // What this aggregator holds or has sold is what "suggested for you" is
+    // measured against. A returned piece wasn't theirs to show, so it doesn't count.
+    final held = [
+      for (final view in ref.watch(aggregatorCollectionProvider).value ?? const <AggregatorHoldingView>[])
+        if (view.holding.status != HoldingStatus.returned) view.artwork,
+    ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Browse GalleryZone')),
       body: inventory.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
-          icon: LucideIcons.triangleAlert,
+        error: (error, stack) => EmptyState(
+          icon: LucideIcons.packageSearch,
           title: "Couldn't load inventory",
-          description: 'Something went wrong. Try again in a moment.',
+          description: 'Something went wrong loading reservable artworks.',
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(aggregatorInventoryProvider),
+            child: const Text('Try again'),
+          ),
         ),
-        data: (artworks) => artworks.isEmpty
-            ? const EmptyState(
-                icon: LucideIcons.packageSearch,
-                title: 'No reservable artworks right now',
-                description:
-                    'Every aggregator-listed artwork is already claimed. '
-                    'Check back as new work is listed.',
-              )
-            : RefreshIndicator(
-                onRefresh: () async {
-                  ref.invalidate(aggregatorInventoryProvider);
-                  await ref.read(aggregatorInventoryProvider.future);
-                },
-                child: CustomScrollView(
-                  slivers: [
-                    const SliverToBoxAdapter(child: _ReserveReadiness()),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 240,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 0.52,
+        data: (all) {
+          if (all.isEmpty) {
+            return const EmptyState(
+              icon: LucideIcons.packageSearch,
+              title: 'No reservable artworks right now',
+              description:
+                  'Every marketplace-and-aggregator artwork is already claimed. Check back soon as new work is listed.',
+            );
+          }
+          final categories = ({for (final item in all) item.artwork.category}..remove('')).toList()..sort();
+          final visible = _visible(all);
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(aggregatorInventoryProvider);
+              await ref.read(aggregatorInventoryProvider.future);
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _ContentColumn(
+                      children: [
+                        Text(
+                          'Browse artworks available for aggregator display. Reserving pays '
+                          'the advance and moves a piece into your Collection.',
+                          style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                         ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _ReservableCard(item: artworks[index]),
-                          childCount: artworks.length,
+                        const SizedBox(height: 16),
+                        // The API refuses a reservation without a signed MOU and an
+                        // approved GST number. Say so here rather than letting someone
+                        // pick a piece and hit the wall on the reserve screen.
+                        const ReserveRequirementsNotice(),
+                        if (held.isNotEmpty) ...[
+                          SuggestedArtworks(references: held, title: 'Suggested for you', limit: 6),
+                          const SizedBox(height: 20),
+                        ],
+                        TextField(
+                          controller: _search,
+                          textInputAction: TextInputAction.search,
+                          onChanged: (value) => setState(() => _query = value),
+                          decoration: InputDecoration(
+                            hintText: 'Search artworks, artists, or styles...',
+                            prefixIcon: const Icon(LucideIcons.search, size: 16),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Clear search',
+                                    icon: const Icon(LucideIcons.x, size: 16),
+                                    onPressed: () {
+                                      _search.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
+                          ),
                         ),
+                        if (categories.length > 1) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 36,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              children: [
+                                for (final category in [null, ...categories])
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: ChoiceChip(
+                                      label: Text(category ?? 'All'),
+                                      selected: _category == category,
+                                      onSelected: (_) => setState(() => _category = category),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        _ResultsBar(
+                          count: visible.length,
+                          sort: _sort,
+                          grid: _grid,
+                          onSort: (value) => setState(() => _sort = value ?? _sort),
+                          onToggleView: () => setState(() => _grid = !_grid),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+                if (visible.isEmpty)
+                  const SliverToBoxAdapter(
+                    child: EmptyState(
+                      icon: LucideIcons.packageSearch,
+                      title: 'Nothing matches',
+                      description: 'Try a different search or category.',
+                    ),
+                  )
+                else if (_grid)
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 260,
+                        mainAxisSpacing: 14,
+                        crossAxisSpacing: 14,
+                        mainAxisExtent: 420,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _ReservableCard(item: visible[index], onReserve: () => _reserve(visible[index])),
+                        childCount: visible.length,
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    sliver: SliverList.separated(
+                      itemCount: visible.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) => _ContentColumn(
+                        children: [_ReservableRow(item: visible[index], onReserve: () => _reserve(visible[index]))],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class _ReservableCard extends ConsumerWidget {
-  const _ReservableCard({required this.item});
+/// "N artworks available", the sort menu and the grid/list switch - one line on a
+/// wide window, two on a phone (the count, then the controls), as the web does.
+class _ResultsBar extends StatelessWidget {
+  const _ResultsBar({
+    required this.count,
+    required this.sort,
+    required this.grid,
+    required this.onSort,
+    required this.onToggleView,
+  });
+
+  final int count;
+  final _Sort sort;
+  final bool grid;
+  final ValueChanged<_Sort?> onSort;
+  final VoidCallback onToggleView;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = Text(
+      '$count artwork${count == 1 ? '' : 's'} available',
+      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+    );
+    final menu = DropdownButtonHideUnderline(
+      child: DropdownButton<_Sort>(
+        value: sort,
+        isExpanded: true,
+        isDense: true,
+        style: theme.textTheme.labelLarge,
+        items: [
+          for (final option in _Sort.values)
+            DropdownMenuItem(
+              value: option,
+              child: Text('Sort: ${option.label}', overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: onSort,
+      ),
+    );
+    final toggle = IconButton(
+      tooltip: grid ? 'List view' : 'Grid view',
+      visualDensity: VisualDensity.compact,
+      icon: Icon(grid ? LucideIcons.list : LucideIcons.layoutGrid, size: 18),
+      onPressed: onToggleView,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 560;
+        final controls = Row(
+          children: [
+            if (wide) SizedBox(width: 220, child: menu) else Expanded(child: menu),
+            const SizedBox(width: 4),
+            toggle,
+          ],
+        );
+        return wide
+            ? Row(children: [Expanded(child: label), controls])
+            : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [label, const SizedBox(height: 4), controls]);
+      },
+    );
+  }
+}
+
+/// A centred, width-capped column - the header and list rows share it so text
+/// and rows stay readable on a tablet while the grid fills the window.
+class _ContentColumn extends StatelessWidget {
+  const _ContentColumn({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      ),
+    );
+  }
+}
+
+/// Month 1 is the aggregator's to price; after that GalleryZone's ladder steps
+/// the price down. Said the same way on the card and the list row.
+String monthLine(AggregatorOffer offer) {
+  final month = 'Month ${offer.month} of $aggregatorCycleMonths';
+  if (offer.canSetPrice) return '$month · you set the price';
+  return offer.monthlyReduction > 0 ? '$month · ${formatInr(offer.monthlyReduction)} off month 1' : month;
+}
+
+String _priceNote(AggregatorOffer offer) =>
+    offer.canSetPrice ? "GalleryZone's price, incl. GST. You can set a higher one." : 'Fixed this month, incl. GST';
+
+/// Initial in a gold disc, then the artist's name and the verified mark.
+class _ArtistLine extends StatelessWidget {
+  const _ArtistLine({required this.item});
 
   final ReservableArtwork item;
 
-  Artwork get artwork => item.artwork;
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final offer = item.offer;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    final artwork = item.artwork;
+    return Row(
       children: [
-        Expanded(
-          child: GestureDetector(
-            // Opens the public marketplace detail page — the aggregator sees
-            // exactly what a collector would before committing an advance.
-            onTap: () => context.push('/marketplace/${artwork.id}'),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              child: ArtworkImageView(url: artwork.thumbnailUrl),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          artwork.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        Text(
-          artwork.artistName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall,
-        ),
-        const SizedBox(height: 4),
-        PriceTag(amount: offer.offerPrice, style: theme.textTheme.bodyMedium),
-        Text(
-          'Your price · month ${offer.month} of $aggregatorCycleMonths',
-          style: theme.textTheme.labelSmall,
-        ),
-        // Only worth showing once the two have parted company. In month one
-        // they are the same number and the strike-through would read as a
-        // discount that isn't there.
-        if (offer.month > 1)
-          Text(
-            'was ${formatInr(basePriceOf(artistPriceFrom(offer.marketplacePrice)))}',
+        CircleAvatar(
+          radius: 9,
+          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+          child: Text(
+            artwork.artistName.isEmpty ? '' : artwork.artistName.characters.first.toUpperCase(),
             style: theme.textTheme.labelSmall?.copyWith(
-              decoration: TextDecoration.lineThrough,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.tertiary,
             ),
           ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 36,
-          child: FilledButton(
-            onPressed: () => _openReserveSheet(context, ref, item),
-            child: const Text('Reserve'),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            artwork.artistName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall,
           ),
         ),
+        if (artwork.verifiedArtist) ...[
+          const SizedBox(width: 4),
+          const VerifiedBadge(verification: VerifiedBadge.minimumVerification, small: true),
+        ],
       ],
     );
   }
 }
 
-/// Confirmation before an advance is held. The preview shows the offer the
-/// repository itself built, so what's on screen can't drift from what gets
-/// written.
-Future<void> _openReserveSheet(
-  BuildContext context,
-  WidgetRef ref,
-  ReservableArtwork item,
-) async {
-  final artwork = item.artwork;
-  final confirmed = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => _ReserveSheet(item: item),
-  );
-  if (confirmed == null) return;
-
-  try {
-    // `confirmed == false` is the dev toggle: it asks the repository for the
-    // documented 409 "lost the race" failure instead of a success.
-    await ref
-        .read(aggregatorRepositoryProvider)
-        .reserve(artwork.id, simulateConflict: !confirmed);
-    invalidateAggregatorSaleFlow(ref);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('"${artwork.title}" is now in your inventory')),
-    );
-  } catch (error) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(authErrorMessage(error))),
-    );
-  }
-}
-
-class _ReserveSheet extends StatefulWidget {
-  const _ReserveSheet({required this.item});
-
-  final ReservableArtwork item;
-
-  @override
-  State<_ReserveSheet> createState() => _ReserveSheetState();
-}
-
-class _ReserveSheetState extends State<_ReserveSheet> {
-  bool _simulateConflict = false;
+/// "Insured" over the corner of a piece's image.
+class _InsuredBadge extends StatelessWidget {
+  const _InsuredBadge();
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final artwork = widget.item.artwork;
-    final offer = widget.item.offer;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-      child: Column(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(AppRadius.xl4),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Reserve this artwork', style: theme.textTheme.titleLarge),
+          Icon(LucideIcons.shieldCheck, size: 11, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 4),
+          Text(
+            'Insured',
+            style: theme.textTheme.labelSmall?.copyWith(fontSize: 10, color: theme.colorScheme.tertiary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Where this month sits in the five, and what it means for the price.
+class _CycleBox extends StatelessWidget {
+  const _CycleBox({required this.offer});
+
+  final AggregatorOffer offer;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          CycleStepper(currentMonth: offer.month, small: true),
           const SizedBox(height: 6),
           Text(
-            'Month ${offer.month} of $aggregatorCycleMonths. Confirming holds the '
-            'advance and delivery from your wallet and opens a 30-day display '
-            'window. ${offer.daysLeftInListing} days remain on this piece\'s listing.',
-            style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+            monthLine(offer),
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(fontSize: 10.5, fontWeight: FontWeight.w500),
           ),
-          const SizedBox(height: 16),
-          PortalCard(
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppRadius.sm),
-                  child: SizedBox(
-                    width: 52,
-                    height: 52,
+        ],
+      ),
+    );
+  }
+}
+
+class _ReservableCard extends StatelessWidget {
+  const _ReservableCard({required this.item, required this.onReserve});
+
+  final ReservableArtwork item;
+  final VoidCallback onReserve;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final artwork = item.artwork;
+    final offer = item.offer;
+    // Opens the public marketplace page - the aggregator sees exactly what a
+    // collector would before committing an advance.
+    void open() => context.push('/marketplace/${artwork.id}');
+
+    return PortalCard(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: open,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: ArtworkImageView(url: artwork.thumbnailUrl),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        artwork.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w500),
-                      ),
-                      Text(artwork.artistName, style: theme.textTheme.labelSmall),
-                    ],
-                  ),
-                ),
-                PriceTag(amount: offer.offerPrice),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          PortalCard(
-            gold: true,
-            child: Column(
-              children: [
-                _MoneyRow(
-                  label: 'Advance (${(offer.advanceRate * 100).round()}%)',
-                  // The basis changes with the month, so it is spelled out
-                  // rather than assumed: month one is charged on the price the
-                  // piece is displayed at, every later month on the artist's.
-                  detail: offer.advanceBasis == AdvanceBasis.sellingPrice
-                      ? 'of the selling price, ${formatInr(offer.advanceBase)}'
-                      : "of the artist's price, ${formatInr(offer.advanceBase)}",
-                  amount: offer.advance,
-                ),
-                const SizedBox(height: 8),
-                _MoneyRow(
-                  label: 'Delivery',
-                  detail: 'Returned when the piece sells',
-                  amount: offer.deliveryCharge,
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Divider(height: 1),
-                ),
-                _MoneyRow(
-                  label: 'Held from your wallet',
-                  detail: 'Not a payment — released on sale or return',
-                  amount: offer.payable,
-                  emphasized: true,
-                ),
-              ],
-            ),
-          ),
-          if (!offer.canSetPrice) ...[
-            const SizedBox(height: 10),
-            PortalCard(
-              child: Text(
-                'GalleryZone sets the selling price for this piece. From month '
-                'two the advance is lower, so the price is not the '
-                "aggregator's to change.",
-                style: theme.textTheme.labelMedium?.copyWith(height: 1.5),
+                  if (artwork.insured) const Positioned(left: 6, bottom: 6, child: _InsuredBadge()),
+                ],
               ),
-            ),
-          ],
-          const SizedBox(height: 10),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            value: _simulateConflict,
-            onChanged: (value) => setState(() => _simulateConflict = value ?? false),
-            title: Row(
-              children: [
-                Flexible(
-                  child: Text('Simulate reservation conflict',
-                      style: theme.textTheme.labelMedium),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: theme.colorScheme.outline),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                  child: Text('DEV',
-                      style: theme.textTheme.labelSmall?.copyWith(fontSize: 9)),
-                ),
-              ],
-            ),
-            subtitle: Text(
-              'Demos the 409 "lost the race" error another aggregator can trigger.',
-              style: theme.textTheme.labelSmall,
             ),
           ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(!_simulateConflict),
-            child: const Text('Confirm reservation'),
+          GestureDetector(
+            onTap: open,
+            child: Text(
+              artwork.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.25),
+            ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One line of the reserve sheet's money card.
-class _MoneyRow extends StatelessWidget {
-  const _MoneyRow({
-    required this.label,
-    required this.detail,
-    required this.amount,
-    this.emphasized = false,
-  });
-
-  final String label;
-  final String detail;
-  final double amount;
-  final bool emphasized;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: emphasized ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-              Text(detail, style: theme.textTheme.labelSmall),
-            ],
-          ),
-        ),
-        Text(
-          formatInr(amount),
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: emphasized ? theme.colorScheme.tertiary : null,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// What has to be true before anything on this screen can be reserved, said
-/// up front rather than as an error after the tap.
-///
-/// Two real gates, both enforced in the repository: a signed MOU (an unsigned
-/// aggregator has no agreement covering custody) and enough free wallet
-/// balance to hold the advance and delivery against.
-class _ReserveReadiness extends ConsumerWidget {
-  const _ReserveReadiness();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final profile = ref.watch(aggregatorProfileProvider).value;
-    final wallet = ref.watch(aggregatorWalletProvider).value;
-    final signed = profile?.mouAcceptance != null;
-    final free = wallet == null ? 0.0 : wallet.balance - wallet.lockedBalance;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+          const SizedBox(height: 4),
+          _ArtistLine(item: item),
+          const SizedBox(height: 6),
+          PriceTag(amount: offer.offerPrice, style: theme.textTheme.titleMedium),
           Text(
-            'Reserving holds the advance and the delivery charge from your '
-            'wallet, and opens a 30-day display window.',
-            style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+            _priceNote(offer),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(fontSize: 10.5),
           ),
-          if (!signed) ...[
-            const SizedBox(height: 10),
-            _Gate(
-              icon: LucideIcons.fileSignature,
-              message: 'Sign your Aggregator MOU before reserving artwork.',
-              action: 'Read and sign',
-              onPressed: () => context.push('/aggregator/dashboard/mou'),
-            ),
-          ],
-          if (signed && free <= 0) ...[
-            const SizedBox(height: 10),
-            _Gate(
-              icon: LucideIcons.wallet,
-              message: 'Your wallet has nothing free to hold an advance '
-                  'against. Add money to start reserving.',
-              action: 'Add money',
-              onPressed: () => context.push('/aggregator/wallet'),
-            ),
-          ] else if (signed) ...[
-            const SizedBox(height: 6),
-            Text(
-              '${formatInr(free)} free in your wallet.',
-              style: theme.textTheme.labelSmall,
-            ),
-          ],
+          const SizedBox(height: 8),
+          _CycleBox(offer: offer),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 40,
+            child: FilledButton(onPressed: onReserve, child: const Text('Reserve Artwork')),
+          ),
         ],
       ),
     );
   }
 }
 
-class _Gate extends StatelessWidget {
-  const _Gate({
-    required this.icon,
-    required this.message,
-    required this.action,
-    required this.onPressed,
-  });
+class _ReservableRow extends StatelessWidget {
+  const _ReservableRow({required this.item, required this.onReserve});
 
-  final IconData icon;
-  final String message;
-  final String action;
-  final VoidCallback onPressed;
+  final ReservableArtwork item;
+  final VoidCallback onReserve;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final artwork = item.artwork;
+    final offer = item.offer;
+    void open() => context.push('/marketplace/${artwork.id}');
+
     return PortalCard(
-      gold: true,
+      padding: const EdgeInsets.all(10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: theme.colorScheme.tertiary),
-          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: open,
+            child: SizedBox(
+              width: 96,
+              height: 128,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: ArtworkImageView(url: artwork.thumbnailUrl),
+                  ),
+                  if (artwork.insured) const Positioned(left: 4, bottom: 4, child: _InsuredBadge()),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  message,
-                  style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
+                GestureDetector(
+                  onTap: open,
+                  child: Text(
+                    artwork.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, height: 1.25),
+                  ),
                 ),
                 const SizedBox(height: 4),
-                TextButton(
-                  onPressed: onPressed,
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 32),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                _ArtistLine(item: item),
+                if (artwork.medium.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      artwork.medium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall,
+                    ),
                   ),
-                  child: Text(action),
+                const SizedBox(height: 6),
+                PriceTag(amount: offer.offerPrice, style: theme.textTheme.titleSmall),
+                Text(_priceNote(offer), style: theme.textTheme.labelSmall?.copyWith(fontSize: 10.5)),
+                const SizedBox(height: 8),
+                _CycleBox(offer: offer),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 38,
+                  width: double.infinity,
+                  child: FilledButton(onPressed: onReserve, child: const Text('Reserve')),
                 ),
               ],
             ),

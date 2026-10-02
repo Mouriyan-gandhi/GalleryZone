@@ -126,6 +126,37 @@ void main() {
     await expectLater(repository.reserve(artwork.id), throwsA(isA<Exception>()));
   });
 
+  test('an aggregator whose GST number is not approved cannot reserve, whatever the MOU says', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final profile = await repository.getProfile();
+    expect(profile.gstStatus, ReviewStatus.approved, reason: 'the demo aggregator starts approved');
+
+    for (final status in [ReviewStatus.notSubmitted, ReviewStatus.submitted, ReviewStatus.rejected]) {
+      await repository.updateProfile(profile.copyWith(gstStatus: status));
+      await expectLater(
+        repository.reserve(item.artwork.id),
+        throwsA(isA<Exception>().having((e) => '$e', 'message', contains('GST number'))),
+        reason: status.name,
+      );
+    }
+    expect((await repository.getWallet()).lockedBalance, 0, reason: 'a refusal holds nothing');
+
+    await repository.updateProfile(profile.copyWith(gstStatus: ReviewStatus.approved));
+    expect((await repository.reserve(item.artwork.id)).status, HoldingStatus.reserved);
+  });
+
+  test('a holding can still be read after it has gone back, but not a stranger\'s', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final holding = await repository.reserve(item.artwork.id);
+    await repository.releaseHolding(holding.id);
+
+    expect((await repository.listCollection()).map((v) => v.holding.id), isNot(contains(holding.id)));
+    final view = await repository.getHolding(holding.id);
+    expect(view?.holding.status, HoldingStatus.returned);
+    expect(view?.artwork.id, item.artwork.id);
+    expect(await repository.getHolding('nope'), isNull);
+  });
+
   test('the advance and delivery are LOCKED from the wallet, not charged',
       () async {
     final item = (await repository.listReservableInventory()).first;

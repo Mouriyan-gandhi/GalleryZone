@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../core/pricing.dart';
+import '../../../core/similar_artworks.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
+import '../../../data/models/artwork.dart';
 import '../../../data/repositories/aggregator_repository.dart';
+import '../../marketplace/widgets/artwork_card.dart';
 import '../../shell/display_clock.dart';
 import '../../shell/portal_widgets.dart';
+import '../providers/aggregator_providers.dart';
 
 // StatusPill moved to the shared portal widgets; re-exported so this portal's
 // screens keep their single widgets import.
@@ -36,7 +42,7 @@ class HoldingStatusPill extends StatelessWidget {
         icon: LucideIcons.circleCheckBig,
       ),
       HoldingStatus.returned => const StatusPill(
-        label: 'Returned unsold',
+        label: 'Returned',
         color: _slate,
         icon: LucideIcons.undo2,
       ),
@@ -177,6 +183,176 @@ class WalletMechanicsNotice extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Where a piece stands in its five-month rotation. A piece that doesn't sell
+/// moves to a DIFFERENT aggregator each month, up to five times, cheaper each
+/// time; "month 3 of 5" says that but doesn't show it, so this draws the whole
+/// track. Used on the browse list, the reserve page and the holding page so
+/// the same shape means the same thing everywhere. Port of `cycle-stepper.tsx`.
+class CycleStepper extends StatelessWidget {
+  const CycleStepper({
+    super.key,
+    required this.currentMonth,
+    this.totalMonths = aggregatorCycleMonths,
+    this.small = false,
+  });
+
+  final int currentMonth;
+  final int totalMonths;
+
+  /// Numberless dots, for the browse cards.
+  final bool small;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.tertiary;
+    final size = small ? 16.0 : 24.0;
+
+    Widget dot(int month) {
+      final past = month < currentMonth;
+      final current = month == currentMonth;
+      return Container(
+        width: size,
+        height: size,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: current ? gold : (past ? gold.withValues(alpha: 0.1) : null),
+          border: Border.all(
+            color: current
+                ? gold
+                : (past ? gold.withValues(alpha: 0.4) : theme.colorScheme.outline),
+          ),
+        ),
+        child: small
+            ? null
+            : Text(
+                '$month',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: current
+                      ? const Color(0xFF171310)
+                      : (past ? gold : theme.colorScheme.onSurfaceVariant),
+                ),
+              ),
+      );
+    }
+
+    return Semantics(
+      label: 'Month $currentMonth of $totalMonths',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            for (var month = 1; month <= totalMonths; month++)
+              if (month < totalMonths)
+                Expanded(
+                  child: Row(
+                    children: [
+                      dot(month),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          color: month < currentMonth
+                              ? gold.withValues(alpha: 0.4)
+                              : theme.colorScheme.outline,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                dot(month),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Pieces still open for reservation that are like [references] in category,
+/// price and size - "Suggestions: same type of paintings show to him" (client,
+/// 30 Sep 2026). Shown on the reserve page (like the piece being reserved), on
+/// a holding (like the piece held) and above the browse list (like everything
+/// this aggregator holds). Port of `suggested-artworks.tsx`.
+class SuggestedArtworks extends ConsumerWidget {
+  const SuggestedArtworks({
+    super.key,
+    required this.references,
+    required this.title,
+    this.limit = 4,
+  });
+
+  final List<Artwork> references;
+  final String title;
+  final int limit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final inventory = ref.watch(aggregatorInventoryProvider).value ?? const <ReservableArtwork>[];
+    final suggestions = similarTo(references, inventory, (item) => item.artwork, limit: limit);
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
+            letterSpacing: 0.8,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 214,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: suggestions.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final item = suggestions[index];
+              return SizedBox(
+                width: 122,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  onTap: () => context.push('/aggregator/inventory/${item.artwork.id}/reserve'),
+                  child: PortalCard(
+                    padding: const EdgeInsets.all(6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                            child: ArtworkImageView(url: item.artwork.thumbnailUrl),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item.artwork.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        PriceTag(
+                          amount: item.offer.offerPrice,
+                          style: theme.textTheme.labelMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

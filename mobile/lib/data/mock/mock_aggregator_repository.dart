@@ -303,6 +303,13 @@ class MockAggregatorRepository implements AggregatorRepository {
       );
     }
 
+    // GST is the second precondition (client, 30 Sep 2026), in the API's words.
+    if (_readProfile().gstStatus != ReviewStatus.approved) {
+      return mockError(
+        'Add your GST number in My Profile, and wait for GalleryZone to approve it, before reserving artwork',
+      );
+    }
+
     final artwork = _artworkById(artworkId);
     final holdings = _readHoldings();
     final alreadyClaimed = holdings.any(
@@ -510,6 +517,15 @@ class MockAggregatorRepository implements AggregatorRepository {
                 byId[holding.artworkId] != null)
               AggregatorHoldingView(holding: holding, artwork: byId[holding.artworkId]!),
         ];
+      });
+
+  @override
+  Future<AggregatorHoldingView?> getHolding(String holdingId) => mockDelay(() {
+        final holding = _readHoldings().where((h) => h.id == holdingId).firstOrNull;
+        final artwork = holding == null ? null : _artworkById(holding.artworkId);
+        return holding == null || artwork == null
+            ? null
+            : AggregatorHoldingView(holding: holding, artwork: artwork);
       });
 
   @override

@@ -192,6 +192,10 @@ abstract class AggregatorRepository {
 
   Future<List<AggregatorHoldingView>> listCollection();
 
+  /// One holding with its artwork - a returned one too, which the collection
+  /// leaves out. Null when it isn't this aggregator's.
+  Future<AggregatorHoldingView?> getHolding(String holdingId);
+
   /// The piece did not sell and goes back to GalleryZone. The advance is
   /// released; the delivery leg is not — the money-flow sheet settles that
   /// only on a sale. Frees the artwork for the next aggregator in the cycle.

@@ -229,7 +229,7 @@ abstract class AggregatorHolding with _$AggregatorHolding {
     required String id,
     required String artworkId,
 
-    /// 5% in month one, 3% from month two onwards — see `core/pricing.dart`.
+    /// 5% in the first two months, 3% from the third - see `core/pricing.dart`.
     required int advancePercent,
     required double advanceAmount,
     required double displayPrice,
@@ -250,9 +250,8 @@ abstract class AggregatorHolding with _$AggregatorHolding {
     /// one aggregator. Seeded holdings predate the field; 1 is the default.
     @Default(1) int cycleMonth,
 
-    /// Aggregator MOU §6: the aggregator gets ONE opportunity to set the
-    /// selling price. Stamped the first time they set it; after that the
-    /// price is locked.
+    /// Set when the aggregator priced the piece above GalleryZone's offer as
+    /// they reserved it (month 1 only). The price is fixed from then on.
     String? displayPriceSetAt,
 
     /// Set when the piece went back to GalleryZone unsold.
