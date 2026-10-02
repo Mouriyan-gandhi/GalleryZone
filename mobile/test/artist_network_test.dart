@@ -9,6 +9,7 @@ import 'package:gallery_zone/data/mock/seed/artist_seed.dart'
 import 'package:gallery_zone/data/models/artist_network.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
+import 'package:gallery_zone/features/artist/mou_data.dart' show mouVersion;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The `a2fdb9b` and `c5108c4` features ported from the web: artist ratings,
@@ -171,7 +172,7 @@ void main() {
     });
 
     test('a signed MOU opens it, but only with a connection', () async {
-      await artist.acceptMou(signatureName: 'Devika Rao', version: '2026.1');
+      await artist.acceptMou(signatureName: 'Devika Rao', version: mouVersion);
 
       final proposed = await network.proposeCollaboration(
         proposerId: currentArtistId,

@@ -4,6 +4,7 @@ import '../../../data/mock/mock_aggregator_repository.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/mou.dart' show MouState;
 import '../../../data/repositories/aggregator_repository.dart';
 
 final aggregatorRepositoryProvider = Provider<AggregatorRepository>((ref) {
@@ -74,6 +75,12 @@ final aggregatorCategoryPerformanceProvider =
 
 final aggregatorProfileProvider = FutureProvider.autoDispose<AggregatorProfile>((ref) {
   return ref.watch(aggregatorRepositoryProvider).getProfile();
+});
+
+/// The partner agreement with the business's details filled in, and whether it
+/// is signed.
+final aggregatorMouStateProvider = FutureProvider.autoDispose<MouState>((ref) {
+  return ref.watch(aggregatorRepositoryProvider).getMouState();
 });
 
 final aggregatorSettingsProvider = FutureProvider.autoDispose<AggregatorSettings>((ref) {

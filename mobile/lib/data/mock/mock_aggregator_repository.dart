@@ -6,6 +6,7 @@ import '../models/artwork.dart';
 import '../models/customer.dart';
 import '../models/mou.dart';
 import '../../features/aggregator/aggregator_mou_data.dart' show aggregatorMouVersion;
+import '../../features/shell/mou/mou_document.dart' show mouDetailLabel, mouPartyDetailsFor;
 import '../repositories/aggregator_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_artist_repository.dart'
@@ -990,22 +991,36 @@ class MockAggregatorRepository implements AggregatorRepository {
     });
   }
 
+  /// Mirrors the API's checks: the current version, the contact person's name
+  /// as on the profile, and every blank the agreement needs. The drawn signature
+  /// is optional here only because the offline build has no pad in its unit
+  /// tests.
   @override
   Future<AggregatorProfile> acceptMou({
     required String signatureName,
     required String version,
     String signatureDataUrl = '',
-  }) {
-    if (signatureName.trim().isEmpty) {
-      return mockError('Type your full name to sign');
+  }) async {
+    if (signatureName.trim().isEmpty) throw Exception('Type your full name to sign');
+    final state = await getMouState();
+    final profile = _readProfile();
+    if (version != state.draft.version) {
+      throw Exception('This agreement has been updated. Reload the page to read and sign the current version');
+    }
+    if (signatureName.trim().toLowerCase() != profile.contactPerson.trim().toLowerCase()) {
+      throw Exception('The signature must match the name on your profile');
+    }
+    if (state.draft.missing.isNotEmpty) {
+      throw Exception('Add your ${state.draft.missing.map((key) => (mouDetailLabel[key] ?? key).toLowerCase()).join(', ')} to your profile before signing');
     }
     return mockDelay(() {
-      final updated = _readProfile().copyWith(
+      final updated = profile.copyWith(
         mouAcceptance: MouAcceptance(
-          acceptedAt: DateTime.now().toIso8601String(),
+          acceptedAt: DateTime.now().toUtc().toIso8601String(),
           signatureName: signatureName.trim(),
           version: version,
           signatureDataUrl: signatureDataUrl,
+          parties: state.draft.parties,
         ),
       );
       _writeSingle(_profileKey, updated, (p) => p.toJson());
@@ -1013,24 +1028,33 @@ class MockAggregatorRepository implements AggregatorRepository {
     });
   }
 
+  /// The agreement with its blanks filled from the profile exactly as the API
+  /// does it ([mouPartyDetailsFor]).
   @override
   Future<MouState> getMouState() => mockDelay(() {
         final profile = _readProfile();
         final acceptance = profile.mouAcceptance;
+        final filled = mouPartyDetailsFor(
+          party: MouParty.aggregator,
+          fullName: profile.contactPerson,
+          email: profile.email,
+          phone: profile.phone,
+          gstin: profile.gstNumber,
+          companyName: profile.companyName,
+          pickupLine1: profile.addressLine1,
+          pickupCity: profile.addressCity,
+          pickupState: profile.addressState,
+          pickupPincode: profile.addressPincode,
+        );
         return MouState(
           draft: MouDraft(
             version: aggregatorMouVersion,
             parties: MouParties(
-              party: MouPartyDetails(
-                name: profile.contactPerson,
-                businessName: profile.companyName,
-                address: profile.addressLine1,
-                mobile: profile.phone,
-                gstNo: profile.gstNumber,
-              ),
+              party: filled.details,
               company: const MouCompanyDetails(name: 'Galleryzone Private Limited'),
             ),
-            asOf: DateTime.now().toIso8601String(),
+            missing: filled.missing,
+            asOf: DateTime.now().toUtc().toIso8601String(),
           ),
           acceptance: acceptance != null && acceptance.version == aggregatorMouVersion ? acceptance : null,
         );

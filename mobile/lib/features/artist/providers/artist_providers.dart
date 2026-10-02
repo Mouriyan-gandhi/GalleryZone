@@ -5,6 +5,7 @@ import '../../../data/mock/mock_artist_repository.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/mou.dart' show MouState;
 import '../../../data/models/pricing_rules.dart';
 import '../../../data/repositories/artist_repository.dart';
 import '../verification_tiers.dart';
@@ -74,6 +75,11 @@ final artistGallerySpacesProvider =
 final artistPhysicalCoaProvider =
     FutureProvider.autoDispose<List<PhysicalCoaRequest>>((ref) {
   return ref.watch(artistRepositoryProvider).listPhysicalCoaRequests();
+});
+
+/// The agreement with the artist's details filled in, and whether it is signed.
+final artistMouStateProvider = FutureProvider.autoDispose<MouState>((ref) {
+  return ref.watch(artistRepositoryProvider).getMouState();
 });
 
 final mouAcceptanceProvider = FutureProvider.autoDispose<MouAcceptance?>((ref) {

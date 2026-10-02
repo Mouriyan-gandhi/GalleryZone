@@ -10,6 +10,7 @@ import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/customer.dart';
 import 'package:gallery_zone/data/repositories/aggregator_repository.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
+import 'package:gallery_zone/features/aggregator/aggregator_mou_data.dart' show aggregatorMouVersion;
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _address = DeliveryAddress(
@@ -40,7 +41,7 @@ void main() {
     repository = MockAggregatorRepository();
     // Reserving is gated on a signed MOU and a funded wallet — both are real
     // rules, so every test that reserves has to satisfy them first.
-    await repository.acceptMou(signatureName: 'Meher Kapadia', version: 'v1');
+    await repository.acceptMou(signatureName: currentAggregatorContact, version: aggregatorMouVersion);
     await repository.addFunds(500000);
   });
 
@@ -146,7 +147,7 @@ void main() {
     await expectLater(fresh.reserve(item.artwork.id), throwsA(isA<Exception>()));
 
     // Signed but broke: still refused, now for the money.
-    await fresh.acceptMou(signatureName: 'Meher Kapadia', version: 'v1');
+    await fresh.acceptMou(signatureName: currentAggregatorContact, version: aggregatorMouVersion);
     await expectLater(fresh.reserve(item.artwork.id), throwsA(isA<Exception>()));
 
     await fresh.addFunds(item.offer.payable);

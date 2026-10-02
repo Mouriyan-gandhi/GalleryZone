@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../core/format.dart';
 import '../../core/pricing.dart';
 import '../../features/artist/mou_data.dart' show mouVersion;
+import '../../features/shell/mou/mou_document.dart' show mouDetailLabel, mouPartyDetailsFor;
 import '../models/artist_portal.dart';
 import '../models/artwork.dart';
 import '../models/customer.dart';
@@ -926,6 +927,9 @@ class MockArtistRepository implements ArtistRepository {
         (a) => a.toJson(),
       ).firstOrNull;
 
+  /// The agreement with its blanks filled from the profile exactly as the API
+  /// does it ([mouPartyDetailsFor]), so what is read before signing in the
+  /// offline build is what the real service would record.
   @override
   Future<MouState> getMouState() => mockDelay(() {
         final profile = _readSingle(
@@ -935,48 +939,77 @@ class MockArtistRepository implements ArtistRepository {
           (p) => p.toJson(),
         );
         final acceptance = _readMouAcceptance();
+        final filled = mouPartyDetailsFor(
+          party: MouParty.artist,
+          fullName: profile.fullName,
+          email: profile.email,
+          phone: profile.phone,
+          pan: profile.pan,
+          aadhaarMasked: profile.aadhaarMasked,
+          pickupLine1: profile.pickupLine1,
+          pickupLine2: profile.pickupLine2,
+          pickupCity: profile.pickupCity,
+          pickupState: profile.pickupState,
+          pickupPincode: profile.pickupPincode,
+        );
         return MouState(
           draft: MouDraft(
             version: mouVersion,
             parties: MouParties(
-              party: MouPartyDetails(
-                name: profile.fullName,
-                mobile: profile.phone,
-                email: profile.email,
-                gstNo: profile.gstin,
-              ),
+              party: filled.details,
               company: const MouCompanyDetails(name: 'Galleryzone Private Limited'),
             ),
-            asOf: DateTime.now().toIso8601String(),
+            missing: filled.missing,
+            asOf: DateTime.now().toUtc().toIso8601String(),
           ),
           acceptance: acceptance != null && acceptance.version == mouVersion ? acceptance : null,
         );
       });
 
+  /// Mirrors the API's checks: the current version, the name on the profile,
+  /// and every blank the agreement needs. The drawn signature is optional here
+  /// only because the offline build has no pad in its unit tests.
   @override
   Future<MouAcceptance> acceptMou({
     required String signatureName,
     required String version,
     String signatureDataUrl = '',
-  }) =>
-      mockDelay(() {
-        final acceptance = MouAcceptance(
-          version: version,
-          acceptedAt: DateTime.now().toIso8601String(),
-          signatureName: signatureName.trim(),
-          signatureDataUrl: signatureDataUrl,
-        );
-        // One row, replaced: only the current acceptance matters, and keeping
-        // a history of them would imply a legal record this build does not
-        // actually keep.
-        MockDb.setCollection(_mouKey, [acceptance], (a) => a.toJson());
-        _appendActivity(
-          ActivityKind.verification,
-          'MOU accepted',
-          'Version $version',
-        );
-        return acceptance;
-      });
+  }) async {
+    final state = await getMouState();
+    if (version != state.draft.version) {
+      throw Exception('This agreement has been updated. Reload the page to read and sign the current version');
+    }
+    final profile = _readSingle(
+      _profileKey,
+      seedArtistProfile,
+      ArtistProfileDetails.fromJson,
+      (p) => p.toJson(),
+    );
+    if (signatureName.trim().isEmpty) throw Exception('Type your full name to sign');
+    if (signatureName.trim().toLowerCase() != profile.fullName.trim().toLowerCase()) {
+      throw Exception('The signature must match the name on your profile');
+    }
+    if (state.draft.missing.isNotEmpty) {
+      throw Exception('Add your ${state.draft.missing.map((key) => (mouDetailLabel[key] ?? key).toLowerCase()).join(', ')} to your profile before signing');
+    }
+    return mockDelay(() {
+      final acceptance = MouAcceptance(
+        version: version,
+        acceptedAt: DateTime.now().toUtc().toIso8601String(),
+        signatureName: signatureName.trim(),
+        signatureDataUrl: signatureDataUrl,
+        // The blanks as they stood, so editing the profile later never rewrites
+        // a signed agreement.
+        parties: state.draft.parties,
+      );
+      // One row, replaced: only the current acceptance matters, and keeping a
+      // history of them would imply a legal record this build does not actually
+      // keep.
+      MockDb.setCollection(_mouKey, [acceptance], (a) => a.toJson());
+      _appendActivity(ActivityKind.verification, 'MOU accepted', 'Version $version');
+      return acceptance;
+    });
+  }
 
   @override
   Future<PricingRules?> getPricingRules() => mockDelay(

@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../core/adaptive.dart';
-import '../../../core/format.dart';
-import '../../shell/portal_widgets.dart';
-import '../../shell/mou_clause_view.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../marketplace/widgets/artwork_card.dart' show EmptyState;
+import '../../shell/mou/mou_agreement_page.dart';
 import '../mou_data.dart';
 import '../providers/artist_providers.dart';
+import 'artist_kyc_screen.dart';
 
-/// The artist's Memorandum of Understanding with GalleryZone.
+/// The artist's Memorandum of Understanding with GalleryZone: the website's
+/// document, word for word, with the artist's own details filled in from their
+/// profile; read to the end, agree, type your name and draw your signature.
 ///
-/// Read-and-accept, stored against [mouVersion] so a later revision asks
-/// again rather than silently inheriting an acceptance of different wording.
-/// Distinct from the per-artwork listing terms.
+/// Stored against [mouVersion] so a later revision asks again rather than
+/// silently inheriting an acceptance of different wording.
 class MouScreen extends ConsumerWidget {
   const MouScreen({super.key});
 
@@ -21,77 +22,50 @@ class MouScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final acceptance = ref.watch(mouAcceptanceProvider).value;
-    final accepted = acceptance != null && acceptance.version == mouVersion;
+    final state = ref.watch(artistMouStateProvider);
+    final loaded = state.value;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Artist MOU')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-        children: [
-          ContentWidth(
-            maxWidth: 640,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                PortalCard(
-                  gold: accepted,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        accepted ? LucideIcons.circleCheckBig : LucideIcons.fileText,
-                        size: 16,
-                        color: theme.colorScheme.tertiary,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          accepted
-                              ? 'Accepted on ${formatLongDate(acceptance.acceptedAt)} '
-                                    '(version $mouVersion).'
-                              : 'Version $mouVersion. Read it through — accepting is how '
-                                    'your work is listed, promoted and sold here.',
-                          style: theme.textTheme.bodySmall?.copyWith(height: 1.45),
-                        ),
-                      ),
-                    ],
-                  ),
+    if (loaded == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Artist MOU')),
+        body: state.hasError
+            ? EmptyState(
+                icon: LucideIcons.triangleAlert,
+                title: "Couldn't load the agreement",
+                description: authErrorMessage(state.error!),
+                action: OutlinedButton(
+                  onPressed: () => ref.invalidate(artistMouStateProvider),
+                  child: const Text('Try again'),
                 ),
-                const SizedBox(height: 20),
-                for (final paragraph in mouPreamble) ...[
-                  Text(paragraph, style: theme.textTheme.bodySmall?.copyWith(height: 1.6)),
-                  const SizedBox(height: 10),
-                ],
-                const SizedBox(height: 8),
-                for (final clause in mouClauses) ...[
-                  MouClauseView(clause: clause),
-                  const SizedBox(height: 18),
-                ],
-                const SizedBox(height: 4),
-                if (!accepted)
-                  FilledButton(
-                    onPressed: () async {
-                      final messenger = ScaffoldMessenger.of(context);
-                      final repository = ref.read(artistRepositoryProvider);
-                      final profile = await repository.getProfile();
-                      await repository.acceptMou(
-                        signatureName: profile.fullName,
-                        version: mouVersion,
-                      );
-                      ref.invalidate(mouAcceptanceProvider);
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('MOU accepted')),
-                      );
-                    },
-                    child: const Text('I accept this MOU'),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
+              )
+            : const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return MouAgreementPage(
+      title: 'Artist MOU',
+      document: artistMou,
+      state: loaded,
+      profileRoute: ArtistKycScreen.path,
+      onSign:
+          ({
+            required signatureName,
+            required version,
+            required signatureDataUrl,
+          }) async {
+            await ref
+                .read(artistRepositoryProvider)
+                .acceptMou(
+                  signatureName: signatureName,
+                  version: version,
+                  signatureDataUrl: signatureDataUrl,
+                );
+            // Signing moves the verification ladder, the profile page and the
+            // agreement itself.
+            ref.invalidate(mouAcceptanceProvider);
+            ref.invalidate(artistMouStateProvider);
+            ref.invalidate(artistActivityProvider);
+          },
     );
   }
 }
