@@ -17,7 +17,6 @@ export function ArtworkCardSkeleton({ className }: ArtworkCardSkeletonProps) {
         <Skeleton className="mt-1 h-3 w-2/3" />
         <Skeleton className="h-3 w-1/3" />
         <Skeleton className="mt-1.5 h-4 w-1/3" />
-        <Skeleton className="mt-2 h-5 w-2/3 rounded-full" />
       </div>
     </div>
   );

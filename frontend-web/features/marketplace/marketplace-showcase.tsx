@@ -17,7 +17,6 @@ import {
   QrCode,
   Smartphone,
 } from "lucide-react";
-import { STAMP_TONE } from "@/components/shared/rarity-badge";
 import { isPlaceholderImage } from "@/lib/api-mappers";
 import { artworkQrDataUrl } from "@/lib/qr";
 import { cn } from "@/lib/utils";
@@ -67,7 +66,7 @@ const THREE_COLUMNS =
 const TWO_COLUMNS = "grid w-full items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.9fr)] lg:gap-12";
 
 interface MarketplaceShowcaseProps {
-  /** A real listed piece with a certificate, used for the passport and tag examples. */
+  /** A real listed piece, used for the passport and tag examples. */
   artwork?: ArtworkSummary;
   /** Live count of works per rank. */
   rankCounts: Partial<Record<ArtworkRarity, number>>;
@@ -264,13 +263,12 @@ function Checklist({ items }: { items: { icon: typeof BadgeCheck; label: string 
 
 const PASSPORT_FEATURES = [
   { icon: BadgeCheck, label: "Verified artist identity" },
-  { icon: FileCheck2, label: "Certificate of authenticity" },
   { icon: History, label: "Provenance history" },
   { icon: QrCode, label: "Verify with one scan" },
 ];
 
-// The passport shown is a real one: this piece's certificate, and a QR code
-// that opens its public verification page.
+// The passport shown is a real one: this piece's details, and a QR code that
+// opens its public verification page.
 function PassportSlide({ artwork, qr }: { artwork: ArtworkSummary; qr: string | null }) {
   return (
     <div className={THREE_COLUMNS}>
@@ -278,9 +276,8 @@ function PassportSlide({ artwork, qr }: { artwork: ArtworkSummary; qr: string | 
         <p className={EYEBROW}>Trust in every artwork</p>
         <h2 className={HEADING}>GZ Digital Passport</h2>
         <p className={BODY}>
-          Every artwork comes with a digital passport: a unique certificate,
-          provenance details and artist verification, so you can collect with
-          complete confidence.
+          Every artwork comes with a digital passport: provenance details and
+          artist verification, so you can collect with complete confidence.
         </p>
         <Link href="/about#how-it-works" className={OUTLINE_CTA}>
           Learn more
@@ -469,47 +466,106 @@ function RanksSlide({
 }) {
   return (
     <div className={TWO_COLUMNS}>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_85%_at_8%_35%,color-mix(in_oklab,var(--gold-bright)_13%,transparent),transparent)]"
+      />
       <div className={"flex flex-col"}>
         <p className={EYEBROW}>Ranked by GalleryZone</p>
         <h2 className={HEADING}>Every painting has a rank</h2>
-        <p className={BODY}>
+        <p className="mt-4 max-w-md text-[0.95rem] leading-relaxed text-foreground/80">
           Artists do not pick it. GalleryZone reviews each work and gives it
           one of four ranks before it goes live. Choose one to see its works.
         </p>
       </div>
 
-      <div className={"grid gap-3 sm:grid-cols-2"}>
-        {ARTWORK_RARITY_OPTIONS.map((option) => {
-          const n = counts[option.value] ?? 0;
-          return (
-            <button
-              key={option.value}
-              type="button"
-              disabled={n === 0}
-              onClick={() => onPick(option.value)}
-              className="flex items-start gap-3.5 rounded-xl border border-border bg-background/40 p-4 text-left transition-[border-color,background-color,transform] duration-150 ease-out enabled:hover:border-gold/50 enabled:hover:bg-background/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 enabled:active:scale-[0.98] disabled:opacity-55"
-            >
-              <span
-                className={cn(
-                  "flex size-11 shrink-0 items-center justify-center rounded-lg text-lg font-bold",
-                  STAMP_TONE[option.value],
-                )}
-              >
-                {option.value}
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="flex items-baseline gap-2">
-                  <span className="font-medium text-foreground">{option.label}</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {n} {n === 1 ? "work" : "works"}
-                  </span>
-                </span>
-                <span className="mt-0.5 text-sm leading-snug text-muted-foreground">{option.description}</span>
-              </span>
-            </button>
-          );
-        })}
+      <div className={"grid gap-4 sm:grid-cols-2"}>
+        {ARTWORK_RARITY_OPTIONS.map((option) => (
+          <RankCard
+            key={option.value}
+            option={option}
+            n={counts[option.value] ?? 0}
+            onPick={() => onPick(option.value)}
+          />
+        ))}
       </div>
     </div>
+  );
+}
+
+// Each rank's own colour: its tile, the card's tint and its edge. The same
+// four hues the marketplace cards stamp on a piece, a little brighter so they
+// hold up on the dark card.
+const RANK_COLOR: Record<ArtworkRarity, string> = {
+  R: "#e5484d",
+  U: "#12b886",
+  O: "#e0a63e",
+  S: "#9aa4b2",
+};
+
+const RANK_CARD =
+  "relative flex items-start gap-4 overflow-hidden rounded-xl border border-[color-mix(in_oklab,var(--rank)_38%,var(--border))] bg-[linear-gradient(135deg,color-mix(in_oklab,var(--rank)_17%,transparent),transparent_70%)] p-5 text-left";
+
+function RankCard({
+  option,
+  n,
+  onPick,
+}: {
+  option: (typeof ARTWORK_RARITY_OPTIONS)[number];
+  n: number;
+  onPick: () => void;
+}) {
+  const style = { "--rank": RANK_COLOR[option.value] } as React.CSSProperties;
+  const body = (
+    <>
+      <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(145deg,var(--rank),color-mix(in_oklab,var(--rank)_52%,black))] text-2xl font-bold text-white shadow-[0_10px_24px_-10px_var(--rank)] ring-1 ring-white/25">
+        {option.value}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="font-display text-lg font-semibold text-foreground">{option.label}</span>
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums",
+              n > 0
+                ? "bg-[color-mix(in_oklab,var(--rank)_26%,transparent)] text-foreground"
+                : "bg-foreground/10 text-foreground/70",
+            )}
+          >
+            {n === 0 ? "None yet" : `${n} ${n === 1 ? "work" : "works"}`}
+          </span>
+        </span>
+        <span className="text-sm leading-snug text-foreground/75">{option.description}</span>
+        {n > 0 && (
+          <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-gold-bright">
+            View works
+            <ArrowRight className="size-3.5 transition-transform duration-150 group-hover/rank:translate-x-0.5" strokeWidth={2} />
+          </span>
+        )}
+      </span>
+    </>
+  );
+
+  // A rank with no works is still part of the guide, so it stays at full
+  // strength; it just isn't a link to an empty list.
+  if (n === 0) {
+    return (
+      <div className={RANK_CARD} style={style}>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      style={style}
+      className={cn(
+        RANK_CARD,
+        "group/rank transition-[border-color,box-shadow,transform] duration-150 ease-out hover:-translate-y-0.5 hover:border-[color-mix(in_oklab,var(--rank)_75%,transparent)] hover:shadow-[0_18px_40px_-26px_var(--rank)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.98]",
+      )}
+    >
+      {body}
+    </button>
   );
 }
