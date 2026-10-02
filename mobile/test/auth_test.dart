@@ -41,6 +41,9 @@ class _FakeAuthRepository implements AuthRepository {
   Future<void> signOut() async {}
 
   @override
+  Future<void> requestAccountDeletion() async {}
+
+  @override
   Future<CurrentUser?> resumeSession() async => null;
 }
 

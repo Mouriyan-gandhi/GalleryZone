@@ -17,6 +17,14 @@ abstract class AuthRepository {
   /// has nothing to forget.
   Future<void> signOut();
 
+  /// Asks GalleryZone to close this account and remove its data.
+  ///
+  /// The API has no self-service delete route yet, so with the real backend
+  /// this raises a support ticket that the team acts on - and the screen says
+  /// so, rather than claiming the account is already gone. The offline mock
+  /// has no server side; the screen clears the device's own data.
+  Future<void> requestAccountDeletion();
+
   /// Checks that a stored session is still good and says who it belongs to —
   /// the server's own record of the account, including its role. Null when
   /// there is no session, or it has ended. The offline mock never has one:

@@ -30,16 +30,24 @@ class AddressesScreen extends ConsumerWidget {
       ),
       body: addresses.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
-          icon: LucideIcons.triangleAlert,
+        error: (error, stack) => EmptyState(
+          icon: LucideIcons.mapPin,
           title: "Couldn't load your addresses",
-          description: 'Something went wrong. Try again in a moment.',
+          description: 'Something went wrong loading your saved addresses.',
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(addressesProvider),
+            child: const Text('Try again'),
+          ),
         ),
         data: (list) => list.isEmpty
-            ? const EmptyState(
+            ? EmptyState(
                 icon: LucideIcons.mapPin,
                 title: 'No saved addresses',
-                description: 'Add one here, or during checkout — they end up in the same book.',
+                description: 'Add a delivery address to speed up checkout next time.',
+                action: FilledButton(
+                  onPressed: () => _openForm(context, ref, null),
+                  child: const Text('Add address'),
+                ),
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -64,7 +72,14 @@ class AddressesScreen extends ConsumerWidget {
       showDragHandle: true,
       builder: (context) => _AddressFormSheet(existing: existing),
     );
-    if (saved ?? false) ref.invalidate(addressesProvider);
+    if (saved ?? false) {
+      ref.invalidate(addressesProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(existing == null ? 'Address added' : 'Address updated')),
+        );
+      }
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, Address address) async {
@@ -83,6 +98,9 @@ class AddressesScreen extends ConsumerWidget {
     try {
       await ref.read(customerRepositoryProvider).deleteAddress(address.id);
       ref.invalidate(addressesProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address removed')));
+      }
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

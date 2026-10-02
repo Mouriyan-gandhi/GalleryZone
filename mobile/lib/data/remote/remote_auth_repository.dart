@@ -135,6 +135,19 @@ class RemoteAuthRepository implements AuthRepository {
   Future<void> signOut() => tokens.clear();
 
   @override
+  Future<void> requestAccountDeletion() async {
+    await api.post(
+      '/v1/support',
+      body: {
+        'subject': 'Account deletion request',
+        'message':
+            'Please close my GalleryZone account and delete my data. Sent from the GalleryZone app. '
+            'I understand any wallet balance should be withdrawn first.',
+      },
+    );
+  }
+
+  @override
   Future<CurrentUser?> resumeSession() async {
     if (!tokens.hasSession) return null;
     try {

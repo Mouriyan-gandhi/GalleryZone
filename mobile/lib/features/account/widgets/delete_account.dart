@@ -61,6 +61,8 @@ class _DeleteAccountSheet extends ConsumerStatefulWidget {
 class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
   bool _working = false;
 
+  /// What goes, in the words that are true for this build: the real backend
+  /// takes a request that GalleryZone acts on; the offline demo wipes the device.
   static const _removed = [
     'Your profile, contact and payout details',
     'Your orders, wallet balance and settlement history',
@@ -73,9 +75,12 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this account?'),
-        content: const Text(
-          'This removes your account and everything in it. It cannot be undone, '
-          'and nothing is recoverable afterwards.',
+        content: Text(
+          ref.read(remoteBackendProvider)
+              ? 'GalleryZone will remove your account and everything in it. It cannot be undone, and nothing is '
+                  'recoverable afterwards.'
+              : 'This removes your account and everything in it. It cannot be undone, '
+                  'and nothing is recoverable afterwards.',
         ),
         actions: [
           TextButton(
@@ -96,23 +101,43 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _working = true);
-    // Order matters: wipe the data first, then drop the session. Signing out
-    // first would send the router to /login while the account's records were
-    // still on disk, and a re-login would resurrect them.
+    final remote = ref.read(remoteBackendProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final router = GoRouter.of(context);
+    try {
+      // With the real backend this asks GalleryZone to close the account; the
+      // request must be on its way before anything local is thrown away.
+      await ref.read(authRepositoryProvider).requestAccountDeletion();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _working = false);
+      messenger.showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
+      return;
+    }
+    // Order matters: wipe the device's data first, then drop the session.
+    // Signing out first would send the router to /login while the records
+    // were still on disk, and a re-login would resurrect them.
     await MockDb.clearAll();
     await ref.read(sessionProvider.notifier).signOut();
-    if (!mounted) return;
 
-    Navigator.of(context).pop();
-    context.go(LoginScreen.path);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Your account and its data have been deleted')),
+    if (navigator.mounted) navigator.pop();
+    router.go(LoginScreen.path);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          remote
+              ? "Deletion requested. We'll confirm by email once your account and its data are removed."
+              : 'Your account and its data have been deleted',
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final remote = ref.watch(remoteBackendProvider);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
@@ -122,7 +147,10 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
           Text('Delete your account', style: theme.textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            'Deleting is immediate and permanent. These go with it:',
+            remote
+                ? 'This sends GalleryZone a request to close your account. You are signed out now, and the team '
+                    'confirms by email once everything below has been removed. These go with it:'
+                : 'Deleting is immediate and permanent. These go with it:',
             style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
           ),
           const SizedBox(height: 12),
@@ -187,7 +215,11 @@ class _DeleteAccountSheetState extends ConsumerState<_DeleteAccountSheet> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(LucideIcons.trash2, size: 16),
-              label: Text(_working ? 'Deleting…' : 'Delete account'),
+              label: Text(
+                _working
+                    ? (remote ? 'Sending…' : 'Deleting…')
+                    : (remote ? 'Request deletion' : 'Delete account'),
+              ),
             ),
           ),
           const SizedBox(height: 8),

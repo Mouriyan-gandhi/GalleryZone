@@ -35,6 +35,9 @@ class _Auth implements AuthRepository {
   Future<void> signOut() async => signOuts++;
 
   @override
+  Future<void> requestAccountDeletion() async {}
+
+  @override
   Future<CurrentUser?> resumeSession() async => user;
 }
 

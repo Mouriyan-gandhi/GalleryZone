@@ -419,6 +419,8 @@ class ArtworkGridDelegate extends SliverGridDelegate {
     this.maxCrossAxisExtent = 240,
     this.spacing = 16,
     this.textScale = 1,
+    this.imageRatio = 1.25,
+    this.contentHeight = textHeight,
   });
 
   /// Reads the text size setting from [context].
@@ -433,6 +435,14 @@ class ArtworkGridDelegate extends SliverGridDelegate {
   final double spacing;
   final double textScale;
 
+  /// Photo height as a multiple of the card's width (4:5 is 1.25; a square
+  /// tile is 1).
+  final double imageRatio;
+
+  /// Room under the photo at the default text size; [textHeight] suits the
+  /// marketplace card, a plainer tile passes less.
+  final double contentHeight;
+
   /// Title, artist, medium and year, size, price and the "Insured" tag, with
   /// the card's padding and border — at the default text size.
   static const textHeight = 170.0;
@@ -446,7 +456,7 @@ class ArtworkGridDelegate extends SliverGridDelegate {
     final width =
         math.max(0.0, constraints.crossAxisExtent - spacing * (columns - 1)) /
         columns;
-    final height = width * 1.25 + textHeight * textScale;
+    final height = width * imageRatio + contentHeight * textScale;
     return SliverGridRegularTileLayout(
       crossAxisCount: columns,
       mainAxisStride: height + spacing,
@@ -461,7 +471,9 @@ class ArtworkGridDelegate extends SliverGridDelegate {
   bool shouldRelayout(ArtworkGridDelegate oldDelegate) =>
       oldDelegate.maxCrossAxisExtent != maxCrossAxisExtent ||
       oldDelegate.spacing != spacing ||
-      oldDelegate.textScale != textScale;
+      oldDelegate.textScale != textScale ||
+      oldDelegate.imageRatio != imageRatio ||
+      oldDelegate.contentHeight != contentHeight;
 }
 
 /// What a card looks like while its page is on the way.

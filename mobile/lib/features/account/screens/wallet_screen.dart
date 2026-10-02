@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -27,12 +28,27 @@ class WalletScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final wallet = ref.watch(walletProvider).value;
-    final transactions = ref.watch(walletTransactionsProvider).value;
+    final walletState = ref.watch(walletProvider);
+    final wallet = walletState.value;
+    final transactionState = ref.watch(walletTransactionsProvider);
+    final transactions = transactionState.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Wallet')),
-      body: ListView(
+      body: walletState.hasError && wallet == null
+          ? EmptyState(
+              icon: LucideIcons.wallet,
+              title: "Couldn't load your wallet",
+              description: 'Something went wrong. Try again in a moment.',
+              action: OutlinedButton(
+                onPressed: () {
+                  ref.invalidate(walletProvider);
+                  ref.invalidate(walletTransactionsProvider);
+                },
+                child: const Text('Try again'),
+              ),
+            )
+          : ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           ContentWidth(
@@ -78,7 +94,17 @@ class WalletScreen extends ConsumerWidget {
                 const SizedBox(height: 24),
                 Text('Transaction history', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
-                if (transactions == null)
+                if (transactionState.hasError && transactions == null)
+                  EmptyState(
+                    icon: LucideIcons.wallet,
+                    title: "Couldn't load your transactions",
+                    description: 'Something went wrong. Try again in a moment.',
+                    action: OutlinedButton(
+                      onPressed: () => ref.invalidate(walletTransactionsProvider),
+                      child: const Text('Try again'),
+                    ),
+                  )
+                else if (transactions == null)
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
@@ -262,6 +288,7 @@ class _BankDetailsCardState extends ConsumerState<_BankDetailsCard> {
   final _ifsc = TextEditingController();
   bool _seeded = false;
   bool _saving = false;
+  bool _saved = false;
 
   /// Four letters, a zero, then six alphanumerics — the RBI's format.
   static final _ifscPattern = RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$');
@@ -287,6 +314,7 @@ class _BankDetailsCardState extends ConsumerState<_BankDetailsCard> {
             ),
           );
       ref.invalidate(customerProfileProvider);
+      if (mounted) setState(() => _saved = true);
       messenger.showSnackBar(const SnackBar(content: Text('Bank details saved')));
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
@@ -307,6 +335,11 @@ class _BankDetailsCardState extends ConsumerState<_BankDetailsCard> {
       _account.text = profile.bankAccountNumber;
       _ifsc.text = profile.bankIfsc;
     }
+    final account = _account.text.trim();
+    final ifsc = _ifsc.text.trim().toUpperCase();
+    final complete = _name.text.trim().isNotEmpty &&
+        account.length >= 9 &&
+        _ifscPattern.hasMatch(ifsc);
 
     return PortalCard(
       child: Form(
@@ -315,26 +348,40 @@ class _BankDetailsCardState extends ConsumerState<_BankDetailsCard> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Bank details',
+              'Bank account (optional)',
               style: theme.textTheme.titleSmall
                   ?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 2),
             Text(
-              'Where refunds and resale payouts are sent. Only needed if you '
-              'want money out — purchases never touch this.',
+              'Only needed if you want money sent back to you — a refund you '
+              'would rather have than store credit, or what you are paid when '
+              'you resell a piece from your collection.',
               style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _name,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Account holder name'),
+              onChanged: (_) => setState(() => _saved = false),
+              decoration: const InputDecoration(
+                labelText: 'Account holder name',
+                hintText: 'As printed on your passbook',
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _account,
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(18)],
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              onChanged: (_) => setState(() => _saved = false),
+              validator: (value) {
+                final entered = (value ?? '').trim();
+                return entered.isNotEmpty && entered.length < 9
+                    ? 'That looks too short for an account number.'
+                    : null;
+              },
               decoration: const InputDecoration(labelText: 'Account number'),
             ),
             const SizedBox(height: 12),
@@ -342,22 +389,32 @@ class _BankDetailsCardState extends ConsumerState<_BankDetailsCard> {
               controller: _ifsc,
               textCapitalization: TextCapitalization.characters,
               autovalidateMode: AutovalidateMode.onUserInteraction,
+              inputFormatters: [LengthLimitingTextInputFormatter(11)],
+              onChanged: (_) => setState(() => _saved = false),
               validator: (value) {
                 final entered = (value ?? '').trim().toUpperCase();
                 if (entered.isEmpty) return null;
                 return _ifscPattern.hasMatch(entered)
                     ? null
-                    : "That doesn't look like a valid IFSC";
+                    : 'An IFSC is eleven characters, like HDFC0001234.';
               },
               decoration: const InputDecoration(
                 labelText: 'IFSC',
-                helperText: 'Eleven characters, e.g. HDFC0001234.',
+                helperText: 'Printed on your cheque book and in your banking app.',
               ),
             ),
             const SizedBox(height: 14),
             FilledButton(
-              onPressed: _saving ? null : () => _save(profile),
-              child: Text(_saving ? 'Saving…' : 'Save bank details'),
+              onPressed: _saving || !complete ? null : () => _save(profile),
+              child: Text(
+                _saving
+                    ? 'Saving…'
+                    : _saved
+                        ? 'Saved'
+                        : profile.hasBankDetails
+                            ? 'Update bank account'
+                            : 'Save bank account',
+              ),
             ),
           ],
         ),

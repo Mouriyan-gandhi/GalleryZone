@@ -52,18 +52,21 @@ class _TransferAcceptScreenState extends ConsumerState<TransferAcceptScreen> {
       appBar: AppBar(title: const Text('Transfer rights')),
       body: transfer.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => const EmptyState(
+        error: (error, stack) => EmptyState(
           icon: LucideIcons.triangleAlert,
           title: 'Something went wrong',
           description: "We couldn't open this transfer right now.",
+          action: OutlinedButton(
+            onPressed: () => ref.invalidate(transferProvider(widget.transferId)),
+            child: const Text('Try again'),
+          ),
         ),
         data: (data) => data == null
-            ? EmptyState(
+            ? const EmptyState(
                 icon: LucideIcons.unlink,
-                title: 'This link is not valid',
+                title: "This transfer link isn't valid",
                 description:
-                    'The transfer may have been cancelled, or the link was mistyped. '
-                    'Ask the sender for a new one.',
+                    'It may have been mistyped, or the transfer was removed. Ask the sender for a new link.',
               )
             : _Body(transfer: data, busy: _busy, onAccept: _accept),
       ),
@@ -103,9 +106,26 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: 18),
           ],
           Text(
+            'GALLERYZONE PASSPORT',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.tertiary,
+              letterSpacing: 1.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isDisplay
+                ? '${transfer.fromName} is giving you display rights'
+                : '${transfer.fromName} is transferring ownership to you',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
             transfer.artworkTitle,
             textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall,
+            style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 20),
           PortalCard(
@@ -116,7 +136,11 @@ class _Body extends ConsumerWidget {
                   value: transferKindLabel[transferKindOf(transfer)]!,
                 ),
                 PortalDetailRow(label: 'From', value: transfer.fromName),
-                PortalDetailRow(label: 'To', value: transfer.toName, gold: true),
+                PortalDetailRow(
+                  label: 'To',
+                  value: transfer.toEmail.isEmpty ? transfer.toName : '${transfer.toName} · ${transfer.toEmail}',
+                  gold: true,
+                ),
                 PortalDetailRow(label: 'Started', value: formatLongDate(transfer.initiatedAt)),
                 if (isDisplay && transfer.displayEndsAt != null)
                   PortalDetailRow(
@@ -126,8 +150,7 @@ class _Body extends ConsumerWidget {
                 // The link is all the recipient gets, so the piece's own tag and
                 // its full record are reachable from here rather than from a
                 // second URL the sender would have to send separately.
-                if (artwork?.nfcTagId != null)
-                  PortalDetailRow(label: 'NFC tag', value: artwork!.nfcTagId!),
+                if (artwork?.nfcTagId != null) const PortalDetailRow(label: 'NFC tag', value: 'Linked'),
               ],
             ),
           ),
@@ -148,7 +171,7 @@ class _Body extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  isDisplay ? 'Display rights recorded' : 'Ownership accepted',
+                  isDisplay ? 'Display rights recorded' : 'Ownership transferred',
                   style: theme.textTheme.titleMedium,
                 ),
                 const SizedBox(height: 6),
@@ -157,9 +180,8 @@ class _Body extends ConsumerWidget {
                       ? 'The passport records this piece as on display with '
                             '${transfer.toName}. Ownership has not changed — the '
                             'passport shows both.'
-                      : 'The passport now records ${transfer.toName} as the owner. Its full '
-                            'provenance — every hand this piece has passed through — stays on '
-                            'the record.',
+                      : '“${transfer.artworkTitle}” is now recorded to ${transfer.toName}. The artwork’s '
+                            'passport shows the full chain of ownership.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
@@ -174,10 +196,11 @@ class _Body extends ConsumerWidget {
               children: [
                 Icon(LucideIcons.circleX, size: 34, color: theme.colorScheme.outline),
                 const SizedBox(height: 10),
-                Text('Transfer cancelled', style: theme.textTheme.titleMedium),
+                Text('This transfer was cancelled', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text(
-                  'The sender withdrew this transfer. Ownership has not changed.',
+                  '${transfer.fromName} cancelled the hand-over of “${transfer.artworkTitle}”. Nothing has changed '
+                  'on the ownership record.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
@@ -191,9 +214,8 @@ class _Body extends ConsumerWidget {
                       ? 'Accepting records the piece as on display with you until '
                             'that date. Ownership stays where it is, and the display '
                             'ends on its own when the date passes.'
-                      : 'Accepting records you as the owner of this piece on its digital '
-                            'passport, and adds this hand-over to its provenance. Nothing has '
-                            'changed yet.',
+                      : 'Accepting records you as the artwork’s owner on its digital passport. The previous '
+                            'owners stay in its history — provenance is added to, never rewritten.',
                   style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                 ),
                 const SizedBox(height: 18),

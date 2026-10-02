@@ -608,6 +608,22 @@ void main() {
       await expectLater(t.repo.verifyEmail(), throwsA(isA<Exception>()));
     });
 
+    test('asking to delete the account raises a support ticket - the API has no delete route', () async {
+      final t = build();
+      t.api.json('POST /v1/support', {'id': 'tk-1'}, status: 201);
+      await t.repo.requestAccountDeletion();
+      final body = t.api.bodiesOf('POST /v1/support').single! as Map;
+      expect(body['subject'], 'Account deletion request');
+      expect(body['message'], contains('delete my data'));
+      expect(t.api.calls, ['POST /v1/support'], reason: 'nothing else is called, nothing is signed out here');
+    });
+
+    test('a deletion request that did not go through says so', () async {
+      final t = build();
+      t.api.problem('POST /v1/support', 500, 'internal_error', 'Something went wrong');
+      await expectLater(t.repo.requestAccountDeletion(), throwsA(isA<ApiError>()));
+    });
+
     test('resuming a session: a refused one ends it, being offline does not', () async {
       final t = build(hasProfile: false);
       await t.tokens.start(
