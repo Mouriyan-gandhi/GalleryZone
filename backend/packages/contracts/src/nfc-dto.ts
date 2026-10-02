@@ -15,6 +15,17 @@ import { z } from "zod";
 export const tagUidInputSchema = z.object({ tagUid: z.string().min(1).max(40) }).strict();
 export type TagUidInput = z.infer<typeof tagUidInputSchema>;
 
+/** Ask, before touching the chip, whether linking or locking it is allowed. Nothing is changed. */
+export const checkNfcInputSchema = z.object({ tagUid: z.string().min(1).max(40), intent: z.enum(["link", "lock"]) }).strict();
+export type CheckNfcInput = z.infer<typeof checkNfcInputSchema>;
+
+/** What `check` answers: what the call would do (`noop` = already so, so the write or lock can be skipped). */
+export interface NfcCheckDto {
+  artworkId: string;
+  intent: "link" | "lock";
+  action: "link" | "replace" | "lock" | "noop";
+}
+
 /** Admin unlink and shipment override: a reason is always required, and is audit-logged. */
 export const nfcReasonInputSchema = z.object({ reason: z.string().trim().min(1).max(500) }).strict();
 export type NfcReasonInput = z.infer<typeof nfcReasonInputSchema>;

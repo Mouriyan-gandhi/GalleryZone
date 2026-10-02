@@ -11,6 +11,7 @@ import {
   FirestoreRateConfigStore,
   NfcError,
   approveArtwork,
+  checkNfcTag,
   artworkRarityValues,
   getArtistArtwork,
   linkNfcTag,
@@ -26,7 +27,7 @@ import {
   updateArtwork,
   type Db,
 } from "@galleryzone/db";
-import { reportNfcFailureInputSchema, tagUidInputSchema, type NfcStateDto, type ReportNfcFailureInput, type TagUidInput } from "@galleryzone/contracts";
+import { checkNfcInputSchema, reportNfcFailureInputSchema, tagUidInputSchema, type CheckNfcInput, type NfcCheckDto, type NfcStateDto, type ReportNfcFailureInput, type TagUidInput } from "@galleryzone/contracts";
 import { IllegalTransitionError } from "@galleryzone/domain";
 import { loadActiveRates } from "@galleryzone/config";
 import { Roles } from "./auth/roles.decorator.ts";
@@ -199,6 +200,15 @@ export class ArtistArtworksController {
   // --- NFC tag (NFC_IMPLEMENTATION.md §4.1, §4.2) ---------------------------------
   // The artist who made the piece, or the aggregator currently holding it, may
   // call these; nfc.ts checks which (a bare @Roles can't say "this artwork").
+
+  /** Before the app writes or locks a chip: is that allowed for this chip? Changes nothing. Saves overwriting another piece's unlocked chip, or locking the wrong one. */
+  @Roles("artist", "aggregator")
+  @Throttle({ sustained: { limit: 20, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post("artist/artworks/:id/nfc/check")
+  nfcCheck(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(checkNfcInputSchema)) body: CheckNfcInput): Promise<NfcCheckDto> {
+    return checkNfcTag(this.db, { artworkId: id, tagUid: body.tagUid, intent: body.intent, actor: { uid: req.authUser.uid, role: req.authUser.role } });
+  }
 
   /** The app wrote the URL to a chip and read this UID off it. Same chip again is a no-op; a different one replaces it until the lock. */
   @Roles("artist", "aggregator")

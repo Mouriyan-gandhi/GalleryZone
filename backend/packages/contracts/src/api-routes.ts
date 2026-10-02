@@ -60,6 +60,7 @@ export const apiRoutes: readonly RouteSpec[] = [
   { method: "GET", path: "/v1/artist/artworks", authRole: "artist", summary: "This artist's own listings", replaces: "artistDashboardService.listArtworks" },
   { method: "GET", path: "/v1/artist/artworks/:id", authRole: "artist", summary: "One of my artworks, owner view", replaces: "artistDashboardService.getArtwork" },
   { method: "POST", path: "/v1/artist/artworks/:id/nfc/link", authRole: "artist", summary: "Record that the app wrote the verify URL to an NFC chip and read this UID off it (the artist, or the aggregator holding the piece); the same chip again is a no-op, a different one replaces it until the lock", replaces: "nfcTagService.linkTag" },
+  { method: "POST", path: "/v1/artist/artworks/:id/nfc/check", authRole: "artist", summary: "Before touching a chip: would linking or locking it be allowed? Changes nothing (the artist, or the aggregator holding the piece)", replaces: "n/a — new" },
   { method: "POST", path: "/v1/artist/artworks/:id/nfc/lock", authRole: "artist", summary: "Record that the app locked the chip, having re-read its UID (the artist, or the aggregator holding the piece); irreversible", replaces: "n/a — new" },
   { method: "POST", path: "/v1/artist/artworks/:id/nfc/failure", authRole: "artist", summary: "The app reporting a link or lock that failed on the phone, relayed to Sentry", replaces: "n/a — new" },
 

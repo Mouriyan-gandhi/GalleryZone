@@ -12,6 +12,7 @@ import {
   NfcError,
   adminUnlinkNfcTag,
   assertNfcDispatchAllowed,
+  checkNfcTag,
   decideLink,
   decideLock,
   decideUnlink,
@@ -397,6 +398,40 @@ const refusal = (code: string) => (e: unknown) => e instanceof NfcError && e.cod
   fresh.docs.set("orders/ord-1", { artworkId: "a1", status: "packed" });
   await advanceOrderStatus(asFirestore(fresh), "ord-1", "transit");
   console.warn = quiet;
+}
+
+// --- Check: ask before touching the chip, change nothing -----------------------------------
+
+{
+  const db = world();
+  const artist2 = { uid: "artist-2", role: "artist" };
+  const check = (artworkId: string, tagUid: string, intent: "link" | "lock", actor = artist1) => checkNfcTag(asFirestore(db), { artworkId, tagUid, intent, actor });
+
+  assert.deepEqual(await check("a1", UID, "link"), { artworkId: "a1", intent: "link", action: "link" });
+  assert.equal(db.docs.get("artworks/a1")?.nfcLinkedAt, null, "a check changes nothing");
+  assert.equal(priv(db, "a1"), undefined);
+  assert.equal(audits(db).length, 0);
+
+  await linkNfcTag(asFirestore(db), { artworkId: "a1", tagUid: UID, actor: artist1 });
+  assert.equal((await check("a1", UID, "link")).action, "noop", "same chip again: the write can be skipped");
+  assert.equal((await check("a1", OTHER, "link")).action, "replace");
+  // The point of the check: a chip that belongs to another piece is refused BEFORE its URL is overwritten.
+  await assert.rejects(check("a2", UID, "link", artist2), refusal("tag_already_bound"));
+  await assert.rejects(check("a1", "nope", "link"), refusal("invalid_tag_uid"));
+  await assert.rejects(check("a1", UID, "link", artist2), refusal("forbidden"));
+  await assert.rejects(check("nope", UID, "link"), refusal("not_found"));
+
+  // ...and the wrong chip is refused BEFORE the irreversible lock.
+  assert.equal((await check("a1", UID, "lock")).action, "lock");
+  await assert.rejects(check("a1", OTHER, "lock"), refusal("tag_uid_mismatch"));
+  await assert.rejects(check("a2", UID, "lock", artist2), refusal("nfc_not_linked"));
+  const gallery = { uid: "agg-1", role: "aggregator" };
+  assert.equal((await check("a1", UID, "lock", gallery)).action, "lock", "the gallery holding the piece checks the same way, without ever being shown the UID");
+  await assert.rejects(check("a1", OTHER, "lock", gallery), refusal("tag_uid_mismatch"));
+
+  await lockNfcTag(asFirestore(db), { artworkId: "a1", tagUid: UID, actor: artist1 });
+  assert.equal((await check("a1", UID, "lock")).action, "noop");
+  await assert.rejects(check("a1", UID, "link"), refusal("nfc_already_locked"));
 }
 
 // --- Lock reminders (§13): 48 hours, then 7 days, never two at once ---------------------

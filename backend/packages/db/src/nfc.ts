@@ -185,11 +185,12 @@ async function loadArtwork(tx: Transaction, db: Firestore, artworkId: string): P
 }
 
 /** The artist who made the piece, or the aggregator that currently has it (reserved, or sold and not yet handed on). */
-async function assertCanHandleTag(db: Firestore, tx: Transaction, actor: NfcActor, artworkId: string, artwork: ArtworkDoc): Promise<TagHandlerRole> {
+async function assertCanHandleTag(db: Firestore, tx: Transaction | null, actor: NfcActor, artworkId: string, artwork: ArtworkDoc): Promise<TagHandlerRole> {
   if (actor.role === "artist" && artwork.artistId === actor.uid) return "artist";
   if (actor.role === "aggregator") {
     // One holding per aggregator per artwork (reserveHolding refuses a second), so equality on both is enough.
-    const held = await tx.get(db.collection(Collections.aggregatorHoldings).where("artworkId", "==", artworkId).where("aggregatorId", "==", actor.uid).limit(1));
+    const query = db.collection(Collections.aggregatorHoldings).where("artworkId", "==", artworkId).where("aggregatorId", "==", actor.uid).limit(1);
+    const held = await (tx ? tx.get(query) : query.get());
     const holding = held.docs[0]?.data() as AggregatorHoldingDoc | undefined;
     if (holding && (holding.status === "reserved" || holding.status === "sold_pending_settlement")) return "aggregator";
   }
@@ -211,6 +212,44 @@ function writeAudit(
     createdAt: serverNow(),
   };
   tx.set(db.collection(Collections.auditLog).doc(), doc);
+}
+
+export type NfcIntent = "link" | "lock";
+
+export interface NfcCheckResult {
+  artworkId: string;
+  intent: NfcIntent;
+  /** What the call would do. `noop` = already so; the app can skip the write or the lock. */
+  action: "link" | "replace" | "lock" | "noop";
+}
+
+/**
+ * Asks, without changing anything, whether linking or locking THIS chip is allowed.
+ *
+ * The apps call it between reading the chip's UID and touching the chip. Without it the
+ * only refusal for "this chip already belongs to another artwork" (§4.1) would come after
+ * the app had written this artwork's URL over the other piece's still-unlocked chip, and
+ * the only refusal for "wrong chip" at lock time (§4.2) after the lock bytes had been set —
+ * which cannot be undone. Link and lock still make every one of these checks themselves.
+ */
+export async function checkNfcTag(db: Firestore, input: { artworkId: string; tagUid: string; intent: NfcIntent; actor: NfcActor }): Promise<NfcCheckResult> {
+  const tagUid = parseTagUid(input.tagUid);
+  const { artworkId, intent, actor } = input;
+  const snap = await artworkRef(db, artworkId).get();
+  if (!snap.exists) throw new NfcError("not_found", `No artwork ${artworkId}`);
+  const artwork = snap.data() as ArtworkDoc;
+  const role = await assertCanHandleTag(db, null, actor, artworkId, artwork);
+  const priv = (await privateRef(db, artworkId).get()).data() as ArtworkNfcDoc | undefined;
+  const state = nfcStateOf(artwork, priv);
+
+  if (intent === "lock") return { artworkId, intent, action: decideLock(state, tagUid).kind };
+
+  const decision = decideLink(state, tagUid, role);
+  if (decision.kind !== "noop") {
+    const clash = await db.collection(Collections.artworkNfc).where("tagUid", "==", tagUid).limit(2).get();
+    if (clash.docs.some((d) => d.id !== artworkId)) throw new NfcError("tag_already_bound", "This chip is already linked to another artwork.");
+  }
+  return { artworkId, intent, action: decision.kind };
 }
 
 /** §4.1. Records that the app wrote the URL to a chip and read this UID off it. */
