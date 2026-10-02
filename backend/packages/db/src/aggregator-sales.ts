@@ -2,7 +2,7 @@
 
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { cashRemittanceFromWalletPostings, shipmentStateMachine, type ShipmentStatus } from "@galleryzone/domain";
-import { Collections, type AggregatorHoldingDoc, type AggregatorSaleDoc } from "./collections.ts";
+import { Collections, type AggregatorHoldingDoc, type AggregatorSaleDoc, type ArtworkDoc } from "./collections.ts";
 import { isAlreadyExists, postLedgerEntries } from "./ledger-repository.ts";
 import { getWalletBalance } from "./wallets.ts";
 import { assertNfcDispatchAllowed } from "./nfc.ts";
@@ -19,7 +19,10 @@ async function holdingIdsFor(db: Firestore, aggregatorId: string): Promise<strin
   return snap.docs.map((d) => d.id);
 }
 
-export async function listAggregatorSales(db: Firestore, aggregatorId: string): Promise<(AggregatorSaleDoc & { id: string })[]> {
+/** A sale with the tag state of its piece, so the shipping list can say "lock the tag before you dispatch" (§4.7, §5.2b). */
+export type AggregatorSaleRow = AggregatorSaleDoc & { id: string; nfcLocked: boolean; nfcGateOverridden: boolean };
+
+export async function listAggregatorSales(db: Firestore, aggregatorId: string): Promise<AggregatorSaleRow[]> {
   const holdingIds = await holdingIdsFor(db, aggregatorId);
   if (holdingIds.length === 0) return [];
   // Firestore's `in` operator caps at 30 values, so the holdings are queried
@@ -30,7 +33,11 @@ export async function listAggregatorSales(db: Firestore, aggregatorId: string): 
   const snaps = await Promise.all(
     chunks.map((chunk) => db.collection(Collections.aggregatorSales).where("holdingId", "in", chunk).get()),
   );
-  return snaps.flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...(d.data() as AggregatorSaleDoc) })));
+  const sales = snaps.flatMap((snap) => snap.docs.map((d) => ({ id: d.id, ...(d.data() as AggregatorSaleDoc) })));
+  const artworkIds = [...new Set(sales.map((s) => s.artworkId))];
+  const artworks = artworkIds.length ? await db.getAll(...artworkIds.map((id) => db.collection(Collections.artworks).doc(id))) : [];
+  const byId = new Map(artworks.map((a) => [a.id, a.data() as ArtworkDoc | undefined]));
+  return sales.map((s) => ({ ...s, nfcLocked: Boolean(byId.get(s.artworkId)?.nfcLockedAt), nfcGateOverridden: Boolean(byId.get(s.artworkId)?.nfcShipmentGateOverrideAt) }));
 }
 
 // A sale is owned by whoever owns its parent holding. Every mutation resolves
@@ -101,7 +108,7 @@ export async function markRemitted(db: Firestore, aggregatorId: string, saleId: 
   }
 }
 
-export async function listRemittancesDue(db: Firestore, aggregatorId: string): Promise<(AggregatorSaleDoc & { id: string })[]> {
+export async function listRemittancesDue(db: Firestore, aggregatorId: string): Promise<AggregatorSaleRow[]> {
   const sales = await listAggregatorSales(db, aggregatorId);
   return sales.filter((sale) => sale.paymentRoute === "cash_at_premises" && !sale.remittedAt);
 }
