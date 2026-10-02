@@ -15,6 +15,9 @@ String formatInr(num amount) => NumberFormat.currency(
 String formatLongDate(String iso) =>
     DateFormat('d MMMM y').format(DateTime.parse(iso));
 
+/// `4 Mar` - a date inside the current year, as a ledger row writes it.
+String formatDay(String iso) => DateFormat('d MMM').format(DateTime.parse(iso).toLocal());
+
 /// `4 Mar 2025` — the short form the provenance timeline uses.
 String formatShortDate(String iso) =>
     DateFormat('d MMM y').format(DateTime.parse(iso));

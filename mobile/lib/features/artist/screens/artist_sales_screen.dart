@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'artist_account_screens.dart' show ArtistSettlementsTab;
+import 'artist_settlements_screen.dart' show ArtistSettlementsTab;
 import 'artist_orders_screen.dart' show ArtistOrdersTab;
 import 'artist_wallet_screen.dart' show ArtistWalletTab;
 

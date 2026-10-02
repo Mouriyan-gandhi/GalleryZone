@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/format.dart';
 import '../../../data/models/artist_network.dart';
+import '../../auth/providers/auth_providers.dart' show authErrorMessage;
 import '../providers/artist_network_providers.dart';
 
 /// Closing the account is a request, not a switch. A GalleryZone admin decides,
@@ -39,7 +40,7 @@ class _DeactivationTileState extends ConsumerState<DeactivationTile> {
       _confirm.text.trim().toUpperCase() == _confirmWord &&
       !_busy;
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _run(Future<void> Function() action, {String? done}) async {
     setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -47,8 +48,9 @@ class _DeactivationTileState extends ConsumerState<DeactivationTile> {
       ref.read(artistNetworkRevisionProvider.notifier).bump();
       _reason.clear();
       _confirm.clear();
+      if (done != null) messenger.showSnackBar(SnackBar(content: Text(done)));
     } catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
+      messenger.showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -78,7 +80,10 @@ class _DeactivationTileState extends ConsumerState<DeactivationTile> {
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: 6),
-          Text('Your reason: ${request.reason}', style: theme.textTheme.labelSmall),
+          Text(
+            'Your reason: ${request.reason}',
+            style: theme.textTheme.labelSmall,
+          ),
           const SizedBox(height: 10),
           OutlinedButton(
             onPressed: _busy
@@ -139,6 +144,7 @@ class _DeactivationTileState extends ConsumerState<DeactivationTile> {
                     () => repository
                         .requestDeactivation(reason: _reason.text)
                         .then((_) {}),
+                    done: 'Deactivation requested. GalleryZone will review it.',
                   )
                 : null,
             style: OutlinedButton.styleFrom(

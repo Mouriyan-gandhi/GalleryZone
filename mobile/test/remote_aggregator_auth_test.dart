@@ -656,7 +656,6 @@ void main() {
         repo.sendConnectionRequest(requesterId: 'a', recipientId: 'b'),
         throwsA(isA<Exception>().having((e) => e.toString(), 'message', contains('coming soon'))),
       );
-      await expectLater(repo.proposeCollaboration(proposerId: 'a', partnerId: 'b', title: 't', brief: 'b'), throwsA(isA<Exception>()));
     });
 
     test('closing an account is a real request, decided by an admin', () async {

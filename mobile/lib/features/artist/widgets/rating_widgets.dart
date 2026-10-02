@@ -65,7 +65,8 @@ class _FractionClipper extends CustomClipper<Rect> {
   final double fraction;
 
   @override
-  Rect getClip(Size size) => Rect.fromLTWH(0, 0, size.width * fraction, size.height);
+  Rect getClip(Size size) =>
+      Rect.fromLTWH(0, 0, size.width * fraction, size.height);
 
   @override
   bool shouldReclip(_FractionClipper oldClipper) =>
@@ -92,7 +93,10 @@ class RatingCard extends ConsumerWidget {
         ),
       ),
       error: (error, _) => PortalCard(
-        child: Text('Could not load your rating.', style: theme.textTheme.bodySmall),
+        child: Text(
+          'Could not load your rating.',
+          style: theme.textTheme.bodySmall,
+        ),
       ),
       data: (rating) {
         final reviews = reviewsAsync.value ?? const <ArtistReview>[];
@@ -154,7 +158,9 @@ class RatingCard extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Text(
                     'LATEST REVIEWS',
-                    style: theme.textTheme.labelSmall?.copyWith(letterSpacing: 1),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      letterSpacing: 1,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   for (final review in reviews.take(3))
@@ -192,10 +198,19 @@ class _BreakdownBar extends StatelessWidget {
         children: [
           SizedBox(
             width: 12,
-            child: Text('$star', style: theme.textTheme.labelSmall, textAlign: TextAlign.right),
+            child: Text(
+              '$star',
+              style: theme.textTheme.labelSmall,
+              textAlign: TextAlign.right,
+            ),
           ),
           const SizedBox(width: 6),
-          Icon(LucideIcons.star, size: 11, color: theme.colorScheme.outline, fill: 1),
+          Icon(
+            LucideIcons.star,
+            size: 11,
+            color: theme.colorScheme.outline,
+            fill: 1,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: ClipRRect(
@@ -211,7 +226,11 @@ class _BreakdownBar extends StatelessWidget {
           const SizedBox(width: 8),
           SizedBox(
             width: 18,
-            child: Text('$count', style: theme.textTheme.labelSmall, textAlign: TextAlign.right),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelSmall,
+              textAlign: TextAlign.right,
+            ),
           ),
         ],
       ),
@@ -236,7 +255,10 @@ class _ReviewRow extends StatelessWidget {
           children: [
             StarRow(value: review.rating.toDouble(), size: 13),
             Text(review.reviewerName, style: theme.textTheme.bodySmall),
-            Text(formatShortDate(review.createdAt), style: theme.textTheme.labelSmall),
+            Text(
+              formatShortDate(review.createdAt),
+              style: theme.textTheme.labelSmall,
+            ),
           ],
         ),
         const SizedBox(height: 4),
@@ -249,7 +271,7 @@ class _ReviewRow extends StatelessWidget {
 }
 
 /// A card for something that does not exist yet. Not clickable, and honest
-/// about not being ready — connections and collaborations are live, the wider
+/// about not being ready — connections are live in the demo, the wider
 /// community space is not.
 class CommunityTeaser extends StatelessWidget {
   const CommunityTeaser({super.key});
@@ -272,11 +294,21 @@ class CommunityTeaser extends StatelessWidget {
                   spacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text('Artist Community', style: theme.textTheme.titleMedium),
+                    Text(
+                      'Artist Community',
+                      style: theme.textTheme.titleMedium,
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.tertiary.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: theme.colorScheme.tertiary.withValues(
+                            alpha: 0.4,
+                          ),
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -291,8 +323,8 @@ class CommunityTeaser extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Groups, local meetups and open calls with other GalleryZone '
-                  'artists. Connections and collaborations are live today under '
-                  'Manage — the wider community space is next.',
+                  'artists. Connections are live today under Manage — the wider '
+                  'community space is next.',
                   style: theme.textTheme.bodySmall,
                 ),
               ],

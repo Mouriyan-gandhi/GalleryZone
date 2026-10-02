@@ -43,7 +43,10 @@ class PortalCard extends StatelessWidget {
               : theme.colorScheme.outline,
         ),
       ),
-      child: child,
+      // A transparent Material of its own: anything with ink inside the card (a
+      // list tile, a switch row, an expansion tile) paints on it rather than on
+      // a surface hidden behind the card's decoration.
+      child: Material(type: MaterialType.transparency, child: child),
     );
   }
 }
@@ -195,37 +198,6 @@ class SupportFaqPanel extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Shown wherever an artist sees what a sale pays them.
-///
-/// The split is one of the project's open decisions — the mocked code, the
-/// business requirement and the SAD's schema disagree — so every screen that
-/// prints the number says so rather than letting an artist plan around it.
-class ProvisionalPayoutNotice extends StatelessWidget {
-  const ProvisionalPayoutNotice({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return PortalCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(LucideIcons.info, size: 15, color: theme.colorScheme.tertiary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Payout figures are provisional. The final split is still being '
-              'agreed, so these show your own price less a 2% platform '
-              'pass-through.',
-              style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

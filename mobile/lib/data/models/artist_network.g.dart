@@ -64,42 +64,6 @@ const _$ConnectionStatusEnumMap = {
   ConnectionStatus.declined: 'declined',
 };
 
-_ArtistCollaboration _$ArtistCollaborationFromJson(Map<String, dynamic> json) =>
-    _ArtistCollaboration(
-      id: json['id'] as String,
-      proposerId: json['proposerId'] as String,
-      proposerName: json['proposerName'] as String,
-      partnerId: json['partnerId'] as String,
-      partnerName: json['partnerName'] as String,
-      title: json['title'] as String,
-      brief: json['brief'] as String,
-      status: $enumDecode(_$CollaborationStatusEnumMap, json['status']),
-      proposedAt: json['proposedAt'] as String,
-      respondedAt: json['respondedAt'] as String?,
-    );
-
-Map<String, dynamic> _$ArtistCollaborationToJson(
-  _ArtistCollaboration instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'proposerId': instance.proposerId,
-  'proposerName': instance.proposerName,
-  'partnerId': instance.partnerId,
-  'partnerName': instance.partnerName,
-  'title': instance.title,
-  'brief': instance.brief,
-  'status': _$CollaborationStatusEnumMap[instance.status]!,
-  'proposedAt': instance.proposedAt,
-  'respondedAt': instance.respondedAt,
-};
-
-const _$CollaborationStatusEnumMap = {
-  CollaborationStatus.proposed: 'proposed',
-  CollaborationStatus.active: 'active',
-  CollaborationStatus.completed: 'completed',
-  CollaborationStatus.declined: 'declined',
-};
-
 _DeactivationRequest _$DeactivationRequestFromJson(Map<String, dynamic> json) =>
     _DeactivationRequest(
       id: json['id'] as String,

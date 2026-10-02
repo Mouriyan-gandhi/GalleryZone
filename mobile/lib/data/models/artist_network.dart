@@ -3,11 +3,12 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'artist_network.freezed.dart';
 part 'artist_network.g.dart';
 
-/// Artist ratings, artist-to-artist connections, and the collaborations that
-/// grow out of them — the Dart side of the web's `types/artist-network.ts`.
-/// One file because they are one story: a collector rates an artist, artists
-/// connect with each other, and a connection is what makes a collaboration
-/// possible.
+/// Artist ratings and artist-to-artist connections - the Dart side of the
+/// web's `types/artist-network.ts`. One file because they are one story: a
+/// collector rates an artist, and artists connect with each other.
+///
+/// Collaborations were removed from the product (27 Aug 2026) and are gone
+/// here too.
 
 @freezed
 abstract class ArtistReview with _$ArtistReview {
@@ -126,43 +127,6 @@ ConnectionDirection connectionDirection(
 
 bool involvesArtist(ArtistConnection connection, String artistId) =>
     connection.requesterId == artistId || connection.recipientId == artistId;
-
-enum CollaborationStatus { proposed, active, completed, declined }
-
-const collaborationStatusLabel = {
-  CollaborationStatus.proposed: 'Proposed',
-  CollaborationStatus.active: 'Active',
-  CollaborationStatus.completed: 'Completed',
-  CollaborationStatus.declined: 'Declined',
-};
-
-/// A joint piece or show between two artists who are already connected. Same
-/// two-sided storage as a connection: one record, read from either end.
-@freezed
-abstract class ArtistCollaboration with _$ArtistCollaboration {
-  const factory ArtistCollaboration({
-    required String id,
-    required String proposerId,
-    required String proposerName,
-    required String partnerId,
-    required String partnerName,
-    required String title,
-    required String brief,
-    required CollaborationStatus status,
-    required String proposedAt,
-    String? respondedAt,
-  }) = _ArtistCollaboration;
-
-  factory ArtistCollaboration.fromJson(Map<String, dynamic> json) =>
-      _$ArtistCollaborationFromJson(json);
-}
-
-String collaborationPeerName(
-  ArtistCollaboration collaboration,
-  String viewerId,
-) => collaboration.proposerId == viewerId
-    ? collaboration.partnerName
-    : collaboration.proposerName;
 
 /// Closing an account is not self-service: the artist asks, an admin decides.
 /// This app has no admin portal, so a request made here waits to be decided in

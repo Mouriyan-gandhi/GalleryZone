@@ -2,10 +2,10 @@ import '../../models/artist_network.dart';
 import 'artist_seed.dart' show currentArtistId, currentArtistName;
 import 'artists_seed.dart';
 
-/// Ratings, connections and collaborations for the demo — the Dart side of
+/// Ratings and connections for the demo - the Dart side of
 /// `lib/mock-data/artist-network.ts`. There is no backend, so nothing here is
 /// earned at runtime: reviews are seeded, and the write paths (send a request,
-/// accept it, propose a collaboration) act on this seed.
+/// accept it) act on this seed.
 ///
 /// The demo artist is deliberately mid-table rather than a perfect five — an
 /// artist looking at their own rating card needs to see what a mixed one
@@ -139,7 +139,7 @@ List<ArtistReview> seedArtistReviews() => [
     ),
 ];
 
-/// One accepted connection so the demo artist has a peer to collaborate with,
+/// One accepted connection so the demo artist has a peer,
 /// and one incoming request waiting on them so Accept/Ignore has something to
 /// act on the first time the screen is opened.
 List<ArtistConnection> seedArtistConnections() {
@@ -172,25 +172,6 @@ List<ArtistConnection> seedArtistConnections() {
           'Planning a sculpture-and-canvas pairing for a Jaipur show. '
           'Interested?',
       requestedAt: _daysAgo(3),
-    ),
-  ];
-}
-
-List<ArtistCollaboration> seedArtistCollaborations() {
-  final meera = _publicArtist('meera-nair');
-  return [
-    ArtistCollaboration(
-      id: 'collab-1',
-      proposerId: 'meera-nair',
-      proposerName: meera.name,
-      partnerId: currentArtistId,
-      partnerName: currentArtistName,
-      title: 'Two Coasts',
-      brief:
-          'A paired series — six canvases each, hung as alternating pairs, on '
-          'the monsoon light either side of the peninsula.',
-      status: CollaborationStatus.proposed,
-      proposedAt: _daysAgo(6),
     ),
   ];
 }

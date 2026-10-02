@@ -32,6 +32,7 @@ import '../../features/aggregator/screens/aggregator_wallet_screen.dart';
 import '../../features/aggregator/widgets/aggregator_shell.dart';
 import '../../features/artist/screens/artist_account_screens.dart';
 import '../../features/artist/screens/artist_kyc_screen.dart';
+import '../../features/artist/screens/artist_settlements_screen.dart';
 import '../../features/artist/screens/artist_artworks_screen.dart';
 import '../../features/artist/screens/artist_catalog_screens.dart';
 import '../../features/artist/screens/artist_dashboard_screen.dart';

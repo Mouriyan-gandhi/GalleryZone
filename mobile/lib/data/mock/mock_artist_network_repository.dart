@@ -1,5 +1,4 @@
 import '../models/artist_network.dart';
-import '../models/artist_portal.dart';
 import '../repositories/artist_network_repository.dart';
 import '../storage/mock_db.dart';
 import 'mock_utils.dart';
@@ -9,9 +8,7 @@ import 'seed/artists_seed.dart';
 
 const _reviewsKey = 'artistReviews';
 const _connectionsKey = 'artistConnections';
-const _collaborationsKey = 'artistCollaborations';
 const _deactivationKey = 'deactivationRequests';
-const _mouKey = 'artistMou';
 
 /// Port of `services/artistNetworkService.ts`. The rules live here, not in the
 /// widgets, so a screen that forgets to hide a button still cannot get around
@@ -34,16 +31,6 @@ class MockArtistNetworkRepository implements ArtistNetworkRepository {
   void _writeConnections(List<ArtistConnection> value) =>
       MockDb.setCollection(_connectionsKey, value, (c) => c.toJson());
 
-  List<ArtistCollaboration> _collaborations() => MockDb.getCollection(
-    _collaborationsKey,
-    seedArtistCollaborations,
-    ArtistCollaboration.fromJson,
-    (c) => c.toJson(),
-  );
-
-  void _writeCollaborations(List<ArtistCollaboration> value) =>
-      MockDb.setCollection(_collaborationsKey, value, (c) => c.toJson());
-
   List<DeactivationRequest> _deactivations() => MockDb.getCollection(
     _deactivationKey,
     () => const <DeactivationRequest>[],
@@ -53,13 +40,6 @@ class MockArtistNetworkRepository implements ArtistNetworkRepository {
 
   void _writeDeactivations(List<DeactivationRequest> value) =>
       MockDb.setCollection(_deactivationKey, value, (r) => r.toJson());
-
-  bool _mouSigned() => MockDb.getCollection(
-    _mouKey,
-    () => const <MouAcceptance>[],
-    MouAcceptance.fromJson,
-    (a) => a.toJson(),
-  ).isNotEmpty;
 
   ({String name, String avatar}) _display(String artistId) {
     if (artistId == currentArtistId) {
@@ -82,9 +62,6 @@ class MockArtistNetworkRepository implements ArtistNetworkRepository {
             (c.requesterId == b && c.recipientId == a),
       )
       .firstOrNull;
-
-  bool _isConnected(String a, String b) =>
-      _between(a, b)?.status == ConnectionStatus.accepted;
 
   String _id(String prefix) =>
       '$prefix-${DateTime.now().microsecondsSinceEpoch}';
@@ -183,116 +160,6 @@ class MockArtistNetworkRepository implements ArtistNetworkRepository {
       );
       _writeConnections([
         for (final c in all) c.id == connectionId ? updated : c,
-      ]);
-      return updated;
-    });
-  }
-
-  // --- Collaborations --------------------------------------------------------
-
-  @override
-  Future<List<ArtistCollaboration>> listCollaborations(String artistId) =>
-      mockDelay(() {
-        final mine = _collaborations()
-            .where((c) => c.proposerId == artistId || c.partnerId == artistId)
-            .toList()
-          ..sort((a, b) => b.proposedAt.compareTo(a.proposedAt));
-        return mine;
-      });
-
-  @override
-  Future<ArtistCollaboration> proposeCollaboration({
-    required String proposerId,
-    required String partnerId,
-    required String title,
-    required String brief,
-  }) {
-    // Both gates are enforced here as well as in the UI: the MOU is the
-    // agreement that makes joint work possible at all, and a collaboration
-    // with someone you are not connected to is not a collaboration.
-    if (proposerId == currentArtistId && !_mouSigned()) {
-      return mockError('Sign your MOU before proposing a collaboration');
-    }
-    if (!_isConnected(proposerId, partnerId)) {
-      return mockError('Connect with this artist first');
-    }
-    if (title.trim().isEmpty) {
-      return mockError('Give the collaboration a title');
-    }
-    if (brief.trim().isEmpty) {
-      return mockError('Describe what you have in mind');
-    }
-
-    return mockDelay(() {
-      final collaboration = ArtistCollaboration(
-        id: _id('collab'),
-        proposerId: proposerId,
-        proposerName: _display(proposerId).name,
-        partnerId: partnerId,
-        partnerName: _display(partnerId).name,
-        title: title.trim(),
-        brief: brief.trim(),
-        status: CollaborationStatus.proposed,
-        proposedAt: DateTime.now().toIso8601String(),
-      );
-      _writeCollaborations([..._collaborations(), collaboration]);
-      return collaboration;
-    });
-  }
-
-  @override
-  Future<ArtistCollaboration> respondToCollaboration({
-    required String collaborationId,
-    required String viewerId,
-    required bool accept,
-  }) {
-    final all = _collaborations();
-    final collaboration = all.where((c) => c.id == collaborationId).firstOrNull;
-    if (collaboration == null) return mockError('Collaboration not found');
-    if (collaboration.partnerId != viewerId) {
-      return mockError('Only the invited artist can answer this');
-    }
-    if (collaboration.status != CollaborationStatus.proposed) {
-      return mockError('That proposal has already been answered');
-    }
-
-    return mockDelay(() {
-      final updated = collaboration.copyWith(
-        status: accept
-            ? CollaborationStatus.active
-            : CollaborationStatus.declined,
-        respondedAt: DateTime.now().toIso8601String(),
-      );
-      _writeCollaborations([
-        for (final c in all) c.id == collaborationId ? updated : c,
-      ]);
-      return updated;
-    });
-  }
-
-  @override
-  Future<ArtistCollaboration> completeCollaboration({
-    required String collaborationId,
-    required String viewerId,
-  }) {
-    final all = _collaborations();
-    final collaboration = all.where((c) => c.id == collaborationId).firstOrNull;
-    if (collaboration == null) return mockError('Collaboration not found');
-    if (collaboration.proposerId != viewerId &&
-        collaboration.partnerId != viewerId) {
-      return mockError('You are not part of this collaboration');
-    }
-    if (collaboration.status != CollaborationStatus.active) {
-      return mockError('Only an active collaboration can be completed');
-    }
-
-    return mockDelay(() {
-      final updated = collaboration.copyWith(
-        status: CollaborationStatus.completed,
-        respondedAt: DateTime.now().toIso8601String(),
-      );
-      _writeCollaborations([
-        for (final c in all) c.id == collaborationId ? updated : c,
       ]);
       return updated;
     });

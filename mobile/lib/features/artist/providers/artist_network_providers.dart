@@ -55,14 +55,6 @@ final connectionWithProvider = FutureProvider.autoDispose
           .getConnectionWith(currentArtistId, peerId);
     });
 
-final artistCollaborationsProvider =
-    FutureProvider.autoDispose<List<ArtistCollaboration>>((ref) {
-      ref.watch(artistNetworkRevisionProvider);
-      return ref
-          .watch(artistNetworkRepositoryProvider)
-          .listCollaborations(currentArtistId);
-    });
-
 final deactivationRequestProvider =
     FutureProvider.autoDispose<DeactivationRequest?>((ref) {
       ref.watch(artistNetworkRevisionProvider);

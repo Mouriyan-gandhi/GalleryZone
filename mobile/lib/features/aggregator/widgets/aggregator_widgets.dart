@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../data/mock/seed/aggregator_seed.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/repositories/aggregator_repository.dart';
+import '../../shell/display_clock.dart';
 import '../../shell/portal_widgets.dart';
 
 // StatusPill moved to the shared portal widgets; re-exported so this portal's
@@ -25,20 +26,20 @@ class HoldingStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (status) {
       HoldingStatus.reserved => const StatusPill(
-          label: 'Reserved',
-          color: _sky,
-          icon: LucideIcons.bookmarkCheck,
-        ),
+        label: 'Reserved',
+        color: _sky,
+        icon: LucideIcons.bookmarkCheck,
+      ),
       HoldingStatus.soldPendingSettlement => const StatusPill(
-          label: 'Sold, pending settlement',
-          color: _emerald,
-          icon: LucideIcons.circleCheckBig,
-        ),
+        label: 'Sold, pending settlement',
+        color: _emerald,
+        icon: LucideIcons.circleCheckBig,
+      ),
       HoldingStatus.returned => const StatusPill(
-          label: 'Returned unsold',
-          color: _slate,
-          icon: LucideIcons.undo2,
-        ),
+        label: 'Returned unsold',
+        color: _slate,
+        icon: LucideIcons.undo2,
+      ),
     };
   }
 }
@@ -53,8 +54,14 @@ class ShipmentStatusPill extends StatelessWidget {
     final gold = Theme.of(context).colorScheme.tertiary;
     return switch (status) {
       ShipmentStatus.preparing => StatusPill(label: 'Preparing', color: gold),
-      ShipmentStatus.dispatched => const StatusPill(label: 'Dispatched', color: _sky),
-      ShipmentStatus.delivered => const StatusPill(label: 'Delivered', color: _emerald),
+      ShipmentStatus.dispatched => const StatusPill(
+        label: 'Dispatched',
+        color: _sky,
+      ),
+      ShipmentStatus.delivered => const StatusPill(
+        label: 'Delivered',
+        color: _emerald,
+      ),
     };
   }
 }
@@ -68,11 +75,18 @@ class SettlementStatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return switch (status) {
-      SettlementStatus.pending =>
-        StatusPill(label: 'Pending', color: theme.colorScheme.tertiary),
-      SettlementStatus.processed => const StatusPill(label: 'Processed', color: _emerald),
-      SettlementStatus.failed =>
-        StatusPill(label: 'Failed', color: theme.colorScheme.error),
+      SettlementStatus.pending => StatusPill(
+        label: 'Pending',
+        color: theme.colorScheme.tertiary,
+      ),
+      SettlementStatus.processed => const StatusPill(
+        label: 'Processed',
+        color: _emerald,
+      ),
+      SettlementStatus.failed => StatusPill(
+        label: 'Failed',
+        color: theme.colorScheme.error,
+      ),
     };
   }
 }
@@ -81,21 +95,22 @@ class SettlementStatusPill extends StatelessWidget {
 ///
 /// A holding carries only `expiresAt` at most call sites, but the window is
 /// always exactly 30 days (SAD §2.7), so the start is reconstructable rather
-/// than needing to be passed alongside. "Now" is [fixtureToday], not the
-/// real clock — see that constant for why.
-class ExpiryCountdown extends StatelessWidget {
+/// than needing to be passed alongside. "Now" is [displayNow]: the real clock
+/// against the real service, the fixture date in the offline demo.
+class ExpiryCountdown extends ConsumerWidget {
   const ExpiryCountdown({super.key, required this.expiresAt});
 
   final String expiresAt;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final expires = DateTime.parse(expiresAt);
-    final now = fixtureToday;
+    final now = displayNow(ref);
     final elapsed = now.difference(expires.subtract(holdingWindow));
-    final progress =
-        (elapsed.inMinutes / holdingWindow.inMinutes).clamp(0.0, 1.0).toDouble();
+    final progress = (elapsed.inMinutes / holdingWindow.inMinutes)
+        .clamp(0.0, 1.0)
+        .toDouble();
     final daysLeft = expires.difference(now).inHours / 24;
     final remaining = daysLeft <= 0 ? 0 : daysLeft.ceil();
     final urgent = remaining <= 3;
@@ -118,8 +133,10 @@ class ExpiryCountdown extends StatelessWidget {
           remaining == 0
               ? 'Expires today'
               : '$remaining day${remaining == 1 ? '' : 's'} left',
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: color, fontWeight: FontWeight.w500),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ],
     );

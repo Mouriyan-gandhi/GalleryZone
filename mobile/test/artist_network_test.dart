@@ -9,12 +9,11 @@ import 'package:gallery_zone/data/mock/seed/artist_seed.dart'
 import 'package:gallery_zone/data/models/artist_network.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
-import 'package:gallery_zone/features/artist/mou_data.dart' show mouVersion;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// The `a2fdb9b` and `c5108c4` features ported from the web: artist ratings,
-/// artist-to-artist connections, MOU-gated collaborations, the deactivation
-/// request, and display-rights transfers.
+/// artist-to-artist connections, the deactivation request, and display-rights
+/// transfers. (Collaborations were taken out of the product on 27 Aug 2026.)
 
 void main() {
   late MockArtistNetworkRepository network;
@@ -155,97 +154,6 @@ void main() {
         ),
         throwsA(isA<Exception>()),
       );
-    });
-  });
-
-  group('collaborations', () {
-    test('proposing is refused until the MOU is signed', () async {
-      expect(
-        () => network.proposeCollaboration(
-          proposerId: currentArtistId,
-          partnerId: 'meera-nair',
-          title: 'Two Coasts',
-          brief: 'A paired series.',
-        ),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test('a signed MOU opens it, but only with a connection', () async {
-      await artist.acceptMou(signatureName: 'Devika Rao', version: mouVersion);
-
-      final proposed = await network.proposeCollaboration(
-        proposerId: currentArtistId,
-        partnerId: 'meera-nair',
-        title: 'Two Coasts',
-        brief: 'A paired series.',
-      );
-      expect(proposed.status, CollaborationStatus.proposed);
-
-      // kavya-iyer is nobody this artist has connected with.
-      expect(
-        () => network.proposeCollaboration(
-          proposerId: currentArtistId,
-          partnerId: 'kavya-iyer',
-          title: 'Anything',
-          brief: 'Anything.',
-        ),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test('only the invited artist answers, and only once', () async {
-      final seeded = (await network.listCollaborations(currentArtistId))
-          .firstWhere((c) => c.status == CollaborationStatus.proposed);
-
-      expect(
-        () => network.respondToCollaboration(
-          collaborationId: seeded.id,
-          viewerId: seeded.proposerId,
-          accept: true,
-        ),
-        throwsA(isA<Exception>()),
-      );
-
-      final active = await network.respondToCollaboration(
-        collaborationId: seeded.id,
-        viewerId: currentArtistId,
-        accept: true,
-      );
-      expect(active.status, CollaborationStatus.active);
-
-      expect(
-        () => network.respondToCollaboration(
-          collaborationId: seeded.id,
-          viewerId: currentArtistId,
-          accept: false,
-        ),
-        throwsA(isA<Exception>()),
-      );
-    });
-
-    test('only an active collaboration can be completed', () async {
-      final seeded = (await network.listCollaborations(currentArtistId))
-          .firstWhere((c) => c.status == CollaborationStatus.proposed);
-
-      expect(
-        () => network.completeCollaboration(
-          collaborationId: seeded.id,
-          viewerId: currentArtistId,
-        ),
-        throwsA(isA<Exception>()),
-      );
-
-      await network.respondToCollaboration(
-        collaborationId: seeded.id,
-        viewerId: currentArtistId,
-        accept: true,
-      );
-      final done = await network.completeCollaboration(
-        collaborationId: seeded.id,
-        viewerId: currentArtistId,
-      );
-      expect(done.status, CollaborationStatus.completed);
     });
   });
 

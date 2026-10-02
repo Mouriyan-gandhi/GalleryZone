@@ -10,7 +10,8 @@ import 'mappers/portal_mappers.dart';
 ///  * collector reviews aren't collected yet, so every artist has an honest
 ///    zero, never a made-up score;
 ///  * artist-to-artist connections have no routes ("coming soon");
-///  * collaborations were removed from the product (27 Aug 2026);
+///  * collaborations were removed from the product (27 Aug 2026) - and so
+///    from this app;
 ///  * deactivation is a real request that an admin decides.
 class RemoteArtistNetworkRepository implements ArtistNetworkRepository {
   RemoteArtistNetworkRepository(this.api);
@@ -18,7 +19,6 @@ class RemoteArtistNetworkRepository implements ArtistNetworkRepository {
   final ApiClient api;
 
   static const _connectionsSoon = 'Artist connections are coming soon.';
-  static const _collaborationsGone = 'Collaborations are no longer part of GalleryZone.';
 
   @override
   Future<ArtistRating> getRating(String artistId) async => summarizeRating(artistId, const []);
@@ -47,33 +47,6 @@ class RemoteArtistNetworkRepository implements ArtistNetworkRepository {
     required bool accept,
   }) =>
       Future.error(Exception(_connectionsSoon));
-
-  @override
-  Future<List<ArtistCollaboration>> listCollaborations(String artistId) async => const [];
-
-  @override
-  Future<ArtistCollaboration> proposeCollaboration({
-    required String proposerId,
-    required String partnerId,
-    required String title,
-    required String brief,
-  }) =>
-      Future.error(Exception(_collaborationsGone));
-
-  @override
-  Future<ArtistCollaboration> respondToCollaboration({
-    required String collaborationId,
-    required String viewerId,
-    required bool accept,
-  }) =>
-      Future.error(Exception(_collaborationsGone));
-
-  @override
-  Future<ArtistCollaboration> completeCollaboration({
-    required String collaborationId,
-    required String viewerId,
-  }) =>
-      Future.error(Exception(_collaborationsGone));
 
   // --- Closing an account --------------------------------------------------------------
 
