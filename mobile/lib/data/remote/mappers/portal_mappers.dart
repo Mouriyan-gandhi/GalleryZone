@@ -282,7 +282,7 @@ AggregatorOffer offerFromApi(Map<String, dynamic> json) => AggregatorOffer(
   advance: rupeesAt(json, 'advancePaise'),
   advanceRate: (json['advanceRate'] as num?)?.toDouble() ?? 0,
   advanceBase: rupeesAt(json, 'advanceBasePaise'),
-  advanceBasis: json['advanceBasis'] == 'artist_price' ? AdvanceBasis.artistPrice : AdvanceBasis.displayPrice,
+  advanceBasis: json['advanceBasis'] == 'artist_price' ? AdvanceBasis.artistPrice : AdvanceBasis.sellingPrice,
   canSetPrice: json['canSetPrice'] == true,
   daysLeftInListing: (json['daysLeftInListing'] as num?)?.toInt() ?? 0,
   deliveryCharge: rupeesAt(json, 'deliveryChargePaise'),

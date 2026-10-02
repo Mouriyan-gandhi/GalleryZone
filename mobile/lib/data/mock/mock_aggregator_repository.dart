@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../core/format.dart';
 import '../../core/pricing.dart';
 import '../models/aggregator.dart';
@@ -178,27 +180,30 @@ class MockAggregatorRepository implements AggregatorRepository {
         now: now,
       );
 
-  /// This month's terms for one artwork.
+  /// This month's terms for one artwork. The same numbers the real service
+  /// serves, so the offline reserve screen quotes what a reservation would hold.
   AggregatorOffer _buildOffer(Artwork artwork) {
     final month = _cycleMonthFor(artwork.id);
     final artistPrice = artistPriceOf(artwork);
-    // GST-inclusive, exactly like Artwork.customerPrice — the aggregator's
-    // floor and the customer's price have to be the same kind of number, or
-    // the commission (which strips GST back out) is computed against the wrong
-    // base.
-    final offerPrice = withGst(aggregatorOfferPriceOf(artistPrice, month));
     final past = _pastHoldingsFor(artwork.id);
     final cycleStartedAt = _cycleStartFor(artwork.id);
-    final previousChangedPrice =
-        past.isNotEmpty && past.last.displayPriceSetAt != null;
+    // Client, 30 Sep 2026: if the month-1 aggregator priced above the offer, the
+    // next one is back at the full price and the monthly drops start a month
+    // later.
+    final appreciated = past.isNotEmpty && past.first.displayPriceSetAt != null;
+
+    // Before GST: the floor an aggregator may not go below, and what the
+    // commission is worked from. The price a customer sees adds GST to it.
+    final sellingPrice = aggregatorOfferPriceOf(artistPrice, month, appreciated: appreciated);
+    final offerPrice = withGst(sellingPrice);
+    final standardPrice = withGst(aggregatorOfferPriceOf(artistPrice, 1));
 
     final advance = aggregatorAdvanceForMonth(
       month: month,
-      // Month 1 is charged on the display price, which at reservation time is
-      // the offer price — the aggregator has not set their own yet.
-      displayPrice: offerPrice,
+      // Month 1 is charged on the price the aggregator sets, before GST; here
+      // that is GalleryZone's own until they choose another when reserving.
+      sellingPrice: sellingPrice,
       artistPrice: artistPrice,
-      previousAggregatorChangedPrice: previousChangedPrice,
     );
 
     return AggregatorOffer(
@@ -212,11 +217,16 @@ class MockAggregatorRepository implements AggregatorRepository {
       advanceBasis: advance.basis,
       deliveryCharge: advance.deliveryCharge,
       payable: advance.payable,
-      previousAggregatorChangedPrice: previousChangedPrice,
       canSetPrice: canSetDisplayPrice(month),
       daysLeftInListing: cycleStartedAt == null
           ? aggregatorListingDays
           : daysLeftInListing(cycleStartedAt),
+      sellingPrice: sellingPrice,
+      standardPrice: standardPrice,
+      monthlyReduction: math.max(0.0, standardPrice - offerPrice),
+      // GalleryZone is told, never the aggregator blocked, once the price
+      // reaches double its own.
+      priceWarnFrom: canSetDisplayPrice(month) ? sellingPrice * 2 : null,
     );
   }
 
@@ -309,17 +319,37 @@ class MockAggregatorRepository implements AggregatorRepository {
 
     final offer = _buildOffer(artwork);
 
+    // Month 1 only: the aggregator may price the piece, once, as they reserve it
+    // - whole rupees, before GST, never below GalleryZone's own price. From month
+    // 2 the price is GalleryZone's and any figure sent is ignored.
+    final chosen = offer.canSetPrice && sellingPrice != null ? sellingPrice : null;
+    if (chosen != null) {
+      if (chosen != chosen.roundToDouble() || chosen <= 0) {
+        return mockError('Enter a price in whole rupees.');
+      }
+      if (chosen < offer.sellingPrice) {
+        return mockError("It can't be lower than GalleryZone's price, ${formatInr(offer.sellingPrice)}.");
+      }
+    }
+    final price = chosen ?? offer.sellingPrice;
+    final raised = price > offer.sellingPrice;
+    final advance = aggregatorAdvanceForMonth(
+      month: offer.month,
+      sellingPrice: price,
+      artistPrice: artistPriceOf(artwork),
+    );
+
     // The advance is not a fresh payment every time — it is LOCKED from the
     // aggregator's wallet. Deposit once, and each reservation holds what it
     // needs; only a shortfall has to be topped up. Enforced here so a stale
     // screen cannot reserve past the balance.
     final wallet = _readWallet();
     final free = wallet.balance - wallet.lockedBalance;
-    if (free < offer.payable) {
-      final shortfall = offer.payable - free;
+    if (free < advance.payable) {
+      final shortfall = advance.payable - free;
       return mockError(
         'Add ${formatInr(shortfall)} to your wallet to reserve this piece — '
-        '${formatInr(offer.payable)} needs to be held and only '
+        '${formatInr(advance.payable)} needs to be held and only '
         '${formatInr(free < 0 ? 0 : free)} is free.',
       );
     }
@@ -339,14 +369,17 @@ class MockAggregatorRepository implements AggregatorRepository {
         id: 'hold-${holdings.length + 1}-${assignedAt.microsecondsSinceEpoch}',
         artworkId: artworkId,
         advancePercent: advancePercentFor(offer.month),
-        advanceAmount: offer.advance,
+        advanceAmount: advance.advance,
         // Held alongside the advance (MOU §7). Returned on a sale; forfeited
         // if the piece goes back unsold.
-        deliveryDeposit: offer.deliveryCharge,
+        deliveryDeposit: advance.deliveryCharge,
         cycleMonth: offer.month,
-        // This month's offer price is the floor — the collection screen can
-        // raise it, never lower, and only in month one.
-        displayPrice: offer.offerPrice,
+        // What a customer sees: the price chosen (or GalleryZone's), plus GST.
+        // Set here, once - a piece's price can't be changed after it is reserved.
+        displayPrice: withGst(price),
+        displayPriceSetAt: raised ? assignedAt.toIso8601String() : null,
+        appreciated: raised,
+        priceWarning: offer.priceWarnFrom != null && price >= offer.priceWarnFrom!,
         assignedAt: assignedAt.toIso8601String(),
         expiresAt: window.expiresAt.toIso8601String(),
         windowExtended: window.extended,
@@ -355,7 +388,7 @@ class MockAggregatorRepository implements AggregatorRepository {
       );
 
       _writeWallet(
-        wallet.copyWith(lockedBalance: wallet.lockedBalance + offer.payable),
+        wallet.copyWith(lockedBalance: wallet.lockedBalance + advance.payable),
       );
       _pushTransactions([
         WalletTransaction(
@@ -363,7 +396,7 @@ class MockAggregatorRepository implements AggregatorRepository {
           type: WalletTransactionType.adjustment,
           label:
               'Held for "${artwork.title}" — month ${offer.month} advance & delivery',
-          amount: -offer.payable,
+          amount: -advance.payable,
           date: assignedAt.toIso8601String().substring(0, 10),
           status: WalletTransactionStatus.pending,
         ),
@@ -478,90 +511,6 @@ class MockAggregatorRepository implements AggregatorRepository {
               AggregatorHoldingView(holding: holding, artwork: byId[holding.artworkId]!),
         ];
       });
-
-  @override
-  Future<AggregatorHolding> updateDisplayPrice(String holdingId, double displayPrice) {
-    final holdings = _readHoldings();
-    final existing = holdings.where((h) => h.id == holdingId).firstOrNull;
-    if (existing == null) return mockError('No holding "$holdingId"');
-
-    // Only the FIRST aggregator prices the piece. After that the price is
-    // GalleryZone's calculated figure, because from month two the aggregator
-    // is already getting a cheaper advance — they don't get both.
-    if (!canSetDisplayPrice(existing.cycleMonth)) {
-      return mockError(
-        'The selling price is set by GalleryZone for this piece — only the '
-        'first aggregator to display a work can price it',
-      );
-    }
-    // MOU §6: one opportunity only. Enforced here, not just by hiding the
-    // button, so a stale screen can't post a second price.
-    if (existing.displayPriceSetAt != null) {
-      return mockError(
-        'The selling price for this artwork has already been set and cannot '
-        'be changed (MOU §6)',
-      );
-    }
-    if (displayPrice < existing.displayPrice) {
-      // Enforced here, not only in the form: the floor is a platform rule
-      // (SAD §2.7), and a rule the UI alone upholds isn't a rule.
-      return mockError('Display price cannot go below the offer price');
-    }
-
-    // Month one's advance is 5% of the DISPLAY price, so raising the price
-    // raises the advance. The difference is held from the wallet on the spot —
-    // "if the amount is on the higher side he needs to deposit the extra".
-    final artwork = _artworkById(existing.artworkId);
-    final newAdvance = artwork == null
-        ? existing.advanceAmount
-        : aggregatorAdvanceForMonth(
-            month: existing.cycleMonth,
-            displayPrice: displayPrice,
-            artistPrice: artistPriceOf(artwork),
-          ).advance;
-    final topUp = newAdvance - existing.advanceAmount;
-
-    if (topUp > 0) {
-      final wallet = _readWallet();
-      final free = wallet.balance - wallet.lockedBalance;
-      if (free < topUp) {
-        return mockError(
-          'Raising the price raises the advance. Add '
-          '${formatInr(topUp - free)} to your wallet first — '
-          '${formatInr(topUp)} more needs to be held.',
-        );
-      }
-    }
-
-    return mockDelay(() {
-      final now = DateTime.now();
-      if (topUp > 0) {
-        final wallet = _readWallet();
-        _writeWallet(
-          wallet.copyWith(lockedBalance: wallet.lockedBalance + topUp),
-        );
-        _pushTransactions([
-          WalletTransaction(
-            id: 'wt-${now.microsecondsSinceEpoch}',
-            type: WalletTransactionType.adjustment,
-            label:
-                'Additional advance held — "${artwork?.title ?? 'Artwork'}" priced up',
-            amount: -topUp,
-            date: now.toIso8601String().substring(0, 10),
-            status: WalletTransactionStatus.pending,
-          ),
-        ]);
-      }
-
-      final updated = existing.copyWith(
-        displayPrice: displayPrice,
-        advanceAmount: newAdvance,
-        displayPriceSetAt: now.toIso8601String(),
-      );
-      _writeHoldings([for (final h in holdings) h.id == holdingId ? updated : h]);
-      return updated;
-    });
-  }
 
   @override
   Future<AggregatorSale> recordSale(RecordSaleInput input) {

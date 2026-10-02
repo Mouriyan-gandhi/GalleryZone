@@ -249,8 +249,8 @@ class _ReserveSheetState extends State<_ReserveSheet> {
                   // The basis changes with the month, so it is spelled out
                   // rather than assumed: month one is charged on the price the
                   // piece is displayed at, every later month on the artist's.
-                  detail: offer.advanceBasis == AdvanceBasis.displayPrice
-                      ? 'of the display price, ${formatInr(offer.advanceBase)}'
+                  detail: offer.advanceBasis == AdvanceBasis.sellingPrice
+                      ? 'of the selling price, ${formatInr(offer.advanceBase)}'
                       : "of the artist's price, ${formatInr(offer.advanceBase)}",
                   amount: offer.advance,
                 ),

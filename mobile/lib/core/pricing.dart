@@ -194,10 +194,6 @@ double aggregatorCommissionOf(double displayPrice, double artistPrice) {
   return (markup * aggregatorCommissionRate).round().toDouble();
 }
 
-/// Aggregator MOU §7 — 5% of the price the piece is being displayed at.
-double aggregatorAdvanceOf(double displayPrice) =>
-    (displayPrice * aggregatorAdvanceRate).round().toDouble();
-
 // --- The aggregator cycle ---------------------------------------------------
 //
 // A piece that does not sell moves on rather than sitting still: it is
@@ -208,12 +204,13 @@ double aggregatorAdvanceOf(double displayPrice) =>
 //
 // Two things change from month to month, and they change independently:
 //
-//   Month  Offered to the aggregator at   Advance
-//   1      1,30,000                       5% of the DISPLAY price
-//   2      1,28,000                       5% or 3% of the ARTIST price
-//   3      1,26,000                       3% of the artist price
-//   4      1,24,000                       3% of the artist price
-//   5      1,22,000                       3% of the artist price
+//   Month  Offered to the aggregator at      Advance
+//   1      1,30,000 (or the price they set)  5% of THEIR price, before GST
+//   2      1,28,000 (1,30,000 if month 1     5% of the ARTIST price
+//          was appreciated)
+//   3      1,26,000                          3% of the artist price
+//   4      1,24,000                          3% of the artist price
+//   5      1,22,000                          3% of the artist price
 //
 // Every month also carries the delivery charge alongside the advance.
 
@@ -301,24 +298,27 @@ double aggregatorDiscountRateOf(int month) =>
 /// What GalleryZone offers the aggregator in a given month of the cycle,
 /// before that aggregator adds their own uplift. A 1,00,000 artist price
 /// gives 1,30,000 in month 1 and 1,22,000 in month 5.
-double aggregatorOfferPriceOf(double artistPrice, int month) {
-  final reduction =
-      (artistPrice * aggregatorDiscountRateOf(month)).round().toDouble();
+///
+/// Client, 30 Sep 2026: if the month-1 aggregator priced above the offer
+/// ([appreciated]), the next one is back at the full price and the monthly
+/// drops start a month later.
+double aggregatorOfferPriceOf(double artistPrice, int month, {bool appreciated = false}) {
+  final steps = appreciated ? math.max(1, month - 1) : month;
+  final reduction = (artistPrice * aggregatorDiscountRateOf(steps)).round().toDouble();
   return basePriceOf(artistPrice) - reduction;
 }
 
 /// Whether this month's aggregator may set the selling price.
 ///
-/// Only the first one can. From month two the price is GalleryZone's
-/// calculated figure and the aggregator takes it as offered — because from
-/// month two they are also getting the piece at a 3% advance on the artist
-/// price instead of 5% on the display price. Cheaper to hold, but not theirs
-/// to re-price; the client called it "a double down offer" and did not want
-/// both halves given away.
+/// Only the first one can, and only while reserving (client, 30 Sep 2026): they
+/// may go as high as they like, never below GalleryZone's own price, and it
+/// cannot be changed once reserved. From month two the price is GalleryZone's
+/// calculated figure and the aggregator takes it as offered.
 bool canSetDisplayPrice(int month) => month <= 1;
 
-/// What the rate is applied to — display price in month 1, artist price after.
-enum AdvanceBasis { displayPrice, artistPrice }
+/// What the advance rate is applied to - the aggregator's own price (before
+/// GST) in month 1, the artist's price after.
+enum AdvanceBasis { sellingPrice, artistPrice }
 
 class AggregatorAdvance {
   const AggregatorAdvance({
@@ -338,26 +338,22 @@ class AggregatorAdvance {
   final double advance;
   final double deliveryCharge;
 
-  /// Advance plus delivery — what is actually locked from the wallet.
+  /// Advance plus delivery - what is actually locked from the wallet.
   final double payable;
 }
 
-/// Month 1 is charged on the display price; every later month is charged on
-/// the artist price. Month 2 is the only month whose RATE can vary: it stays
-/// at 5% when the previous aggregator exercised their one price change, and
-/// drops to 3% when they did not. Months 3 onward are always 3%.
+/// Client, 30 Sep 2026. Month 1: 5% of the price the aggregator sets, before
+/// GST (7,500 on 1,50,000; 6,500 if they keep 1,30,000). Month 2: 5% of the
+/// artist price. Months 3 to 5: 3% of the artist price.
 AggregatorAdvance aggregatorAdvanceForMonth({
   required int month,
-  required double displayPrice,
+  required double sellingPrice,
   required double artistPrice,
-  bool previousAggregatorChangedPrice = false,
   double? delivery,
 }) {
   final firstMonth = month <= 1;
-  final rate = firstMonth || (month == 2 && previousAggregatorChangedPrice)
-      ? aggregatorAdvanceRate
-      : 0.03;
-  final base = firstMonth ? displayPrice : artistPrice;
+  final rate = month <= 2 ? aggregatorAdvanceRate : 0.03;
+  final base = firstMonth ? sellingPrice : artistPrice;
   final advance = (base * rate).round().toDouble();
   final shipping = delivery ?? deliveryCharge;
 
@@ -365,10 +361,33 @@ AggregatorAdvance aggregatorAdvanceForMonth({
     month: month,
     rate: rate,
     base: base,
-    basis: firstMonth ? AdvanceBasis.displayPrice : AdvanceBasis.artistPrice,
+    basis: firstMonth ? AdvanceBasis.sellingPrice : AdvanceBasis.artistPrice,
     advance: advance,
     deliveryCharge: shipping,
     payable: advance + shipping,
+  );
+}
+
+const _artworkGstRate = gstRate;
+
+/// Where an aggregator's selling price goes (MOU §8): the commission is
+/// [aggregatorCommissionRate] of the markup over the artist's price, both before
+/// GST, whoever set the price; the rest of the markup is GalleryZone's.
+/// Port of `aggregatorTermsAt`.
+({double displayPrice, double gst, double markup, double commission, double galleryZoneShare}) aggregatorTermsAt({
+  required double sellingPrice,
+  required double artistPrice,
+  double gstRate = _artworkGstRate,
+}) {
+  final displayPrice = (sellingPrice * (1 + gstRate)).round().toDouble();
+  final markup = math.max(0.0, sellingPrice - artistPrice);
+  final commission = (markup * aggregatorCommissionRate).round().toDouble();
+  return (
+    displayPrice: displayPrice,
+    gst: displayPrice - sellingPrice,
+    markup: markup,
+    commission: commission,
+    galleryZoneShare: markup - commission,
   );
 }
 

@@ -105,7 +105,10 @@ void main() {
     expect(holding.status, HoldingStatus.reserved);
     expect(holding.assignmentSource, AssignmentSource.selfReserved);
     expect(holding.advancePercent, 5);
-    expect(holding.advanceAmount, aggregatorAdvanceOf(item.offer.offerPrice));
+    // Client, 30 Sep 2026: 5% of the price before GST (6,500 on 1,30,000), not
+    // of the figure a customer pays.
+    expect(holding.advanceAmount, (item.offer.sellingPrice * 0.05).round());
+    expect(holding.advanceAmount, item.offer.advance);
     expect(holding.deliveryDeposit, deliveryCharge);
     expect(
       DateTime.parse(holding.expiresAt).difference(DateTime.parse(holding.assignedAt)),
@@ -184,8 +187,9 @@ void main() {
 
     // Month two is charged on the artist's price, not the display price.
     expect(second.offer.advanceBasis, AdvanceBasis.artistPrice);
-    // 3%, because the first aggregator never used their price change.
-    expect(second.offer.advanceRate, 0.03);
+    // 5% of the artist's price in month two; 3% from month three.
+    expect(second.offer.advanceRate, 0.05);
+    expect(second.offer.advance, (artistPriceOf(first.artwork) * 0.05).round());
   });
 
   test('only the first aggregator of a cycle may price the piece', () async {
@@ -193,56 +197,94 @@ void main() {
     final holding = await repository.reserve(first.artwork.id);
     await repository.releaseHolding(holding.id);
 
-    final second = await repository.reserve(first.artwork.id);
+    // Month two takes GalleryZone's price; a figure sent anyway is not honoured.
+    final offer = (await repository.listReservableInventory())
+        .firstWhere((i) => i.artwork.id == first.artwork.id)
+        .offer;
+    expect(offer.canSetPrice, isFalse);
+    final second =
+        await repository.reserve(first.artwork.id, sellingPrice: offer.sellingPrice + 50000);
     expect(second.cycleMonth, 2);
+    expect(second.displayPrice, offer.offerPrice);
+    expect(second.displayPriceSetAt, isNull);
+  });
+
+  test('the price is chosen once, as the piece is reserved, and held to the floor', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final floor = item.offer.sellingPrice;
+
+    // Never below GalleryZone's own price, and only in whole rupees - refused by
+    // the repository, not just the form.
     await expectLater(
-      repository.updateDisplayPrice(second.id, second.displayPrice + 5000),
+      repository.reserve(item.artwork.id, sellingPrice: floor - 1),
       throwsA(isA<Exception>()),
+    );
+    await expectLater(
+      repository.reserve(item.artwork.id, sellingPrice: floor + 0.5),
+      throwsA(isA<Exception>()),
+    );
+    expect(
+      (await repository.listCollection()).map((v) => v.artwork.id),
+      isNot(contains(item.artwork.id)),
+      reason: 'a refused price reserves nothing',
+    );
+
+    final before = await repository.getWallet();
+    final holding = await repository.reserve(item.artwork.id, sellingPrice: floor + 20000);
+    expect(holding.displayPrice, withGst(floor + 20000));
+    expect(holding.displayPriceSetAt, isNotNull);
+    expect(holding.appreciated, isTrue);
+    expect(holding.priceWarning, isFalse);
+    // 5% of what they priced it at, before GST - not of the floor.
+    expect(holding.advanceAmount, ((floor + 20000) * 0.05).round());
+    expect(
+      (await repository.getWallet()).lockedBalance,
+      before.lockedBalance + holding.advanceAmount + holding.deliveryDeposit,
     );
   });
 
-  test('the display price floor is enforced by the repository, not just the form',
-      () async {
-    final view = (await repository.listCollection())
-        .firstWhere((v) => v.holding.status == HoldingStatus.reserved);
-    final floor = view.holding.displayPrice;
+  test('GalleryZone is warned, not blocked, once the price reaches double its own', () async {
+    final item = (await repository.listReservableInventory()).first;
+    expect(item.offer.priceWarnFrom, item.offer.sellingPrice * 2);
+    final holding =
+        await repository.reserve(item.artwork.id, sellingPrice: item.offer.sellingPrice * 2);
+    expect(holding.priceWarning, isTrue);
+  });
 
-    await expectLater(
-      repository.updateDisplayPrice(view.holding.id, floor - 1),
-      throwsA(isA<Exception>()),
-    );
+  test('after a month-1 price above the offer, the next aggregator is back at full price', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final holding =
+        await repository.reserve(item.artwork.id, sellingPrice: item.offer.sellingPrice + 20000);
+    await repository.releaseHolding(holding.id);
 
-    final raised = await repository.updateDisplayPrice(view.holding.id, floor + 5000);
-    expect(raised.displayPrice, floor + 5000);
-    expect(raised.displayPriceSetAt, isNotNull);
-
-    // MOU §6: one opportunity only, enforced here and not just by hiding the
-    // button.
-    await expectLater(
-      repository.updateDisplayPrice(view.holding.id, floor + 9000),
-      throwsA(isA<Exception>()),
-    );
+    final next = (await repository.listReservableInventory())
+        .firstWhere((i) => i.artwork.id == item.artwork.id)
+        .offer;
+    expect(next.month, 2);
+    expect(next.sellingPrice, item.offer.sellingPrice, reason: 'the monthly drops start a month later');
+    expect(next.advanceRate, 0.05);
+    expect(next.advanceBasis, AdvanceBasis.artistPrice);
   });
 
   test('a sale credits pending commission, and settling makes it withdrawable',
       () async {
-    final view = (await repository.listCollection())
-        .firstWhere((v) => v.holding.status == HoldingStatus.reserved);
-    final floor = view.holding.displayPrice;
-    await repository.updateDisplayPrice(view.holding.id, floor + 10000);
+    // Priced above GalleryZone's own as it was reserved - the only time it can be.
+    final item = (await repository.listReservableInventory()).first;
+    final holding =
+        await repository.reserve(item.artwork.id, sellingPrice: item.offer.sellingPrice + 10000);
     // MOU §8: 20% of the markup over the ARTIST's price, both before GST —
     // not over GalleryZone's price to the aggregator, which is what the old
     // formula compared against and paid far too little for.
     final expected = aggregatorCommissionFor(
-      displayPrice: floor + 10000,
-      artistPrice: artistPriceOf(view.artwork),
+      displayPrice: holding.displayPrice,
+      artistPrice: artistPriceOf(item.artwork),
     );
     expect(
       expected,
-      (0.2 * (exGst(floor + 10000) - artistPriceOf(view.artwork))).round(),
+      (0.2 * (exGst(holding.displayPrice) - artistPriceOf(item.artwork))).round(),
     );
 
-    final sale = await repository.recordSale(_sale(view.artwork.id));
+    final sale = await repository.recordSale(_sale(item.artwork.id));
     expect(sale.shipmentStatus, ShipmentStatus.preparing);
     expect(sale.courierRef, isNotNull);
 
@@ -371,9 +413,8 @@ void main() {
     final view = (await repository.listCollection()).firstWhere(
       (v) => v.holding.status == HoldingStatus.reserved,
     );
-    // Reach past updateDisplayPrice, which will not price below the offer —
-    // this is about what the commission does with such a number, not how one
-    // could be entered.
+    // Reach past reserve, which will not price below the offer — this is about
+    // what the commission does with such a number, not how one could be entered.
     MockDb.setCollection(
       'holdings',
       [

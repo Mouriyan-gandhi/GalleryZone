@@ -78,10 +78,13 @@ void main() {
       expect(checkout.gstIncluded, 7500);
     });
 
-    test('advance is 5% of the display price', () {
-      expect(aggregatorAdvanceOf(aggregatorDisplay), 7875);
-      expect(aggregatorAdvanceOf(150000), 7500,
-          reason: "5% of the sheet's pre-tax figure");
+    test("advance is 5% of the aggregator's price before GST", () {
+      final advance = aggregatorAdvanceForMonth(
+        month: 1,
+        sellingPrice: 150000,
+        artistPrice: artistPrice,
+      );
+      expect(advance.advance, 7500, reason: "5% of the sheet's pre-tax figure, not of 1,57,500");
     });
 
     test('commission is 20% of the markup over the artist price', () {
@@ -209,63 +212,66 @@ void main() {
       expect(aggregatorOfferPriceOf(artistPrice, 5) - artistPrice, 22000);
     });
 
-    test('month 1 is 5% of the display price, plus delivery', () {
+    test("month 1 is 5% of the aggregator's price before GST, plus delivery", () {
       final monthOne = aggregatorAdvanceForMonth(
         month: 1,
-        displayPrice: 150000,
+        sellingPrice: 150000,
         artistPrice: artistPrice,
       );
       expect(monthOne.advance, 7500);
-      expect(monthOne.basis, AdvanceBasis.displayPrice);
+      expect(monthOne.basis, AdvanceBasis.sellingPrice);
       expect(monthOne.payable, 7500 + deliveryCharge);
-    });
 
-    test('month 2 keeps 5% only after a price change', () {
+      // Keeping GalleryZone's own 1,30,000 is the cheaper reservation.
       expect(
-        aggregatorAdvanceForMonth(
-          month: 2,
-          displayPrice: 150000,
-          artistPrice: artistPrice,
-          previousAggregatorChangedPrice: true,
-        ).advance,
-        5000,
-        reason: '5% of 1,00,000',
-      );
-      expect(
-        aggregatorAdvanceForMonth(
-          month: 2,
-          displayPrice: 150000,
-          artistPrice: artistPrice,
-        ).basis,
-        AdvanceBasis.artistPrice,
-      );
-      expect(
-        aggregatorAdvanceForMonth(
-          month: 2,
-          displayPrice: 150000,
-          artistPrice: artistPrice,
-          previousAggregatorChangedPrice: false,
-        ).advance,
-        3000,
-        reason: 'no price change: 3%',
+        aggregatorAdvanceForMonth(month: 1, sellingPrice: 130000, artistPrice: artistPrice).advance,
+        6500,
       );
     });
 
-    test('months 3-5 are always 3% of the artist price', () {
+    test('month 2 is 5% of the artist price, whoever held it before', () {
+      final monthTwo = aggregatorAdvanceForMonth(
+        month: 2,
+        sellingPrice: 128000,
+        artistPrice: artistPrice,
+      );
+      expect(monthTwo.advance, 5000, reason: '5% of 1,00,000');
+      expect(monthTwo.rate, 0.05);
+      expect(monthTwo.basis, AdvanceBasis.artistPrice);
+      expect(monthTwo.base, artistPrice);
+    });
+
+    test('months 3-5 are 3% of the artist price', () {
       for (final month in [3, 4, 5]) {
-        for (final changed in [true, false]) {
-          expect(
-            aggregatorAdvanceForMonth(
-              month: month,
-              displayPrice: 150000,
-              artistPrice: artistPrice,
-              previousAggregatorChangedPrice: changed,
-            ).advance,
-            3000,
-            reason: 'month $month, changed=$changed',
-          );
-        }
+        final advance = aggregatorAdvanceForMonth(
+          month: month,
+          sellingPrice: aggregatorOfferPriceOf(artistPrice, month),
+          artistPrice: artistPrice,
+        );
+        expect(advance.advance, 3000, reason: 'month $month');
+        expect(advance.rate, 0.03);
+        expect(advance.basis, AdvanceBasis.artistPrice);
       }
+    });
+
+    test('a month-1 price above the offer puts the next aggregator back at full price', () {
+      // Appreciated: the drops start a month later (client, 30 Sep 2026).
+      expect(
+        [2, 3, 4, 5].map((m) => aggregatorOfferPriceOf(artistPrice, m, appreciated: true)),
+        [130000, 128000, 126000, 124000],
+      );
+      expect(aggregatorOfferPriceOf(artistPrice, 1, appreciated: true), 130000);
+      // Not appreciated: unchanged.
+      expect(aggregatorOfferPriceOf(artistPrice, 2), 128000);
+    });
+
+    test('the aggregator splits a price it set the same way as one GalleryZone set', () {
+      final terms = aggregatorTermsAt(sellingPrice: 150000, artistPrice: artistPrice);
+      expect(terms.displayPrice, 157500);
+      expect(terms.gst, 7500);
+      expect(terms.markup, 50000);
+      expect(terms.commission, 10000);
+      expect(terms.galleryZoneShare, 40000);
     });
   });
 
@@ -348,7 +354,7 @@ void main() {
     });
   });
 
-  test('only the first aggregator prices the piece', () {
+  test('only the first aggregator prices the piece - when reserving it', () {
     expect(canSetDisplayPrice(1), isTrue);
     for (final month in [2, 3, 4, 5, 6]) {
       expect(canSetDisplayPrice(month), isFalse,

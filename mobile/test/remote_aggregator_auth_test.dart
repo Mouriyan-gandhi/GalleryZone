@@ -129,7 +129,7 @@ void main() {
       expect(offer.canSetPrice, isTrue);
       expect(offer.priceWarnFrom, 260000);
       expect(offer.advance, 6500);
-      expect(offer.advanceBasis, AdvanceBasis.displayPrice);
+      expect(offer.advanceBasis, AdvanceBasis.sellingPrice);
       expect(offer.payable, 9000);
       expect(offer.daysLeftInListing, 180);
     });
@@ -353,7 +353,6 @@ void main() {
       final repo = repoFor(FakeApi());
       await expectLater(repo.requestWithdrawal(1000), throwsA(isA<Exception>()));
       await expectLater(repo.processSettlement('s1'), throwsA(isA<Exception>()));
-      await expectLater(repo.updateDisplayPrice('h1', 1), throwsA(isA<Exception>()));
     });
 
     test('paying in cash says how: from the wallet or by bank transfer', () async {

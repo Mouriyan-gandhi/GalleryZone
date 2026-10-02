@@ -88,12 +88,6 @@ class _HoldingCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final holding = view.holding;
     final sold = holding.status == HoldingStatus.soldPendingSettlement;
-    // MOU §6, and the cycle: only the first aggregator to display a work may
-    // price it, and only once. From month two the price is GalleryZone's,
-    // because the advance is cheaper instead.
-    final canPrice = !sold &&
-        canSetDisplayPrice(holding.cycleMonth) &&
-        holding.displayPriceSetAt == null;
 
     return PortalCard(
       child: Column(
@@ -129,39 +123,12 @@ class _HoldingCard extends ConsumerWidget {
             ],
           ),
           const Divider(height: 20),
-          // Display price is a button, not a row: it's the one figure on this
-          // card the aggregator owns and edits.
-          InkWell(
-            onTap: canPrice ? () => _openPriceSheet(context, ref, view) : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text('Display price', style: theme.textTheme.bodySmall),
-                  ),
-                  Text(
-                    formatInr(holding.displayPrice),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.tertiary,
-                    ),
-                  ),
-                  if (canPrice) ...[
-                    const SizedBox(width: 6),
-                    Icon(LucideIcons.pencil, size: 12, color: theme.colorScheme.outline),
-                  ],
-                ],
-              ),
-            ),
+          // Fixed when the piece is reserved: month 1 is the aggregator's own
+          // price, later months GalleryZone's. It is never edited afterwards.
+          PortalDetailRow(
+            label: 'Display price',
+            value: formatInr(holding.displayPrice),
           ),
-          if (!sold && !canPrice)
-            Text(
-              holding.displayPriceSetAt != null
-                  ? 'You have used your one price change (MOU §6).'
-                  : 'GalleryZone sets the price from month two onwards.',
-              style: theme.textTheme.labelSmall,
-            ),
           PortalDetailRow(
             label: 'Advance held (${holding.advancePercent}%)',
             value: formatInr(holding.advanceAmount),
@@ -222,93 +189,6 @@ class _HoldingCard extends ConsumerWidget {
         ],
       ),
     );
-  }
-}
-
-Future<void> _openPriceSheet(
-  BuildContext context,
-  WidgetRef ref,
-  AggregatorHoldingView view,
-) async {
-  // The floor is what GalleryZone offered THIS aggregator, which from month
-  // two sits below the marketplace price. Using the marketplace price here
-  // would refuse a perfectly legal raise.
-  final floor = view.holding.displayPrice;
-  final controller =
-      TextEditingController(text: view.holding.displayPrice.toStringAsFixed(0));
-  final formKey = GlobalKey<FormState>();
-
-  final price = await showModalBottomSheet<double>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Form(
-        key: formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('Edit display price', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 6),
-            Text(
-              '"${view.artwork.title}" — you may raise the selling price above '
-              'what GalleryZone offered you, never below it. MOU §6 gives you '
-              'one opportunity, and raising the price raises the advance held '
-              'from your wallet.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.5),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              decoration: InputDecoration(
-                labelText: 'Display price (₹)',
-                helperText: "Floor: ${formatInr(floor)} (GalleryZone's price to you)",
-              ),
-              validator: (value) {
-                final parsed = double.tryParse((value ?? '').trim());
-                if (parsed == null) return 'Enter a price';
-                if (parsed < floor) {
-                  return 'Cannot be lower than the floor of ${formatInr(floor)}';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-                Navigator.of(context).pop(double.parse(controller.text.trim()));
-              },
-              child: const Text('Save price'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  controller.dispose();
-  if (price == null) return;
-
-  try {
-    await ref.read(aggregatorRepositoryProvider).updateDisplayPrice(view.holding.id, price);
-    // Commission is derived from this figure, so the KPI, analytics and
-    // settlement numbers all move with it.
-    invalidateAggregatorSaleFlow(ref);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Display price updated')));
-  } catch (error) {
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
   }
 }
 

@@ -14,13 +14,10 @@ import '../models/mou.dart';
 
 /// Advance percent, as a whole number for the holding record.
 ///
-/// Aggregator MOU §7, confirmed by the money-flow sheets: 5% in the first
-/// month of an artwork's cycle, 3% from the second onwards. The older "5%
-/// under ₹25,000, 3% above" split was this mock's own invention, made before
-/// the sheets existed — it depended on the price, which the sheets never do.
-/// Seeded fixture holdings still carry both values, which is why the field
-/// stays an int.
-int advancePercentFor(int cycleMonth) => canSetDisplayPrice(cycleMonth) ? 5 : 3;
+/// Aggregator MOU §7, as the client set it on 30 Sep 2026: 5% in the first two
+/// months of an artwork's cycle, 3% from the third. Seeded fixture holdings
+/// still carry both values, which is why the field stays an int.
+int advancePercentFor(int cycleMonth) => cycleMonth <= 2 ? 5 : 3;
 
 /// Aggregator MOU §8: 20% × (selling price − ARTIST price), both compared
 /// before GST.
@@ -63,7 +60,6 @@ class AggregatorOffer {
     required this.daysLeftInListing,
     required this.deliveryCharge,
     required this.payable,
-    this.previousAggregatorChangedPrice = false,
     this.sellingPrice = 0,
     this.standardPrice = 0,
     this.monthlyReduction = 0,
@@ -99,10 +95,6 @@ class AggregatorOffer {
 
   /// Advance plus delivery — the amount locked from the wallet on reserve.
   final double payable;
-
-  /// Whether the previous aggregator used their one price change. (The
-  /// server no longer reports this — it shifts the ladder itself.)
-  final bool previousAggregatorChangedPrice;
 
   /// GalleryZone's price this month BEFORE GST: the floor in month 1 (the
   /// aggregator may choose higher), fixed after. [offerPrice] is the same
@@ -181,10 +173,9 @@ abstract class AggregatorRepository {
   /// be reserved twice.
   Future<List<ReservableArtwork>> listReservableInventory();
 
-  /// [sellingPrice] is the price BEFORE GST the aggregator chooses — month 1
-  /// only, never below GalleryZone's offer; omitted takes GalleryZone's
-  /// price. Once reserved it cannot be changed. The offline mock ignores it
-  /// (it still lets the price be raised afterwards).
+  /// [sellingPrice] is the price BEFORE GST the aggregator chooses - month 1
+  /// only, in whole rupees, never below GalleryZone's offer; omitted takes
+  /// GalleryZone's price. Once reserved it cannot be changed.
   ///
   /// [simulateConflict] mirrors the documented 409 race (SAD §3.5, "lost the
   /// race to another aggregator") rather than an invented error path.
@@ -205,11 +196,6 @@ abstract class AggregatorRepository {
   /// released; the delivery leg is not — the money-flow sheet settles that
   /// only on a sale. Frees the artwork for the next aggregator in the cycle.
   Future<HoldingRelease> releaseHolding(String holdingId);
-
-  /// Raise-only, and only the FIRST aggregator of a cycle may do it at all
-  /// (MOU §6). The month's offer price is the floor. The real API has no such
-  /// call any more — the price is set once, when reserving.
-  Future<AggregatorHolding> updateDisplayPrice(String holdingId, double displayPrice);
 
   /// Signs the partner agreement. An aggregator cannot take possession of
   /// anyone's artwork until this is done.

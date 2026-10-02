@@ -98,12 +98,6 @@ class RemoteAggregatorRepository implements AggregatorRepository {
     return HoldingRelease(refunded: holding.advanceAmount, deliveryLost: holding.deliveryDeposit);
   }
 
-  /// There is no re-pricing: the price a piece is reserved at is the price it
-  /// sells at. (Month 1 lets the aggregator choose it, once, when reserving.)
-  @override
-  Future<AggregatorHolding> updateDisplayPrice(String holdingId, double displayPrice) =>
-      Future.error(Exception("A piece's price is set when it is reserved and can't be changed afterwards."));
-
   // --- Sales --------------------------------------------------------------------------
 
   Future<List<AggregatorSale>> _sales() async {
