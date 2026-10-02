@@ -105,7 +105,8 @@ class RemoteArtistRepository implements ArtistRepository {
       await _syncImages(id, input.images, const []);
     } on Exception catch (error) {
       final reason = error.toString().replaceFirst('Exception: ', '');
-      throw Exception(
+      throw ArtworkSavedAsDraft(
+        id,
         'Saved "${input.title.trim()}" as a draft, but $reason Open it from My Artworks to add the photo and submit.',
       );
     }

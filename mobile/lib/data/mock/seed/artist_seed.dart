@@ -274,6 +274,9 @@ ArtistProfileDetails seedArtistProfile() => const ArtistProfileDetails(
       ifsc: 'HDFC0001234',
       aadhaarStatus: ReviewStatus.approved,
       aadhaarMasked: '•••• •••• 4821',
+      // PAN gates going live; the demo artist has one so the offline flow can
+      // submit a piece for review.
+      pan: 'ABCDE1234F',
     );
 
 ArtistSettings seedArtistSettings() => const ArtistSettings(

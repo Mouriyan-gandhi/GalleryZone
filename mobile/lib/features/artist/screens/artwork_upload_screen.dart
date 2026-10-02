@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,59 +9,64 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
-import '../../../core/pricing.dart';
+import '../../../core/launch.dart';
+import '../../../core/pricing.dart' as pricing;
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/repositories/artist_repository.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../legal/screens/legal_document_screen.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../artwork_form_data.dart';
+import '../painting_styles.dart';
 import '../providers/artist_providers.dart';
 import '../widgets/artist_widgets.dart';
+import '../widgets/painting_style_picker.dart';
 
-const _categories = <String, String>{
-  'painting': 'Painting',
-  'sculpture': 'Sculpture',
-  'photography': 'Photography',
-  'printmaking': 'Printmaking',
-  'mixed-media': 'Mixed Media',
-  'textile': 'Textile Art',
-  'ceramics': 'Ceramics',
-};
+enum _SubmitMode { draft, review }
 
-const _mediums = <String, String>{
-  'Oil on Canvas': 'Oil on Canvas',
-  'Acrylic on Canvas': 'Acrylic on Canvas',
-  'Watercolor': 'Watercolor',
-  'Charcoal': 'Charcoal',
-  'Ink': 'Ink',
-  'Bronze': 'Bronze',
-  'Ceramic & Mixed Media': 'Ceramic & Mixed Media',
-  'Other': 'Other',
-};
+/// A photo on the form: one already on the piece (it carries the API's id), or
+/// a file just picked from the device.
+class _FormImage {
+  _FormImage.existing(ArtworkImage image)
+      : url = image.url,
+        thumbnailUrl = image.thumbnailUrl,
+        id = image.id,
+        isNew = false;
 
-const _formats = <String, String>{
-  'canvas': 'Canvas',
-  'paper': 'Paper',
-  'board': 'Board / panel',
-  'wood': 'Wood',
-  'metal': 'Metal',
-  'stone': 'Stone',
-  'textile': 'Textile',
-  'other': 'Other',
-};
+  _FormImage.picked(String path)
+      : url = path,
+        thumbnailUrl = path,
+        id = null,
+        isNew = true;
 
-const _maxImages = 8;
-const _insuranceRecommendedThreshold = 20000;
+  final String url;
+  final String thumbnailUrl;
+  final String? id;
 
-/// Port of `features/dashboard/artwork-submit-form.tsx`, with the camera
-/// wired up — the reason this screen was built second in the phase. Images
-/// come from the device (camera or gallery) via `image_picker`; there is no
-/// upload backend yet, so the picked file path is what's stored and rendered.
+  /// A device file that has not been uploaded yet.
+  final bool isNew;
+}
+
+/// What the finished form says, in place of the form.
+class _Outcome {
+  const _Outcome({required this.title, required this.body, this.artworkId});
+
+  final String title;
+  final String body;
+
+  /// Set when the piece is live, so the artist can go and look at it.
+  final String? artworkId;
+}
+
+/// Port of `features/dashboard/artwork-submit-form.tsx`, with the camera wired
+/// up. Photos come from the device (camera or gallery) via `image_picker` and
+/// upload when the piece is saved.
 ///
-/// Doubles as the edit form (`features/dashboard/artwork-edit-view.tsx`) when
-/// [artworkId] is set: same fields, same rules, one screen. The repository
-/// still enforces the edit window, so arriving here on a locked piece fails
-/// on save rather than silently writing.
+/// Doubles as the edit form (`artwork-edit-view.tsx`) when [artworkId] is set:
+/// same fields, same rules, one screen. The API still enforces the edit
+/// window, so arriving here on a locked piece fails on save rather than
+/// silently writing.
 class ArtworkUploadScreen extends ConsumerStatefulWidget {
   const ArtworkUploadScreen({super.key, this.artworkId});
 
@@ -77,78 +83,128 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
-  final _dimensions = TextEditingController();
+  final _typeOther = TextEditingController();
+  final _styleOther = TextEditingController();
   final _year = TextEditingController();
+  final _length = TextEditingController();
+  final _width = TextEditingController();
+  final _height = TextEditingController();
+  final _weight = TextEditingController();
   final _price = TextEditingController();
-  final _nfcTag = TextEditingController();
+  final _insuranceNumber = TextEditingController();
 
-  String _category = 'painting';
-  String _medium = 'Oil on Canvas';
+  String _category = '';
+  String _medium = '';
+  String _type = '';
+  String _style = '';
+  String _unit = 'in';
+  String _format = '';
+  FramingState? _framing;
   ListingType _listingType = ListingType.marketplaceAndAggregator;
   bool _insuranceOpted = false;
-  bool _isSubmitting = false;
-  final _weight = TextEditingController();
-  FramingState? _framing;
-  String? _format;
-  bool _hangersIncluded = false;
-  bool _packagingConfirmed = false;
-  final _images = <String>[];
+  bool _hangers = false;
+  bool _packaging = false;
+
+  /// Re-confirmed on every edit rather than assumed: the physical facts they
+  /// attest to may have changed since the last time.
+  bool _termsAccepted = false;
+
+  final _images = <_FormImage>[];
+  bool _busy = false;
+  String? _error;
+  _Outcome? _outcome;
+
+  /// Which button was pressed, read by the validators: a draft may be missing a
+  /// title, a submission may not. Lenient until a submission is attempted, so
+  /// an empty title isn't flagged to someone who only touched the field.
+  _SubmitMode _mode = _SubmitMode.draft;
 
   bool get _isEdit => widget.artworkId != null;
 
   /// Non-null once an edit target has loaded. The form is hidden until then,
-  /// so the controllers are seeded exactly once with no effect-on-data dance.
-  Artwork? _editing;
+  /// so the controllers are seeded exactly once.
+  ArtistArtwork? _editing;
   String? _loadError;
 
   /// Aggregator display puts the piece in someone else's custody, so
   /// insurance stops being a choice the moment that channel is picked. The
   /// repository enforces the same rule.
-  bool get _insuranceRequired => isAggregatorListed(_listingType);
+  bool get _aggregatorSelected => isAggregatorListed(_listingType);
+  bool get _insuranceRequired => _aggregatorSelected;
 
   double get _artistPrice => double.tryParse(_price.text.trim()) ?? 0;
 
   ArtworkPhysical get _physical => ArtworkPhysical(
-    weightKg: double.tryParse(_weight.text.trim()),
-    framing: _framing,
-    format: _format,
-    hangingHardwareIncluded: _hangersIncluded,
-    packagingConfirmed: _packagingConfirmed,
-  );
+        weightKg: double.tryParse(_weight.text.trim()),
+        framing: _framing,
+        format: _format.isEmpty ? null : _format,
+        hangingHardwareIncluded: _hangers,
+        packagingConfirmed: _packaging,
+      );
+
+  List<String> get _missingForAggregator =>
+      _aggregatorSelected ? missingForAggregatorListing(_physical, termsAccepted: _termsAccepted) : const [];
+
+  Dimensions get _dimensions => (
+        length: tidyMeasurement(_length.text) ?? '',
+        width: tidyMeasurement(_width.text) ?? '',
+        height: tidyMeasurement(_height.text) ?? '',
+        unit: _unit,
+      );
 
   @override
   void initState() {
     super.initState();
+    // The preview and the ladder follow what is typed.
+    for (final controller in [_title, _year, _weight, _price, _length, _width, _height]) {
+      controller.addListener(_refresh);
+    }
     if (_isEdit) _loadForEdit();
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadForEdit() async {
     try {
-      final entries = await ref.read(artistRepositoryProvider).listArtworks();
-      final entry = entries.where((e) => e.artwork.id == widget.artworkId).firstOrNull;
+      final entry = await ref.read(artistRepositoryProvider).getArtwork(widget.artworkId!);
       if (!mounted) return;
       if (entry == null) {
         setState(() => _loadError = 'Artwork not found');
         return;
       }
       final artwork = entry.artwork;
+      final dimensions = parseDimensions(artwork.dimensions);
+      final type = artworkTypeFields(artwork.artworkType);
+      final style = paintingStyleFields(artwork.paintingStyle);
       _title.text = artwork.title;
       _description.text = artwork.description;
-      _dimensions.text = artwork.dimensions ?? '';
+      _typeOther.text = type.other;
+      _styleOther.text = style.other;
       _year.text = artwork.yearCreated?.toString() ?? '';
-      _price.text = entry.artistPrice == 0 ? '' : entry.artistPrice.round().toString();
-      _nfcTag.text = artwork.nfcTagId ?? '';
-      _weight.text = artwork.physical?.weightKg?.toString() ?? '';
+      _length.text = dimensions.length;
+      _width.text = dimensions.width;
+      _height.text = dimensions.height;
+      _price.text = entry.artistPrice <= 0 ? '' : entry.artistPrice.round().toString();
+      _weight.text = _weightText(artwork.physical?.weightKg);
+      _insuranceNumber.text = artwork.insuranceNumber ?? '';
       setState(() {
-        _editing = artwork;
-        _category = artwork.category;
-        _medium = artwork.medium;
+        _editing = entry;
+        _category = normalizeOption(artwork.category, artworkCategories);
+        _medium = normalizeOption(artwork.medium, artworkMediums);
+        _type = type.type;
+        _style = style.style;
+        _unit = dimensions.unit;
+        _format = normalizeOption(artwork.physical?.format ?? '', artworkFormats);
+        _framing = artwork.physical?.framing;
         _listingType = artwork.listingType;
         _insuranceOpted = artwork.insured;
-        _framing = artwork.physical?.framing;
-        _format = artwork.physical?.format;
-        _hangersIncluded = artwork.physical?.hangingHardwareIncluded ?? false;
-        _packagingConfirmed = artwork.physical?.packagingConfirmed ?? false;
+        _hangers = artwork.physical?.hangingHardwareIncluded ?? false;
+        _packaging = artwork.physical?.packagingConfirmed ?? false;
+        _images
+          ..clear()
+          ..addAll(artwork.images.map(_FormImage.existing));
       });
     } catch (error) {
       if (!mounted) return;
@@ -156,112 +212,230 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
     }
   }
 
+  static String _weightText(double? kg) {
+    if (kg == null || kg <= 0) return '';
+    return kg == kg.roundToDouble() ? kg.round().toString() : kg.toString();
+  }
+
   @override
   void dispose() {
     for (final controller in [
       _title,
       _description,
-      _dimensions,
+      _typeOther,
+      _styleOther,
       _year,
-      _price,
-      _nfcTag,
+      _length,
+      _width,
+      _height,
       _weight,
+      _price,
+      _insuranceNumber,
     ]) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  Future<void> _pick(ImageSource source) async {
-    if (_images.length >= _maxImages) return;
+  // --- Photos --------------------------------------------------------------------
+
+  Future<void> _addPhotos(ImageSource source) async {
+    final room = maxArtworkImages - _images.length;
+    if (room <= 0) return;
     try {
-      final picked = await ImagePicker().pickImage(source: source, maxWidth: 2000);
-      if (picked == null || !mounted) return;
-      setState(() => _images.add(picked.path));
+      final picker = ref.read(imagePickerProvider);
+      // The gallery can hand over several at once; the camera and a last free
+      // slot take one.
+      final picked = source == ImageSource.gallery && room >= 2
+          ? await picker.pickMultiImage(maxWidth: 2000, limit: room)
+          : [
+              ?await picker.pickImage(source: source, maxWidth: 2000),
+            ];
+      if (picked.isEmpty || !mounted) return;
+
+      final accepted = <_FormImage>[];
+      final problems = <String>[];
+      for (final file in picked) {
+        // A refused file doesn't use up a place.
+        if (accepted.length >= room) break;
+        // The file's own name, whichever way the platform writes its paths.
+        final problem = imageProblem(file.path.split(RegExp(r'[\\/]')).last, await file.length());
+        if (problem == null) {
+          accepted.add(_FormImage.picked(file.path));
+        } else {
+          problems.add(problem);
+        }
+      }
+      if (!mounted) return;
+      setState(() => _images.addAll(accepted));
+      if (problems.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(problems.join('\n'))));
+      }
     } on Exception catch (error) {
       if (!mounted) return;
       // A denied camera/photos permission surfaces here as a PlatformException
-      // — say so plainly instead of silently doing nothing.
+      // - say so plainly instead of silently doing nothing.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open that source: ${authErrorMessage(error)}')),
       );
     }
   }
 
-  Future<void> _submit({required bool asDraft}) async {
-    if (!_formKey.currentState!.validate()) return;
-    // On an edit, no new photos means "keep the ones already on the piece" —
-    // the repository does exactly that with an empty image list.
-    if (_images.isEmpty && !_isEdit) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Add at least one photo of the piece')));
+  // --- Painting style ----------------------------------------------------------------
+
+  Future<void> _pickStyle() async {
+    final pick = await showPaintingStylePicker(context, selected: _style);
+    if (pick == null || !mounted) return;
+    setState(() => _style = pick.name ?? '');
+  }
+
+  // --- Submitting --------------------------------------------------------------------
+
+  /// Takes the screen to the first field that is wrong, so a mistake near the
+  /// top of a long form isn't missed behind the buttons.
+  void _revealFirstError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Element? first;
+      void visit(Element element) {
+        if (first != null) return;
+        if (element is StatefulElement) {
+          final state = element.state;
+          if (state is FormFieldState && state.hasError) {
+            first = element;
+            return;
+          }
+        }
+        element.visitChildren(visit);
+      }
+
+      _formKey.currentContext?.visitChildElements(visit);
+      final target = first;
+      if (target != null) {
+        Scrollable.ensureVisible(target, duration: const Duration(milliseconds: 250), alignment: 0.15);
+      }
+    });
+  }
+
+  Future<void> _submit(_SubmitMode mode) async {
+    _mode = mode;
+    setState(() => _error = null);
+    if (!_formKey.currentState!.validate()) {
+      _revealFirstError();
       return;
     }
-    setState(() => _isSubmitting = true);
-    try {
-      final input = SubmitArtworkInput(
-        title: _title.text,
-        description: _description.text.trim(),
-        category: _category,
-        medium: _medium,
-        artistPrice: _artistPrice,
-        listingType: _listingType,
-        insuranceOpted: _insuranceRequired || _insuranceOpted,
-        images: [
-          for (var i = 0; i < _images.length; i++)
-            ArtworkImage(
-              url: _images[i],
-              thumbnailUrl: _images[i],
-              sortOrder: i,
-              altText: _title.text.trim(),
-            ),
-        ],
-        asDraft: asDraft,
-        dimensions: _dimensions.text.trim().isEmpty ? null : _dimensions.text.trim(),
-        yearCreated: int.tryParse(_year.text.trim()),
-        nfcTagId: _nfcTag.text.trim().isEmpty ? null : _nfcTag.text.trim(),
-        physical: _physical,
-      );
-      final repository = ref.read(artistRepositoryProvider);
-      if (_isEdit) {
-        await repository.updateArtwork(artworkId: widget.artworkId!, patch: input);
-      } else {
-        await repository.submitArtwork(input);
-      }
-      ref.invalidate(artistArtworksProvider);
-      ref.invalidate(artistKpisProvider);
-      ref.invalidate(artistActivityProvider);
-      ref.invalidate(artistWalletProvider);
-      ref.invalidate(artistWalletTransactionsProvider);
-      ref.invalidate(artistPenaltiesProvider);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isEdit
-                ? 'Changes saved'
-                : asDraft
-                ? 'Saved as draft'
-                : 'Submitted for review',
+    // A listing with nothing to look at is the one thing a review can't use.
+    // Drafts, and edits, are the artist's own business.
+    if (mode == _SubmitMode.review && !_isEdit && _images.isEmpty) {
+      setState(() => _error = 'Add at least one photo of the piece');
+      return;
+    }
+
+    final title = _title.text.trim().isEmpty ? 'Untitled artwork' : _title.text.trim();
+    final composed = composeDimensions(_dimensions);
+    final insuranceNumber = _insuranceNumber.text.trim();
+    final input = SubmitArtworkInput(
+      title: title,
+      description: _description.text.trim(),
+      category: _category,
+      medium: _medium,
+      artistPrice: _artistPrice,
+      listingType: _listingType,
+      insuranceOpted: _insuranceRequired || _insuranceOpted,
+      images: [
+        for (var i = 0; i < _images.length; i++)
+          ArtworkImage(
+            url: _images[i].url,
+            thumbnailUrl: _images[i].thumbnailUrl,
+            sortOrder: i,
+            altText: '$title, photo ${i + 1}',
+            id: _images[i].id,
           ),
-        ),
-      );
-      context.pop();
+      ],
+      asDraft: mode == _SubmitMode.draft,
+      // Older records carry a free-text size this form can't split; leaving the
+      // boxes empty keeps it as it was.
+      dimensions: composed.isNotEmpty ? composed : _editing?.artwork.dimensions,
+      yearCreated: int.tryParse(_year.text.trim()) ?? DateTime.now().year,
+      // This form doesn't touch the tag; an edit must send it back as it was or
+      // the API reads the omission as "unlink".
+      nfcTagId: _editing?.artwork.nfcTagId,
+      physical: _physical,
+      artworkType: artworkTypeToStore(_type, _typeOther.text),
+      paintingStyle: paintingStyleToStore(_category, _style, _styleOther.text),
+      insuranceNumber: insuranceNumber.isEmpty ? null : insuranceNumber,
+    );
+
+    setState(() => _busy = true);
+    final repository = ref.read(artistRepositoryProvider);
+    // Taken now: the artist may leave the screen while the photos upload, and
+    // the lists still have to hear that the piece exists.
+    final container = ProviderScope.containerOf(context);
+    try {
+      final saved = _isEdit
+          ? await repository.updateArtwork(artworkId: widget.artworkId!, patch: input)
+          : await repository.submitArtwork(input);
+      _refreshLists(container);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _outcome = _outcomeFor(saved, title: title, mode: mode);
+      });
+    } on ArtworkSavedAsDraft catch (error) {
+      _refreshLists(container);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _outcome = _Outcome(title: 'Saved as draft.', body: error.message);
+      });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(authErrorMessage(error))));
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      setState(() {
+        _busy = false;
+        _error = authErrorMessage(error);
+      });
     }
   }
 
+  void _refreshLists(ProviderContainer container) {
+    container.invalidate(artistArtworksProvider);
+    container.invalidate(artistKpisProvider);
+    container.invalidate(artistActivityProvider);
+    container.invalidate(artistWalletProvider);
+    container.invalidate(artistWalletTransactionsProvider);
+    container.invalidate(artistPenaltiesProvider);
+  }
+
+  /// The words follow what the API says happened, not what was asked for: a
+  /// submission is live only if it actually went live.
+  _Outcome _outcomeFor(Artwork saved, {required String title, required _SubmitMode mode}) {
+    final name = _title.text.trim().isEmpty ? 'Your artwork' : title;
+    if (_isEdit) return _Outcome(title: 'Changes saved.', body: '“$name” has been updated.');
+    if (mode == _SubmitMode.draft) {
+      return _Outcome(
+        title: 'Saved as draft.',
+        body: '“$name” has been saved. You can continue editing it any time from My Artworks.',
+      );
+    }
+    if (saved.status == ArtworkStatus.marketplace) {
+      return _Outcome(
+        title: 'Approved and live.',
+        body: '“$name” is on the marketplace now. Collectors can see it and buy it.',
+        artworkId: saved.id,
+      );
+    }
+    return _Outcome(
+      title: 'Submitted for review.',
+      body: '“$name” is with the GalleryZone team. We’ll let you know once it’s approved and live.',
+    );
+  }
+
+  // --- Build -----------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // The whole ladder, so the artist can see where every rupee of the
-    // difference between their rate and the listed price goes.
-    final basePrice = basePriceOf(_artistPrice);
-    final customerPrice = displayPriceOf(_artistPrice);
+    final outcome = _outcome;
+    if (outcome != null) return _Done(outcome: outcome);
 
     if (_isEdit && _editing == null) {
       return Scaffold(
@@ -276,509 +450,901 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
       );
     }
 
-    final editState = _editing == null ? null : artworkEditState(_editing!);
-    // Only on a new listing: an edit isn't the "next listing" the fee waits
-    // for, so showing it there would be a lie about what Save does.
+    final theme = Theme.of(context);
+    final editState = _editing == null ? null : artworkEditState(_editing!.artwork);
+
+    // PAN, not GST, is what gates going live. A draft is never blocked, and
+    // neither is an edit to a piece that is already listed.
+    final profile = ref.watch(artistProfileDetailsProvider);
+    final panMissing = !_isEdit && profile.hasValue && (profile.requireValue.pan ?? '').trim().isEmpty;
+    final panPending = !_isEdit && profile.isLoading;
+
     // Two different things, and conflating them is what made the old banner
     // lie: an approved fee WILL be charged on this listing; one still under
     // review may never be charged at all.
-    final penalties = _isEdit
-        ? const <ExternalSalePenalty>[]
-        : (ref.watch(artistPenaltiesProvider).value ?? []);
-    final outstandingFee = penalties
-        .where(isPenaltyCollectable)
-        .fold<double>(0, (sum, penalty) => sum + penalty.amount);
+    final penalties = _isEdit ? const <ExternalSalePenalty>[] : (ref.watch(artistPenaltiesProvider).value ?? []);
+    final approvedFee = penalties.where(isPenaltyCollectable).fold<double>(0, (sum, p) => sum + p.amount);
     final reviewingFee = penalties
         .where((p) => penaltyStatusOf(p) == PenaltyStatus.pendingReview)
-        .fold<double>(0, (sum, penalty) => sum + penalty.amount);
+        .fold<double>(0, (sum, p) => sum + p.amount);
+    final waived = penalties
+        .where((p) => penaltyStatusOf(p) == PenaltyStatus.waived && (p.decisionNote ?? '').isNotEmpty)
+        .firstOrNull;
+
+    // The whole ladder is quoted from the rules GalleryZone published; the
+    // bundled constants only stand in until they arrive (or if they can't).
+    final rules = ref.watch(pricingRulesProvider).value;
+    final markup = rules?.platformMarkup ?? pricing.platformMarkup;
+    final gstRate = rules?.gstRate ?? pricing.gstRate;
+    final threshold = rules?.insuranceThreshold ?? insuranceRecommendedThreshold;
+    final ladder = priceLadderFor(_artistPrice, markup: markup, gstRate: gstRate);
+
+    final missing = _missingForAggregator;
+    final canSubmit = !_busy &&
+        missing.isEmpty &&
+        !panMissing &&
+        !panPending &&
+        (!_isEdit || (editState?.editable ?? false));
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit artwork' : 'Submit artwork')),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-        children: [
-          ContentWidth(
-            maxWidth: 620,
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (outstandingFee > 0) ...[
-                    PortalCard(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            LucideIcons.triangleAlert,
-                            size: 16,
-                            color: AppColors.destructive,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${formatInr(outstandingFee)} off-platform sale fee '
-                                  'is due on this listing',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'You marked artwork as sold on another platform and '
-                                  'GalleryZone approved the fee. It is charged to your '
-                                  'wallet when you submit this piece for review. Saving '
-                                  "a draft doesn't trigger it.",
-                                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        child: ContentWidth(
+          maxWidth: 620,
+          child: Form(
+            key: _formKey,
+            // Once a field has been touched it re-checks itself as it is fixed,
+            // so a stale message never outlives the mistake.
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (panMissing) ...[
+                  _Banner(
+                    icon: LucideIcons.triangleAlert,
+                    gold: true,
+                    title: 'PAN required before this can go live',
+                    body: 'Add your PAN on your Profile page — you can still save this as a draft. GST is '
+                        "optional and won't block this listing.",
+                    action: TextButton(
+                      onPressed: () => context.push('/dashboard/profile'),
+                      child: const Text('Go to Profile'),
                     ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (reviewingFee > 0) ...[
-                    PortalCard(
-                      gold: true,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            LucideIcons.clock3,
-                            size: 16,
-                            color: theme.colorScheme.tertiary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${formatInr(reviewingFee)} off-platform sale fee '
-                                  'is with GalleryZone for review',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  "Selling elsewhere doesn't always mean a fee — a "
-                                  'piece promised to a gallery before you listed it, '
-                                  'say. Nothing is charged unless GalleryZone approves '
-                                  'it, and this listing goes through either way.',
-                                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  if (editState != null) ...[
-                    PortalCard(
-                      gold: editState.editable,
-                      child: Row(
-                        children: [
-                          Icon(
-                            editState.editable ? LucideIcons.clock3 : LucideIcons.lock,
-                            size: 16,
-                            color: editState.editable
-                                ? theme.colorScheme.tertiary
-                                : AppColors.destructive,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(switch (editState.reason) {
-                              ArtworkEditReason.draft =>
-                                'This piece is still a draft — edit it freely until '
-                                    'you send it for review.',
-                              ArtworkEditReason.withinWindow =>
-                                '${editState.daysLeft} '
-                                    '${editState.daysLeft == 1 ? "day" : "days"} left '
-                                    'of the $artworkEditWindowDays-day edit window.',
-                              ArtworkEditReason.purchased =>
-                                'This artwork has been claimed or sold — changes can '
-                                    'no longer be saved.',
-                              ArtworkEditReason.windowClosed =>
-                                'The $artworkEditWindowDays-day edit window for this '
-                                    'artwork has closed.',
-                            }, style: theme.textTheme.bodySmall),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  Text('Photos', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 4),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (approvedFee > 0) ...[
+                  _Banner(
+                    icon: LucideIcons.triangleAlert,
+                    destructive: true,
+                    title: '${formatInr(approvedFee)} off-platform sale fee is due on this listing',
+                    body: 'You marked artwork as sold on another platform and GalleryZone approved the fee. It '
+                        "is charged to your wallet when you submit this piece for review. Saving a draft doesn't "
+                        'trigger it.',
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (reviewingFee > 0) ...[
+                  _Banner(
+                    icon: LucideIcons.clock3,
+                    gold: true,
+                    title: '${formatInr(reviewingFee)} off-platform sale fee is with GalleryZone for review',
+                    body: "Selling elsewhere doesn't always mean a fee — a piece promised to a gallery before you "
+                        'listed it, say. Nothing is charged unless GalleryZone approves it, and this listing goes '
+                        'through either way.',
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (waived != null) ...[
                   Text(
-                    _isEdit
-                        ? 'Add photos to replace the current set — leave this empty and '
-                              'the existing ones stay.'
-                        : 'Up to $_maxImages. The first one becomes the listing thumbnail.',
-                    style: theme.textTheme.labelSmall,
+                    'An earlier off-platform sale fee was waived: ${waived.decisionNote}',
+                    style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
                   ),
-                  const SizedBox(height: 12),
-                  _ImageStrip(
-                    paths: _images,
-                    onRemove: (index) => setState(() => _images.removeAt(index)),
+                  const SizedBox(height: 16),
+                ],
+                if (editState != null) ...[
+                  _Banner(
+                    icon: editState.editable ? LucideIcons.clock3 : LucideIcons.lock,
+                    gold: editState.editable,
+                    destructive: !editState.editable,
+                    body: switch (editState.reason) {
+                      ArtworkEditReason.draft =>
+                        'This piece is still a draft — edit it freely until you send it for review.',
+                      ArtworkEditReason.withinWindow =>
+                        '${editState.daysLeft} ${editState.daysLeft == 1 ? "day" : "days"} left of the '
+                            '$artworkEditWindowDays-day edit window.',
+                      ArtworkEditReason.purchased =>
+                        'This artwork has been claimed or sold — changes can no longer be saved.',
+                      ArtworkEditReason.windowClosed =>
+                        'The $artworkEditWindowDays-day edit window for this artwork has closed.',
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pick(ImageSource.camera),
-                          icon: const Icon(LucideIcons.camera, size: 16),
-                          label: const Text('Camera'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pick(ImageSource.gallery),
-                          icon: const Icon(LucideIcons.imagePlus, size: 16),
-                          label: const Text('Gallery'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Details', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _title,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    validator: (value) =>
-                        (value ?? '').trim().isEmpty ? 'A title is required' : null,
-                    decoration: const InputDecoration(labelText: 'Title'),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _description,
-                    minLines: 3,
-                    maxLines: 6,
-                    decoration: const InputDecoration(labelText: 'Description'),
-                  ),
-                  const SizedBox(height: 14),
-                  _Dropdown(
-                    label: 'Category',
-                    value: _category,
-                    items: _categories,
-                    onChanged: (value) => setState(() => _category = value!),
-                  ),
-                  const SizedBox(height: 14),
-                  _Dropdown(
-                    label: 'Medium',
-                    value: _medium,
-                    items: _mediums,
-                    onChanged: (value) => setState(() => _medium = value!),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _dimensions,
-                          decoration: const InputDecoration(
-                            labelText: 'Dimensions',
-                            hintText: '60 × 90 cm',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _year,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Year'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Sales channel', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Marketplace and Aggregator are separate channels. Pick one, '
-                    'or both.',
-                    style: theme.textTheme.labelSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  RadioGroup<ListingType>(
-                    groupValue: _listingType,
-                    onChanged: (value) => setState(() => _listingType = value!),
-                    child: const Column(
+                  const SizedBox(height: 16),
+                ],
+                _photosSection(theme),
+                const SizedBox(height: 16),
+                _detailsSection(theme),
+                const SizedBox(height: 16),
+                _channelSection(theme, ladder: ladder, gstRate: gstRate),
+                const SizedBox(height: 16),
+                _insuranceSection(theme, threshold: threshold),
+                const SizedBox(height: 16),
+                _Preview(
+                  image: _images.firstOrNull,
+                  title: _title.text.trim(),
+                  medium: _medium.isEmpty
+                      ? 'Medium'
+                      : artworkMediums.where((m) => m.value == _medium).firstOrNull?.label ?? humanize(_medium),
+                  year: _year.text.trim(),
+                  artistPrice: _artistPrice,
+                  customerPrice: ladder.customer,
+                  markup: markup,
+                  gstRate: gstRate,
+                  insured: _insuranceRequired || _insuranceOpted,
+                ),
+                const SizedBox(height: 16),
+                const _CertificateNote(),
+                const SizedBox(height: 20),
+                if (missing.isNotEmpty) ...[
+                  Text.rich(
+                    TextSpan(
+                      text: 'Still needed for an aggregator listing: ',
                       children: [
-                        RadioListTile<ListingType>(
-                          contentPadding: EdgeInsets.zero,
-                          value: ListingType.marketplaceOnly,
-                          title: Text('Marketplace'),
-                          subtitle: Text("Sell online through GalleryZone's own marketplace."),
+                        TextSpan(
+                          text: missing.join(', '),
+                          style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
-                        RadioListTile<ListingType>(
-                          contentPadding: EdgeInsets.zero,
-                          value: ListingType.aggregatorOnly,
-                          title: Text('Aggregator'),
-                          subtitle: Text(
-                            'Send the physical piece to a verified aggregator to display '
-                            'and sell in person. It stays off the online marketplace.',
-                          ),
-                        ),
-                        RadioListTile<ListingType>(
-                          contentPadding: EdgeInsets.zero,
-                          value: ListingType.marketplaceAndAggregator,
-                          title: Text('Both'),
-                          subtitle: Text(
-                            'List online and make the piece available for aggregator '
-                            'display at the same time.',
-                          ),
-                        ),
+                        const TextSpan(text: '. You can still save this as a draft.'),
                       ],
                     ),
-                  ),
-                  Text('Pricing', style: theme.textTheme.titleLarge),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _price,
-                    keyboardType: TextInputType.number,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    onChanged: (_) => setState(() {}),
-                    validator: (value) {
-                      final parsed = double.tryParse((value ?? '').trim());
-                      if (parsed == null || parsed <= 0) {
-                        return 'Enter your price for this artwork';
-                      }
-                      return null;
-                    },
-                    decoration: const InputDecoration(
-                      labelText: 'Your price (₹)',
-                      helperText: 'Only you ever see this figure. You are paid '
-                          'within $artistPayoutDaysAfterDelivery days of the artwork '
-                          'being delivered.',
-                    ),
+                    style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
-                  // The whole ladder, not just the top of it: the artist sees
-                  // every component of the listed price, so the number buyers
-                  // see is never a mystery.
-                  if (_artistPrice > 0)
-                    PortalCard(
-                      gold: true,
-                      child: Column(
-                        children: [
-                          PortalDetailRow(
-                            label: 'You receive',
-                            value: formatInr(_artistPrice),
-                          ),
-                          PortalDetailRow(
-                            label: 'Listing fee',
-                            value: listingFeeOf(_artistPrice) == 0
-                                ? 'Free'
-                                : formatInr(listingFeeOf(_artistPrice)),
-                          ),
-                          PortalDetailRow(
-                            label: 'GalleryZone margin',
-                            value: formatInr(basePrice - _artistPrice),
-                          ),
-                          PortalDetailRow(
-                            label: 'GST (${(gstRate * 100).round()}%)',
-                            value: formatInr(customerPrice - basePrice),
-                          ),
-                          const Divider(height: 16),
-                          PortalDetailRow(
-                            label: 'Listed price buyers see',
-                            value: formatInr(customerPrice),
-                            gold: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                  const SizedBox(height: 24),
+                ],
+                if (_error != null) ...[
+                  Text(_error!, style: theme.textTheme.bodySmall?.copyWith(color: AppColors.destructive)),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _nfcTag,
-                    decoration: const InputDecoration(
-                      labelText: 'NFC tag id (optional)',
-                      helperText: 'Links the physical tag to this piece and its passport.',
+                ],
+                FilledButton(
+                  onPressed: canSubmit ? () => _submit(_SubmitMode.review) : null,
+                  child: Text(_busy ? 'Saving…' : (_isEdit ? 'Save changes' : 'Submit for review')),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : (_isEdit ? () => context.pop() : () => _submit(_SubmitMode.draft)),
+                  child: Text(_isEdit ? 'Cancel' : 'Save as draft'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Sections ------------------------------------------------------------------------
+
+  Widget _photosSection(ThemeData theme) {
+    final full = _images.length >= maxArtworkImages;
+    return _Section(
+      title: 'Artwork images',
+      children: [
+        Text(
+          'Up to $maxArtworkImages photos, cover image first. JPEG, PNG or WebP, 15 MB each. Photos upload when '
+          'you save.',
+          style: theme.textTheme.labelSmall,
+        ),
+        const SizedBox(height: 12),
+        _ImageGrid(
+          images: _images,
+          onRemove: (index) => setState(() => _images.removeAt(index)),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: full ? null : () => _addPhotos(ImageSource.camera),
+                icon: const Icon(LucideIcons.camera, size: 16),
+                label: const Text('Camera'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: full ? null : () => _addPhotos(ImageSource.gallery),
+                icon: const Icon(LucideIcons.imagePlus, size: 16),
+                label: const Text('Gallery'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text('${_images.length} / $maxArtworkImages uploaded', style: theme.textTheme.labelSmall),
+      ],
+    );
+  }
+
+  Widget _detailsSection(ThemeData theme) {
+    return _Section(
+      title: 'Artwork details',
+      children: [
+        TextFormField(
+          controller: _title,
+          maxLength: 160,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            hintText: 'Monsoon Over Madurai',
+            counterText: '',
+          ),
+          validator: (value) {
+            final title = (value ?? '').trim();
+            if (title.isEmpty) return _mode == _SubmitMode.review ? 'A title is required' : null;
+            return title.length < 3 ? 'Use at least 3 characters' : null;
+          },
+        ),
+        const SizedBox(height: 14),
+        TextFormField(
+          controller: _description,
+          minLines: 3,
+          maxLines: 6,
+          maxLength: 5000,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Description',
+            hintText: 'Oil on canvas, painted during the 2025 monsoon season.',
+            counterText: '',
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(LucideIcons.info, size: 12),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                "Don't mention price here. Your listed price stays private and only the marketplace price is "
+                'shown to buyers.',
+                style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _OptionField(
+          label: 'Category',
+          value: _category,
+          options: artworkCategories,
+          requiredMessage: 'Select a category',
+          onChanged: (value) => setState(() => _category = value),
+        ),
+        const SizedBox(height: 14),
+        _OptionField(
+          label: 'Medium',
+          value: _medium,
+          options: artworkMediums,
+          requiredMessage: 'Select a medium',
+          onChanged: (value) => setState(() => _medium = value),
+        ),
+        const SizedBox(height: 14),
+        _OptionField(
+          label: 'Type of artwork',
+          value: _type,
+          options: artworkTypes,
+          onChanged: (value) => setState(() => _type = value),
+        ),
+        if (_type == 'other') ...[
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _typeOther,
+            maxLength: 80,
+            decoration: const InputDecoration(hintText: 'Describe the type', counterText: ''),
+          ),
+        ],
+        if (_category == 'painting') ...[
+          const SizedBox(height: 14),
+          InkWell(
+            onTap: _pickStyle,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Painting style',
+                suffixIcon: const Icon(LucideIcons.chevronsUpDown, size: 16),
+                helperText: 'One of ${paintingStyles.length} world painting traditions — search by name, region, '
+                    'or category.',
+                helperMaxLines: 2,
+              ),
+              isEmpty: _style.isEmpty,
+              child: Text(_style, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ),
+          if (_style == 'Other') ...[
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _styleOther,
+              maxLength: 80,
+              decoration: const InputDecoration(hintText: 'Name the painting style', counterText: ''),
+            ),
+          ],
+        ],
+        const SizedBox(height: 14),
+        TextFormField(
+          controller: _year,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
+          decoration: InputDecoration(labelText: 'Year created', hintText: '${DateTime.now().year}'),
+          autovalidateMode: AutovalidateMode.disabled,
+          validator: (value) {
+            final text = (value ?? '').trim();
+            if (text.isEmpty) return null;
+            final year = int.tryParse(text);
+            return year == null || year < 1900 || year > 2100 ? 'Enter a year between 1900 and 2100' : null;
+          },
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            Icon(LucideIcons.ruler, size: 14, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Text('Dimensions', style: theme.textTheme.labelLarge),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _MeasureField(controller: _length, label: 'Length', validator: _dimensionPair)),
+            const SizedBox(width: 12),
+            Expanded(child: _MeasureField(controller: _width, label: 'Width', validator: _dimensionPair)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _MeasureField(controller: _height, label: 'Height', validator: _dimensionPair)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _unit,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Unit'),
+                items: [for (final unit in dimensionUnits) DropdownMenuItem(value: unit, child: Text(unit))],
+                onChanged: (value) => setState(() => _unit = value ?? 'in'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text("Length and width, and height if it's a 3D piece.", style: theme.textTheme.labelSmall),
+        const SizedBox(height: 18),
+        TextFormField(
+          controller: _weight,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+          decoration: const InputDecoration(labelText: 'Weight (kg)', hintText: '3.5'),
+          autovalidateMode: AutovalidateMode.disabled,
+          validator: (value) {
+            final text = (value ?? '').trim();
+            if (text.isEmpty) return null;
+            final kg = double.tryParse(text);
+            return kg == null || kg <= 0 || kg > 500 ? 'Enter the weight in kg (up to 500)' : null;
+          },
+        ),
+        const SizedBox(height: 14),
+        _FramingField(
+          value: _framing,
+          // MOU §12: only these two ship to an aggregator's premises - don't offer
+          // an option the artist would just have to undo.
+          aggregatorOnly: _aggregatorSelected,
+          onChanged: (value) => setState(() => _framing = value),
+        ),
+        const SizedBox(height: 14),
+        _OptionField(
+          label: 'Format / surface',
+          value: _format,
+          options: artworkFormats,
+          onChanged: (value) => setState(() => _format = value),
+        ),
+      ],
+    );
+  }
+
+  /// Length and width go together; a lone height is no size at all.
+  String? _dimensionPair(String? _) {
+    final any = [_length, _width, _height].any((c) => c.text.trim().isNotEmpty);
+    if (!any) return null;
+    final length = tidyMeasurement(_length.text) != null;
+    final width = tidyMeasurement(_width.text) != null;
+    if (!length || !width) return 'Add the length and width';
+    if (_height.text.trim().isNotEmpty && tidyMeasurement(_height.text) == null) return 'Enter a number above 0';
+    return null;
+  }
+
+  Widget _channelSection(ThemeData theme, {required PriceLadder ladder, required double gstRate}) {
+    return _Section(
+      title: 'Sales channel & pricing',
+      children: [
+        Text('Sales channel', style: theme.textTheme.labelLarge),
+        const SizedBox(height: 2),
+        Text(
+          'Marketplace and Aggregator are separate channels. Pick one, or both.',
+          style: theme.textTheme.labelSmall,
+        ),
+        const SizedBox(height: 10),
+        for (final choice in listingChoices) ...[
+          _ChoiceCard(
+            label: choice.label,
+            description: choice.description,
+            active: _listingType == choice.type,
+            onTap: () => setState(() => _listingType = choice.type),
+          ),
+          const SizedBox(height: 10),
+        ],
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: _price,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(8)],
+          decoration: const InputDecoration(labelText: 'Your rate (₹)', hintText: '18000'),
+          validator: (value) {
+            final price = int.tryParse((value ?? '').trim());
+            if (price == null || price <= 0) return 'Enter your price for this artwork';
+            return price > 10000000 ? 'The most a piece can be listed at is ₹1,00,00,000' : null;
+          },
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Your own price for this piece. It stays private — buyers never see it. You're paid within "
+          '${pricing.artistPayoutDaysAfterDelivery} days of the artwork being delivered.',
+          style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+        ),
+        if (_artistPrice > 0) ...[
+          const SizedBox(height: 12),
+          // The whole ladder, not just the top of it: the artist sees every
+          // component of the listed price, so the number buyers see is never a
+          // mystery.
+          PortalCard(
+            gold: true,
+            child: Column(
+              children: [
+                PortalDetailRow(label: 'You receive', value: formatInr(_artistPrice)),
+                PortalDetailRow(label: 'GalleryZone margin', value: formatInr(ladder.base - _artistPrice)),
+                PortalDetailRow(label: 'GST (${percentLabel(gstRate)}%)', value: formatInr(ladder.gstIncluded)),
+                const Divider(height: 16),
+                PortalDetailRow(label: 'Listed price buyers see', value: formatInr(ladder.customer), gold: true),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('Listing is free for your first 6 months.', style: theme.textTheme.labelSmall),
+        ],
+        if (_aggregatorSelected) ...[
+          const SizedBox(height: 16),
+          _aggregatorRequirements(theme),
+        ],
+      ],
+    );
+  }
+
+  Widget _aggregatorRequirements(ThemeData theme) {
+    final physical = _physical;
+    final framingOk = _framing != null && aggregatorReadyFraming.contains(_framing);
+    return PortalCard(
+      gold: true,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.building2, size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Aggregator requirements', style: theme.textTheme.titleSmall)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'An aggregator holds and displays the physical piece, so it has to arrive ready to hang. These are '
+            'required before this artwork can go for review.',
+            style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+          ),
+          const SizedBox(height: 10),
+          _Requirement(met: (physical.weightKg ?? 0) > 0, text: 'Weight entered — the piece has to be moved and hung'),
+          _Requirement(met: framingOk, text: 'Framed, or professionally stretched on canvas (MOU §12)'),
+          _Requirement(met: _format.isNotEmpty, text: 'Format / surface stated'),
+          const SizedBox(height: 10),
+          _CheckTile(
+            value: _hangers,
+            onChanged: (value) => setState(() => _hangers = value),
+            title: 'Hangers are included with the artwork.',
+            detail: 'Required for display — an aggregator cannot hang a piece that arrives without them.',
+          ),
+          const SizedBox(height: 8),
+          _CheckTile(
+            value: _packaging,
+            onChanged: (value) => setState(() => _packaging = value),
+            title: "Packed to GalleryZone's shipping standard.",
+            detail: 'Improperly packed artworks can be rejected on arrival.',
+          ),
+          const SizedBox(height: 8),
+          _CheckTile(
+            value: _termsAccepted,
+            onChanged: (value) => setState(() => _termsAccepted = value),
+            gold: true,
+            title: 'I accept the aggregator display terms for this artwork.',
+            detail: 'Initial display period is 30 days per aggregator; if unsold GalleryZone may relocate the '
+                'piece to another aggregator or channel. Transport to the assigned aggregator is deducted from '
+                'your settlement after a sale.',
+            action: TextButton(
+              onPressed: () => context.push(LegalDocumentScreen.routeFor(LegalDoc.terms)),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 28),
+                alignment: Alignment.centerLeft,
+              ),
+              child: const Text('Read the full terms'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const _ComingSoon(
+            icon: LucideIcons.circlePlay,
+            title: 'Explainer video',
+            text: 'A short walkthrough of the aggregator process goes here. Coming soon.',
+          ),
+          const SizedBox(height: 8),
+          const _ComingSoon(icon: LucideIcons.layoutTemplate, title: 'Display card', text: 'Coming soon.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _insuranceSection(ThemeData theme, {required double threshold}) {
+    final on = _insuranceRequired || _insuranceOpted;
+    final status = _editing?.artwork.insuranceStatus ?? ReviewStatus.notSubmitted;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PortalCard(
+          gold: _insuranceRequired,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      children: [
+                        Text('Insure this artwork', style: theme.textTheme.titleSmall),
+                        if (_insuranceRequired)
+                          Text(
+                            'Required',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.tertiary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _insuranceRequired || _insuranceOpted,
-                    // Locked on, not merely defaulted on, for an aggregator
-                    // listing — the piece leaves the studio into a partner's
-                    // custody, so cover isn't the artist's call there.
-                    onChanged: _insuranceRequired
-                        ? null
-                        : (value) => setState(() => _insuranceOpted = value),
-                    title: Text(
-                      _insuranceRequired ? 'Transit insurance — required' : 'Transit insurance',
-                    ),
-                    subtitle: Text(
-                      _insuranceRequired
-                          ? 'Mandatory for aggregator listings: the piece leaves your '
-                                'studio and is held by a partner while on display. The '
-                                'premium is deducted from your settlement.'
-                          : _artistPrice > _insuranceRecommendedThreshold
-                          ? 'Strongly recommended for a piece at this price — '
-                                'uninsured pieces carry no platform liability in transit.'
-                          : 'Optional at this price.',
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
-                  if (_insuranceRequired) ...[
-                    const SizedBox(height: 20),
-                    Text('The physical piece', style: theme.textTheme.titleLarge),
                     const SizedBox(height: 4),
                     Text(
-                      'An aggregator has to move, hang and insure this — MOU §12. '
-                      'Only asked for when you pick that channel.',
-                      style: theme.textTheme.labelSmall,
+                      _insuranceRequired
+                          ? 'Mandatory for aggregator listings — the piece leaves your studio and is held by a '
+                              'partner while on display. Cover is arranged with $insurancePartner; the premium is '
+                              'deducted from your settlement.'
+                          : _artistPrice > threshold
+                              ? 'Strongly recommended for a piece at this price ($insurancePartner). Decline it and '
+                                  'theft, fire, transit damage and loss are yours alone.'
+                              : 'Optional, arranged with $insurancePartner. Uninsured artworks carry no platform '
+                                  'liability in transit.',
+                      style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
                     ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _weight,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                      decoration: const InputDecoration(
-                        labelText: 'Weight (kg)',
-                        helperText: 'Framed and packed, as it ships.',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _Dropdown(
-                      label: 'Framing',
-                      value: _framing?.name ?? '',
-                      items: {
-                        '': 'Select…',
-                        for (final state in FramingState.values)
-                          state.name: framingLabel[state]!,
-                      },
-                      onChanged: (value) => setState(() {
-                        _framing = value == null || value.isEmpty
-                            ? null
-                            : FramingState.values.byName(value);
-                      }),
-                    ),
-                    if (_framing != null && !aggregatorReadyFraming.contains(_framing))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          'Aggregator display needs a framed or stretched-canvas '
-                          'piece. You can still list this on the marketplace.',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: AppColors.destructive,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 14),
-                    _Dropdown(
-                      label: 'Format',
-                      value: _format ?? '',
-                      items: {'': 'Select…', ..._formats},
-                      onChanged: (value) => setState(
-                        () => _format = value == null || value.isEmpty ? null : value,
-                      ),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _hangersIncluded,
-                      onChanged: (value) => setState(() => _hangersIncluded = value),
-                      title: const Text('Hangers ship with the piece'),
-                      subtitle: Text(
-                        'MOU §12 — the aggregator cannot hang it otherwise.',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _packagingConfirmed,
-                      onChanged: (value) => setState(() => _packagingConfirmed = value),
-                      title: const Text("Packed to GalleryZone's standard"),
-                      subtitle: Text(
-                        'Corner protection, rigid outer, moisture barrier.',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ),
-                    if (missingForAggregator(_physical).isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Still needed for an aggregator listing: '
-                          '${missingForAggregator(_physical).join(", ")}. You can save '
-                          'this as a draft in the meantime.',
-                          style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
-                        ),
-                      ),
                   ],
-                  const SizedBox(height: 8),
-                  PortalCard(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(LucideIcons.scrollText, size: 16, color: theme.colorScheme.tertiary),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Certificate of Authenticity — required',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'GalleryZone issues a numbered Certificate of '
-                                'Authenticity for every accepted artwork. Nothing to '
-                                'fill in here: the number is generated on approval and '
-                                'stays linked to this piece for its whole life, '
-                                'alongside its NFC/QR passport.',
-                                style: theme.textTheme.labelSmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Switch(
+                value: on,
+                // Locked on, not merely defaulted on, for an aggregator listing.
+                onChanged: _insuranceRequired ? null : (value) => setState(() => _insuranceOpted = value),
+              ),
+            ],
+          ),
+        ),
+        if (on) ...[
+          const SizedBox(height: 12),
+          PortalCard(
+            gold: true,
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: Text('Insurance verification', style: theme.textTheme.titleSmall)),
+                    if (_isEdit) _StatusPill(status: status),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => openExternal(context, insurancePartnerUrl),
+                  icon: const Icon(LucideIcons.externalLink, size: 14),
+                  label: const Text('Take out cover with $insurancePartner'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: const Size(0, 32),
+                    alignment: Alignment.centerLeft,
                   ),
-                  const SizedBox(height: 24),
-                  if (_isEdit)
-                    FilledButton(
-                      onPressed: _isSubmitting || !(editState?.editable ?? false)
-                          ? null
-                          : () => _submit(asDraft: false),
-                      child: Text(_isSubmitting ? 'Saving…' : 'Save changes'),
-                    )
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: _isSubmitting ? null : () => _submit(asDraft: true),
-                            child: const Text('Save draft'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: _isSubmitting ? null : () => _submit(asDraft: false),
-                            child: Text(_isSubmitting ? 'Sending…' : 'Submit for review'),
-                          ),
-                        ),
-                      ],
-                    ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _insuranceNumber,
+                  maxLength: 80,
+                  decoration: const InputDecoration(
+                    labelText: 'Policy / certificate number',
+                    hintText: 'Paste the number once your policy is issued',
+                    helperText:
+                        'Enter it here once you have it — GalleryZone verifies it before the piece can be marked '
+                        'insured.',
+                    helperMaxLines: 3,
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const _InsuranceFaq(),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// --- Pieces ---------------------------------------------------------------------------------
+
+class _Section extends StatelessWidget {
+  const _Section({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return PortalCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _Banner extends StatelessWidget {
+  const _Banner({
+    required this.icon,
+    required this.body,
+    this.title,
+    this.gold = false,
+    this.destructive = false,
+    this.action,
+  });
+
+  final IconData icon;
+  final String? title;
+  final String body;
+  final bool gold;
+  final bool destructive;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      gold: gold,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 16, color: destructive ? AppColors.destructive : theme.colorScheme.tertiary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(title!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
                 ],
+                Text(body, style: theme.textTheme.labelSmall?.copyWith(height: 1.45)),
+                ?action,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dropdown over [FormOption]s. An artwork being edited can carry a value the
+/// list doesn't offer (older records predate these options); it is kept as an
+/// option rather than silently rewritten, because the dropdown asserts on a
+/// value it has no item for.
+class _OptionField extends StatelessWidget {
+  const _OptionField({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.requiredMessage,
+  });
+
+  final String label;
+  final String value;
+  final List<FormOption> options;
+  final ValueChanged<String> onChanged;
+  final String? requiredMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final known = options.any((option) => option.value == value);
+    return DropdownButtonFormField<String>(
+      initialValue: value.isEmpty ? null : value,
+      isExpanded: true,
+      decoration: InputDecoration(labelText: label),
+      items: [
+        if (value.isNotEmpty && !known) DropdownMenuItem(value: value, child: Text(humanize(value))),
+        for (final option in options) DropdownMenuItem(value: option.value, child: Text(option.label)),
+      ],
+      validator: requiredMessage == null
+          ? null
+          : (selected) => selected == null || selected.isEmpty ? requiredMessage : null,
+      onChanged: (selected) {
+        if (selected != null) onChanged(selected);
+      },
+    );
+  }
+}
+
+class _FramingField extends StatelessWidget {
+  const _FramingField({required this.value, required this.aggregatorOnly, required this.onChanged});
+
+  final FramingState? value;
+  final bool aggregatorOnly;
+  final ValueChanged<FramingState> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final offered = [
+      for (final state in FramingState.values)
+        if (!aggregatorOnly || aggregatorReadyFraming.contains(state) || state == value) state,
+    ];
+    return DropdownButtonFormField<FramingState>(
+      initialValue: value,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Framing'),
+      items: [for (final state in offered) DropdownMenuItem(value: state, child: Text(framingLabel[state]!))],
+      onChanged: (selected) {
+        if (selected != null) onChanged(selected);
+      },
+    );
+  }
+}
+
+class _MeasureField extends StatelessWidget {
+  const _MeasureField({required this.controller, required this.label, required this.validator});
+
+  final TextEditingController controller;
+  final String label;
+  final String? Function(String?) validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+      decoration: InputDecoration(labelText: label),
+      // Length and width are typed one after the other: only judged on submit.
+      autovalidateMode: AutovalidateMode.disabled,
+      validator: validator,
+    );
+  }
+}
+
+class _ChoiceCard extends StatelessWidget {
+  const _ChoiceCard({required this.label, required this.description, required this.active, required this.onTap});
+
+  final String label;
+  final String description;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final gold = theme.colorScheme.primary;
+    return Semantics(
+      button: true,
+      selected: active,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: active ? gold.withValues(alpha: 0.1) : null,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: active ? gold.withValues(alpha: 0.5) : theme.colorScheme.outline),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: active ? theme.colorScheme.tertiary : null,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(description, style: theme.textTheme.labelSmall?.copyWith(height: 1.4)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Requirement extends StatelessWidget {
+  const _Requirement({required this.met, required this.text});
+
+  final bool met;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              met ? LucideIcons.check : LucideIcons.circle,
+              size: 14,
+              color: met ? theme.colorScheme.tertiary : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: met ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ),
@@ -788,60 +1354,430 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
   }
 }
 
-/// Picked files are device paths, not bundled assets or URLs, so they render
-/// through `Image.file` rather than [ArtworkImageView].
-class _ImageStrip extends StatelessWidget {
-  const _ImageStrip({required this.paths, required this.onRemove});
+class _CheckTile extends StatelessWidget {
+  const _CheckTile({
+    required this.value,
+    required this.onChanged,
+    required this.title,
+    required this.detail,
+    this.gold = false,
+    this.action,
+  });
 
-  final List<String> paths;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final String title;
+  final String detail;
+  final bool gold;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(4, 8, 12, 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(
+            color: gold ? theme.colorScheme.primary.withValues(alpha: 0.3) : theme.colorScheme.outline,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: (checked) => onChanged(checked ?? false),
+              visualDensity: VisualDensity.compact,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: theme.textTheme.labelLarge?.copyWith(height: 1.4)),
+                    const SizedBox(height: 2),
+                    Text(detail, style: theme.textTheme.labelSmall?.copyWith(height: 1.4)),
+                    ?action,
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComingSoon extends StatelessWidget {
+  const _ComingSoon({required this.icon, required this.title, required this.text});
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.labelLarge),
+                Text(text, style: theme.textTheme.labelSmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.status});
+
+  final ReviewStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = switch (status) {
+      ReviewStatus.notSubmitted => theme.colorScheme.onSurfaceVariant,
+      ReviewStatus.submitted => theme.colorScheme.tertiary,
+      ReviewStatus.approved => const Color(0xFF34D399),
+      ReviewStatus.rejected => AppColors.destructive,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.xl4),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Text(
+        insuranceStatusLabel[status]!,
+        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
+      ),
+    );
+  }
+}
+
+/// Port of `insurance-faq-chat.tsx`: not a chatbot - there is nothing to answer
+/// a free question - but a fixed set of questions that read as a conversation.
+class _InsuranceFaq extends StatefulWidget {
+  const _InsuranceFaq();
+
+  @override
+  State<_InsuranceFaq> createState() => _InsuranceFaqState();
+}
+
+class _InsuranceFaqState extends State<_InsuranceFaq> {
+  final _asked = <String>[];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final remaining = insuranceFaqs.where((faq) => !_asked.contains(faq.question)).toList();
+    return PortalCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.messageCircleQuestionMark, size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Insurance — common questions', style: theme.textTheme.labelLarge)),
+            ],
+          ),
+          for (final question in _asked) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                ),
+                child: Text(question, style: theme.textTheme.labelMedium),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: theme.colorScheme.outline),
+              ),
+              child: Text(
+                insuranceFaqs.firstWhere((faq) => faq.question == question).answer,
+                style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          if (remaining.isEmpty)
+            Text(
+              "That's everything we've got preset — for anything else, reach Support.",
+              style: theme.textTheme.labelSmall,
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final faq in remaining)
+                  ActionChip(
+                    label: Text(faq.question),
+                    labelStyle: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.tertiary),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => setState(() => _asked.add(faq.question)),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CertificateNote extends StatelessWidget {
+  const _CertificateNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(LucideIcons.scrollText, size: 16, color: theme.colorScheme.tertiary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Certificate of Authenticity — required',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'GalleryZone issues a numbered Certificate of Authenticity for every accepted artwork. Nothing '
+                  'to fill in here: the certificate number is generated on approval and stays linked to this '
+                  'piece for its whole life, alongside its NFC/QR passport.',
+                  style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How the listing will read, with the artist's private price beside the one
+/// buyers will see.
+class _Preview extends StatelessWidget {
+  const _Preview({
+    required this.image,
+    required this.title,
+    required this.medium,
+    required this.year,
+    required this.artistPrice,
+    required this.customerPrice,
+    required this.markup,
+    required this.gstRate,
+    required this.insured,
+  });
+
+  final _FormImage? image;
+  final String title;
+  final String medium;
+  final String year;
+  final double artistPrice;
+  final double customerPrice;
+  final double markup;
+  final double gstRate;
+  final bool insured;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cover = image;
+    return PortalCard(
+      gold: true,
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: ColoredBox(
+                color: theme.colorScheme.surfaceContainerHighest,
+                child: cover == null
+                    ? Icon(
+                        LucideIcons.imagePlus,
+                        size: 32,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                      )
+                    : cover.isNew
+                        ? Image.file(
+                            File(cover.url),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) => const SizedBox.shrink(),
+                          )
+                        : ArtworkImageView(url: cover.url),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LIVE PREVIEW',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.tertiary,
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  title.isEmpty ? 'Untitled artwork' : title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium,
+                ),
+                Text(year.isEmpty ? medium : '$medium · $year', style: theme.textTheme.labelSmall),
+                const Divider(height: 24),
+                PortalDetailRow(
+                  label: 'Your price (private)',
+                  value: artistPrice > 0 ? formatInr(artistPrice) : 'N/A',
+                ),
+                PortalDetailRow(
+                  label: 'Listed price',
+                  value: artistPrice > 0 ? formatInr(customerPrice) : 'N/A',
+                  gold: true,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'You receive your price in full. The listed price adds GalleryZone’s '
+                  '${percentLabel(markup)}% margin and ${percentLabel(gstRate)}% GST on top — that’s what buyers '
+                  'see.',
+                  style: theme.textTheme.labelSmall?.copyWith(height: 1.4),
+                ),
+                if (insured) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(LucideIcons.shieldCheck, size: 14, color: theme.colorScheme.tertiary),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Insured artwork',
+                          style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.tertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Picked files are device paths, not bundled assets or URLs, so they render
+/// through `Image.file`; photos already on the piece go through
+/// [ArtworkImageView].
+class _ImageGrid extends StatelessWidget {
+  const _ImageGrid({required this.images, required this.onRemove});
+
+  final List<_FormImage> images;
   final ValueChanged<int> onRemove;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (paths.isEmpty) {
+    if (images.isEmpty) {
       return Container(
         height: 110,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(color: theme.colorScheme.outline, style: BorderStyle.solid),
+          border: Border.all(color: theme.colorScheme.outline),
         ),
         child: Text('No photos yet', style: theme.textTheme.bodySmall),
       );
     }
 
-    return SizedBox(
-      height: 110,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: paths.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 10),
-        itemBuilder: (context, index) => Stack(
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+      ),
+      itemCount: images.length,
+      itemBuilder: (context, index) {
+        final image = images[index];
+        return Stack(
+          fit: StackFit.expand,
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.md),
-              child: Image.file(
-                File(paths[index]),
-                width: 90,
-                height: 110,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Container(
-                  width: 90,
-                  height: 110,
-                  color: theme.colorScheme.surfaceContainerHighest,
-                ),
-              ),
+              child: image.isNew
+                  ? Image.file(
+                      File(image.url),
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) =>
+                          ColoredBox(color: theme.colorScheme.surfaceContainerHighest),
+                    )
+                  : ArtworkImageView(url: image.url),
             ),
             Positioned(
               top: 2,
               right: 2,
               child: IconButton(
                 iconSize: 14,
+                tooltip: 'Remove photo ${index + 1}',
                 visualDensity: VisualDensity.compact,
-                style: IconButton.styleFrom(
-                  backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.85),
-                ),
+                style: IconButton.styleFrom(backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.85)),
                 icon: const Icon(Icons.close),
                 onPressed: () => onRemove(index),
               ),
@@ -860,41 +1796,67 @@ class _ImageStrip extends StatelessWidget {
                 ),
               ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class _Dropdown extends StatelessWidget {
-  const _Dropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
+/// What the form says once it has done its job, in place of the form.
+class _Done extends StatelessWidget {
+  const _Done({required this.outcome});
 
-  final String label;
-  final String value;
-  final Map<String, String> items;
-  final ValueChanged<String?> onChanged;
+  final _Outcome outcome;
 
   @override
   Widget build(BuildContext context) {
-    // An artwork being edited can carry a category/medium the current list
-    // doesn't offer (the fixtures predate these options — "landscape",
-    // "Mixed Media"). Dropdown asserts on a value it has no item for, so the
-    // existing one is kept as an option rather than silently rewritten.
-    final options = items.containsKey(value) ? items : {value: titleCase(value), ...items};
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(labelText: label),
-      items: [
-        for (final entry in options.entries)
-          DropdownMenuItem(value: entry.key, child: Text(entry.value)),
-      ],
-      onChanged: onChanged,
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(automaticallyImplyLeading: false, title: const Text('Artwork')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          ContentWidth(
+            maxWidth: 620,
+            child: PortalCard(
+              gold: true,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                    ),
+                    child: Icon(LucideIcons.check, size: 20, color: theme.colorScheme.tertiary),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(outcome.title, style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(outcome.body, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5)),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => context.go('/dashboard/artworks'),
+                    icon: const Icon(LucideIcons.arrowLeft, size: 16),
+                    label: const Text('Back to My Artworks'),
+                  ),
+                  if (outcome.artworkId != null) ...[
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.push('/marketplace/${outcome.artworkId}'),
+                      child: const Text('View it on the marketplace'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

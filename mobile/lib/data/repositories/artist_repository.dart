@@ -61,6 +61,19 @@ class SubmitArtworkInput {
   final ArtworkPhysical? physical;
 }
 
+/// The piece was created and is safe as a draft, but a photo could not be
+/// uploaded. The form must not offer to submit it again - that would make a
+/// second copy - so it is told apart from an ordinary failure.
+class ArtworkSavedAsDraft implements Exception {
+  const ArtworkSavedAsDraft(this.artworkId, this.message);
+
+  final String artworkId;
+  final String message;
+
+  @override
+  String toString() => 'Exception: $message';
+}
+
 /// An order for one of this artist's pieces, with what she actually receives.
 class ArtistOrder {
   const ArtistOrder({required this.order, required this.artistPayout});

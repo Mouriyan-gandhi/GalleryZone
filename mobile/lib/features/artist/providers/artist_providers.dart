@@ -1,15 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../data/mock/mock_artist_repository.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/customer.dart';
+import '../../../data/models/pricing_rules.dart';
 import '../../../data/repositories/artist_repository.dart';
 import '../verification_tiers.dart';
 
 final artistRepositoryProvider = Provider<ArtistRepository>((ref) {
   return MockArtistRepository();
 });
+
+/// The device's camera and photo library, behind a provider so a test can
+/// stand in for them.
+final imagePickerProvider = Provider<ImagePicker>((ref) => ImagePicker());
 
 /// All `autoDispose`, same rule as everywhere else: wallet balance, orders
 /// and settlements are never pinned in app-wide state (SAD §9.2).
@@ -30,6 +36,13 @@ final artistArtworksProvider = FutureProvider.autoDispose<List<ArtistArtwork>>((
 final artistPenaltiesProvider =
     FutureProvider.autoDispose<List<ExternalSalePenalty>>((ref) {
   return ref.watch(artistRepositoryProvider).listPenalties();
+});
+
+/// The published commercial terms (`GET /v1/pricing-rules`) the submit form
+/// quotes its price ladder from. Null when there are none to give; callers fall
+/// back to the bundled constants, as the website does for its first paint.
+final pricingRulesProvider = FutureProvider.autoDispose<PricingRules?>((ref) {
+  return ref.watch(artistRepositoryProvider).getPricingRules();
 });
 
 final artistWalletProvider = FutureProvider.autoDispose<WalletSummary>((ref) {
