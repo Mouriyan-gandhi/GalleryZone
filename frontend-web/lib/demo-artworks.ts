@@ -89,7 +89,7 @@ const SIZE_OF: Record<string, ArtworkSizeBand> = {
   "30 x 40 in": "large",
   "36 x 48 in": "large",
 };
-const RANKS: Partial<Record<number, ArtworkRarity>> = { 2: "R", 7: "U", 11: "O", 16: "N" };
+const RANKS: Partial<Record<number, ArtworkRarity>> = { 2: "R", 7: "U", 11: "O", 16: "S" };
 const STATUSES: Partial<Record<number, ArtworkStatus>> = { 9: "reserved", 19: "sold" };
 
 // Round-robin across styles so neighbouring cards never share a painting.

@@ -82,29 +82,24 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
     (a, b) => new Date(a.changedAt).getTime() - new Date(b.changedAt).getTime(),
   );
 
-  // Clicking the rank a piece already carries clears it — an admin who ranked
-  // something wrongly needs a way back to unranked, and a separate Clear button
-  // for four buttons is more chrome than the job deserves.
-  function handleRarity(next: ArtworkRarity) {
-    const rarity = artwork.rarityType === next ? null : next;
+  // A rank can be changed but never cleared: every piece carries one.
+  function handleRarity(rarity: ArtworkRarity) {
+    if (artwork.rarityType === rarity) return;
     rarityMutation.mutate(
       { artworkId: artwork.id, rarity },
       {
         onSuccess: () => {
           appendAudit({
             adminName: adminName,
-            action: rarity ? "artwork.ranked" : "artwork.rank_cleared",
+            action: "artwork.ranked",
             entityType: "artwork",
             entityId: artwork.id,
             entityLabel: artwork.title,
-            detail: rarity ? ARTWORK_RARITY_LABEL[rarity] : undefined,
+            detail: ARTWORK_RARITY_LABEL[rarity],
           });
-          toast.success(
-            rarity
-              ? `Ranked ${ARTWORK_RARITY_OPTIONS.find((o) => o.value === rarity)?.label}`
-              : "Rank cleared",
-            { description: `“${artwork.title}” on the marketplace card.` },
-          );
+          toast.success(`Ranked ${ARTWORK_RARITY_LABEL[rarity]}`, {
+            description: `“${artwork.title}” on the marketplace card.`,
+          });
         },
         onError: (error) => toast.error(error.message),
       },
@@ -351,8 +346,17 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
           <div className="flex items-center justify-between gap-3">
             <h2 className="font-display text-base font-semibold text-foreground">
               Rank
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                required
+              </span>
             </h2>
-            <RarityBadge rarity={artwork.rarityType} />
+            {artwork.rarityType ? (
+              <RarityBadge rarity={artwork.rarityType} />
+            ) : (
+              <span className="text-xs font-medium text-destructive">
+                Not ranked yet
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             GalleryZone decides this, not the artist. It shows on the artwork
@@ -390,9 +394,6 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Selecting the current rank again clears it.
-          </p>
         </section>
 
         {activeHolding && (

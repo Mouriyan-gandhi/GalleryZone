@@ -3,7 +3,7 @@
 // fixtures in rupees. Mapping lives here, in one place, so services stay
 // thin and nothing in features/ learns the wire shape.
 
-import type { Artwork, ArtworkStatus, ArtworkSummary, ListingType, ArtworkRarity, MarketplacePage } from "@/types/artwork";
+import { normalizeRarity, type Artwork, type ArtworkStatus, type ArtworkSummary, type ListingType, type ArtworkRarity, type MarketplacePage } from "@/types/artwork";
 import type { ArtistProfile } from "@/types/artist";
 import type { Order, OrderStatus } from "@/types/order";
 import type { Address } from "@/types/customer";
@@ -59,8 +59,12 @@ export function toMarketplacePage(dto: MarketplacePageDto): MarketplacePage {
     facets: {
       categories: dto.facets.categories,
       mediums: dto.facets.mediums,
-      rarities: dto.facets.rarities,
-      rarityCounts: dto.facets.rarityCounts as MarketplacePage["facets"]["rarityCounts"],
+      rarities: [...new Set(dto.facets.rarities.map((r) => normalizeRarity(r) ?? r))],
+      rarityCounts: Object.entries(dto.facets.rarityCounts).reduce<MarketplacePage["facets"]["rarityCounts"]>((acc, [rank, n]) => {
+        const key = normalizeRarity(rank);
+        if (key) acc[key] = (acc[key] ?? 0) + n;
+        return acc;
+      }, {}),
       locations: dto.facets.locations,
       artists: dto.facets.artists,
       priceRange: dto.facets.priceRangePaise
@@ -109,7 +113,7 @@ export function toArtwork(dto: ArtworkDto): Artwork {
     insured: dto.insured,
     status: dto.status,
     listingType: dto.listingType,
-    rarityType: dto.rarityType,
+    rarityType: normalizeRarity(dto.rarityType),
     description: dto.description,
     dimensions: dto.dimensions,
     yearCreated: dto.yearCreated,
@@ -142,7 +146,7 @@ export function toArtworkSummary(dto: ArtworkDto): ArtworkSummary {
     insured: a.insured,
     status: a.status,
     listingType: a.listingType,
-    rarityType: a.rarityType ?? null,
+    rarityType: normalizeRarity(a.rarityType),
     yearCreated: a.yearCreated,
     dimensions: a.dimensions,
     coaCertificateNumber: a.coaCertificateNumber || null,

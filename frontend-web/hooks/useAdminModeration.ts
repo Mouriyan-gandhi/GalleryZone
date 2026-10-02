@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminService } from "@/services/adminService";
+import type { ArtworkRarity } from "@/types/artwork";
 
 // ---------------------------------------------------------------------------
 // The three approval workflows. Every mutation here changes a pending-queue
@@ -32,7 +33,8 @@ export function useAdminPendingArtwork(artworkId: string) {
 export function useApproveArtworkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (artworkId: string) => adminService.approveArtwork(artworkId),
+    mutationFn: ({ artworkId, rarity }: { artworkId: string; rarity: ArtworkRarity }) =>
+      adminService.approveArtwork(artworkId, rarity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-pending-artworks"] });
       queryClient.invalidateQueries({ queryKey: ["admin-artworks"] });

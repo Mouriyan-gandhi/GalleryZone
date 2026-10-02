@@ -27,7 +27,13 @@ import {
 } from "@/hooks/useAdminModeration";
 import { useAdminAuditStore } from "@/store/useAdminAuditStore";
 import { formatINR } from "@/lib/utils";
-import { LISTING_TYPE_LABEL, type Artwork } from "@/types/artwork";
+import {
+  ARTWORK_RARITY_LABEL,
+  ARTWORK_RARITY_OPTIONS,
+  LISTING_TYPE_LABEL,
+  type Artwork,
+  type ArtworkRarity,
+} from "@/types/artwork";
 
 const REJECT_PRESETS = [
   "Appears to be a reproduction or replica",
@@ -44,6 +50,9 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
   const appendAudit = useAdminAuditStore((s) => s.append);
 
   const [checked, setChecked] = useState<Record<string, boolean>>({});
+  // The rank is compulsory: approval stays off until the admin has picked one
+  // (a piece re-submitted after a return may already carry one).
+  const [rank, setRank] = useState<ArtworkRarity | null>(artwork.rarityType ?? null);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState<number | null>(null);
 
@@ -51,6 +60,7 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
   const rejectMutation = useRejectArtworkMutation();
 
   const allCleared = ELIGIBILITY_CRITERIA.every((c) => checked[c.id]);
+  const canApprove = allCleared && rank !== null;
   const isBusy = approveMutation.isPending || rejectMutation.isPending;
 
   // The artist's other work and profile, from the admin catalogue.
@@ -78,8 +88,9 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
   }
 
   async function handleApprove() {
+    if (!rank) return;
     try {
-      await approveMutation.mutateAsync(artwork.id);
+      await approveMutation.mutateAsync({ artworkId: artwork.id, rarity: rank });
       dropFromQueue();
       appendAudit({
         adminName: adminName,
@@ -87,9 +98,10 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
         entityType: "artwork",
         entityId: artwork.id,
         entityLabel: artwork.title,
+        detail: `Ranked ${ARTWORK_RARITY_LABEL[rank]}`,
       });
       toast.success("Artwork approved", {
-        description: `“${artwork.title}” is now live on the marketplace.`,
+        description: `“${artwork.title}” is live on the marketplace as ${ARTWORK_RARITY_LABEL[rank]}.`,
       });
       router.push("/admin/moderation/artworks");
     } catch {
@@ -247,10 +259,57 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
           disabled={isBusy}
         />
 
+        <section className="rounded-xl border border-border bg-card p-5">
+          <h2 className="font-display text-base font-semibold text-foreground">
+            Rank
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              required
+            </span>
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            GalleryZone decides this, not the artist. Buyers see it on the
+            artwork and can filter by it.
+          </p>
+          <div
+            role="radiogroup"
+            aria-label="Artwork rank"
+            className="mt-3 grid grid-cols-2 gap-2"
+          >
+            {ARTWORK_RARITY_OPTIONS.map((option) => {
+              const active = rank === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setRank(option.value)}
+                  disabled={isBusy}
+                  className={`flex flex-col gap-0.5 rounded-md border px-3 py-2 text-left transition-colors disabled:opacity-50 ${
+                    active
+                      ? "border-gold bg-gold/10"
+                      : "border-border hover:border-gold/50 hover:bg-muted/40"
+                  }`}
+                >
+                  <span className="text-xs font-medium text-foreground">
+                    <span className="mr-1.5 font-mono font-bold text-gold-bright">
+                      {option.value}
+                    </span>
+                    {option.label}
+                  </span>
+                  <span className="text-[11px] leading-snug text-muted-foreground">
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button
             onClick={handleApprove}
-            disabled={!allCleared || isBusy}
+            disabled={!canApprove || isBusy}
             className="flex-1"
           >
             <Check className="size-4" />
@@ -267,9 +326,13 @@ export function ArtworkReviewPanel({ artwork }: { artwork: Artwork }) {
           </Button>
         </div>
 
-        {!allCleared ? (
+        {!canApprove ? (
           <p className="text-center text-xs text-muted-foreground">
-            Clear all five eligibility criteria to enable approval.
+            {allCleared
+              ? "Choose a rank to enable approval."
+              : rank
+                ? "Clear all five eligibility criteria to enable approval."
+                : "Clear all five eligibility criteria and choose a rank to enable approval."}
           </p>
         ) : null}
       </div>

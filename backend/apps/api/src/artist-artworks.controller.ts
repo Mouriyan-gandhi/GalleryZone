@@ -8,12 +8,14 @@ import {
   ArtistArtworkError,
   FirestoreRateConfigStore,
   approveArtwork,
+  artworkRarityValues,
   getArtistArtwork,
   listArtistOrders,
   listArtistPenalties,
   markSoldElsewhere,
   listArtistArtworksOwned,
   rejectArtwork,
+  setArtworkRarity,
   submitArtwork,
   updateArtwork,
   type Db,
@@ -63,6 +65,9 @@ const updateArtworkSchema = z.object(artworkFields).partial().strict();
 type UpdateArtworkBody = z.infer<typeof updateArtworkSchema>;
 
 const rejectSchema = z.object({ reason: z.string().min(1) }).strict();
+// The rank is compulsory: an approval without one is a 400, never a live piece with no rank.
+const approveSchema = z.object({ rarity: z.enum([...artworkRarityValues]) }).strict();
+type ApproveBody = z.infer<typeof approveSchema>;
 type RejectBody = z.infer<typeof rejectSchema>;
 
 const notFound = () => new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
@@ -174,14 +179,16 @@ export class ArtistArtworksController {
 
   @Roles("admin")
   @Post("admin/artworks/:id/approve")
-  async approve(@Param("id") id: string) {
+  async approve(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(approveSchema)) body: ApproveBody) {
     const before = await this.artworkOf(id);
     if (!before) throw notFound();
     // Idempotent: a retried approval of a live piece is a no-op, not a 500.
     if (before.listing?.status === "marketplace") return { status: "marketplace" };
     try {
+      await setArtworkRarity(this.db, id, body.rarity, req.authUser.uid);
       await approveArtwork(this.db, id);
     } catch (error) {
+      if (error instanceof ArtistArtworkError) throw new BadRequestException({ type: "about:blank", title: error.message, status: 400, code: "rank_required" });
       if (error instanceof IllegalTransitionError) throw new BadRequestException({ type: "about:blank", title: error.message, status: 409, code: "illegal_transition" });
       throw error;
     }

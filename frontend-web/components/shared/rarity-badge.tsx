@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 // Solid, per-rank colors for the "stamp" variant — a rank has to read at a
 // glance over a busy photo, which a shared translucent gold pill (the "pill"
 // variant, used everywhere else) can't do across four different ranks.
-const STAMP_TONE: Record<ArtworkRarity, string> = {
+export const STAMP_TONE: Record<ArtworkRarity, string> = {
   R: "bg-destructive text-white",
   U: "bg-emerald-600 text-white",
   O: "bg-gold-deep text-white",
-  N: "bg-muted-foreground text-background",
+  S: "bg-muted-foreground text-background",
 };
 
 // The rarity mark that sits over an artwork image. It spells the word rather

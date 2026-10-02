@@ -32,8 +32,9 @@ export interface AdminArtworkRow {
   status: string;
 }
 
-export async function setArtworkRarity(db: Firestore, artworkId: string, rarity: ArtworkRarity | null, adminId: string): Promise<void> {
-  if (rarity !== null && !(artworkRarityValues as readonly string[]).includes(rarity)) throw new AdminArtworkError(`Invalid rarity ${rarity}`);
+/** Every artwork carries a rank the admin chose, so a rank can be changed but never cleared. */
+export async function setArtworkRarity(db: Firestore, artworkId: string, rarity: ArtworkRarity, adminId: string): Promise<void> {
+  if (!(artworkRarityValues as readonly string[]).includes(rarity)) throw new AdminArtworkError(`Invalid rarity ${rarity}`);
   const ref = db.collection(Collections.artworks).doc(artworkId);
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);

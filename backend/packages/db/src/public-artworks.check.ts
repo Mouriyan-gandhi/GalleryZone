@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { queryMarketplace, type PublicArtworkView } from "./public-artworks.ts";
 import { sizeBandOf } from "./listing-projection.ts";
+import { normalizeRarity } from "./collections.ts";
 
 const piece = (over: Partial<PublicArtworkView>): PublicArtworkView => ({
   id: "a",
@@ -43,6 +44,11 @@ assert.deepEqual(ids(queryMarketplace(all, { medium: ["Oil"], artistId: "art2" }
 assert.deepEqual(ids(queryMarketplace(all, { category: ["Sculpture", "nonexistent"] })), ["b"], "multiple categories OR together");
 assert.deepEqual(ids(queryMarketplace(all, { category: [] })), ["a", "c", "b"], "empty category list is no filter, not zero matches");
 assert.deepEqual(ids(queryMarketplace(all, { rarity: "R" })), ["b"]);
+// Standard was "N" (Normal) before the rename: old documents read as "S", junk reads as unranked.
+assert.equal(normalizeRarity("N"), "S");
+assert.equal(normalizeRarity("S"), "S");
+assert.equal(normalizeRarity("X"), null);
+assert.equal(normalizeRarity(null), null);
 assert.deepEqual(ids(queryMarketplace(all, { minPricePaise: 150_00, maxPricePaise: 250_00 })), ["c"]);
 assert.deepEqual(ids(queryMarketplace(all, { q: "ravi" })), ["c"], "search matches artist name");
 assert.deepEqual(ids(queryMarketplace(all, { q: "BULL" })), ["b"], "search is case-insensitive");

@@ -2,7 +2,7 @@
 // listed here; the rest of that file is still fixture-backed and shrinks
 // as routes land.
 
-import type { Artwork } from "@/types/artwork";
+import type { Artwork, ArtworkRarity } from "@/types/artwork";
 import type { Order } from "@/types/order";
 import type { Address } from "@/types/customer";
 import type { AdminKpis, AdminUser, AuditLogEntry, GstStatus, KycStatus, UserRole, UserStatus, WithdrawalRequest } from "@/types/admin";
@@ -162,8 +162,8 @@ export const adminApi = {
     }
   },
 
-  async approveArtwork(id: string): Promise<{ id: string; status: "marketplace" }> {
-    await http.post(`${ADMIN_ARTWORK(id)}/approve`);
+  async approveArtwork(id: string, rarity: ArtworkRarity): Promise<{ id: string; status: "marketplace" }> {
+    await http.post(`${ADMIN_ARTWORK(id)}/approve`, { rarity });
     return { id, status: "marketplace" };
   },
 
@@ -177,8 +177,8 @@ export const adminApi = {
     return { id, status: "returned" };
   },
 
-  async setArtworkRarity(id: string, rarity: Artwork["rarityType"] | null): Promise<Artwork> {
-    await http.post(`${ADMIN_ARTWORK(id)}/rarity`, { rarity: rarity ?? null });
+  async setArtworkRarity(id: string, rarity: ArtworkRarity): Promise<Artwork> {
+    await http.post(`${ADMIN_ARTWORK(id)}/rarity`, { rarity });
     const artwork = await adminApi.getArtwork(id);
     if (!artwork) throw new Error("Artwork not found");
     return artwork;
