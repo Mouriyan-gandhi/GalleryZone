@@ -107,6 +107,12 @@ export interface PricingRates {
    * withheld from an artist. ₹5,00,000. See policies.ts tdsAppliesOnSale.
    */
   earningsAbove5LThresholdPaise: number;
+  /**
+   * NFC rollout phase 3 (NFC_IMPLEMENTATION.md §12). Off: dispatching a piece
+   * whose tag is not locked is logged and allowed, so ops can see what would be
+   * blocked and lock or override it first. On: it is refused (409 nfc_lock_required).
+   */
+  nfcShipmentGateEnforced: boolean;
 }
 
 // Seed values for the `rate_config` table's first migration only. Not
@@ -153,6 +159,7 @@ export const DEFAULT_RATE_SEED: PricingRates = {
   minCustomerWithdrawalPaise: 50_000, // ₹500, matches customerWalletService
   insuranceThresholdPaise: 2_000_000, // ₹20,000, matches PlatformSettings.insuranceThreshold
   earningsAbove5LThresholdPaise: 50_000_000, // ₹5,00,000
+  nfcShipmentGateEnforced: false,
 };
 
 /**

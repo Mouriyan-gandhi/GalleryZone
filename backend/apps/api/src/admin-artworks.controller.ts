@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Inject, Param, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req } from "@nestjs/common";
 import { z } from "zod";
 import { NotFoundException } from "@nestjs/common";
 import { FirestoreRateConfigStore, getArtworkForAdmin, listArtworksForAdmin, setArtworkRarity, delistArtwork, getAuditLog, artworkRarityValues, reindexAllListings, refreshListing, Collections, type Db } from "@galleryzone/db";
 import { loadActiveRates } from "@galleryzone/config";
 import { activeHoldingForArtwork, adminPullBackHolding, decideHoldingExtension, listAggregatorHoldings, AggregatorReadError, HoldingLifecycleError } from "@galleryzone/db";
-import { decideHoldingExtensionInputSchema, type DecideHoldingExtensionInput } from "@galleryzone/contracts";
+import { adminUnlinkNfcTag, getNfcOverview, nfcStateViewOf, overrideShipmentGate } from "@galleryzone/db";
+import { decideHoldingExtensionInputSchema, nfcReasonInputSchema, type DecideHoldingExtensionInput, type NfcReasonInput, type NfcStateDto } from "@galleryzone/contracts";
 import { BadRequestException } from "@nestjs/common";
 import { Roles } from "./auth/roles.decorator.ts";
 import type { AuthenticatedRequest } from "./auth/roles.guard.ts";
@@ -71,6 +72,35 @@ export class AdminArtworksController {
     const listing = await refreshListing(this.db, id);
     this.cache.clear();
     return { reindexed: listing ? 1 : 0 };
+  }
+
+  // --- NFC (NFC_IMPLEMENTATION.md §4.3, §4.4, §13) ------------------------------
+
+  /** Resets a link made to a defective chip. Only before the lock: afterwards the chip stays locked whatever the server says. */
+  @Roles("admin")
+  @HttpCode(200)
+  @Post("artworks/:id/nfc/unlink")
+  async nfcUnlink(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(nfcReasonInputSchema)) body: NfcReasonInput): Promise<NfcStateDto> {
+    const result = await adminUnlinkNfcTag(this.db, { artworkId: id, reason: body.reason, adminUid: req.authUser.uid });
+    if (result.changed) this.cache.clear();
+    return nfcStateViewOf(result);
+  }
+
+  /** Last resort: lets one piece be dispatched without a locked tag (legacy pieces from before the feature). */
+  @Roles("admin")
+  @HttpCode(200)
+  @Post("artworks/:id/nfc/skip-shipment-gate")
+  async nfcSkipShipmentGate(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(nfcReasonInputSchema)) body: NfcReasonInput) {
+    const { artistId: _artistId, ...result } = await overrideShipmentGate(this.db, { artworkId: id, reason: body.reason, adminUid: req.authUser.uid });
+    this.cache.clear();
+    return result;
+  }
+
+  /** Counts of unlinked / linked-unlocked / locked pieces, who is still to lock, and the events that mean a chip failed or the process is being bypassed. */
+  @Roles("admin")
+  @Get("nfc/overview")
+  nfcOverview() {
+    return getNfcOverview(this.db);
   }
 
   @Roles("admin")

@@ -16,14 +16,26 @@ import {
 } from "./collections.ts";
 import { getArtistArtwork, type OwnerArtworkView } from "./artist-artworks.ts";
 import { getWalletBalance } from "./wallets.ts";
+import { getArtworkNfc } from "./nfc.ts";
 
 export interface AdminArtworkView extends OwnerArtworkView {
   artistEmail: string | null;
+  /** When an admin let this piece ship without a locked NFC tag. The reason and who are read for the single-artwork view only. */
+  nfcShipmentGateOverrideAt: string | null;
+  nfcShipmentGateOverrideReason: string | null;
+  nfcShipmentGateOverrideBy: string | null;
 }
 
-async function withArtist(db: Firestore, view: OwnerArtworkView): Promise<AdminArtworkView> {
-  const artist = (await db.collection(Collections.users).doc(view.artistId).get()).data() as UserDoc | undefined;
-  return { ...view, artistEmail: artist?.email ?? null };
+async function withArtist(db: Firestore, view: OwnerArtworkView, artwork: ArtworkDoc, withOverrideNote = false): Promise<AdminArtworkView> {
+  const [artistSnap, nfc] = await Promise.all([db.collection(Collections.users).doc(view.artistId).get(), withOverrideNote ? getArtworkNfc(db, view.id) : null]);
+  const artist = artistSnap.data() as UserDoc | undefined;
+  return {
+    ...view,
+    artistEmail: artist?.email ?? null,
+    nfcShipmentGateOverrideAt: artwork.nfcShipmentGateOverrideAt?.toDate().toISOString() ?? null,
+    nfcShipmentGateOverrideReason: nfc?.shipmentGateOverrideReason ?? null,
+    nfcShipmentGateOverrideBy: nfc?.shipmentGateOverrideBy ?? null,
+  };
 }
 
 /** Every artwork, newest first, with the owner view's detail. Filter by status client-side (statuses are few, rows are hundreds). */
@@ -33,7 +45,7 @@ export async function listArtworksForAdmin(db: Firestore, rates: PricingRates): 
     snap.docs.map(async (d) => {
       const artwork = d.data() as ArtworkDoc;
       const view = await getArtistArtwork(db, artwork.artistId, d.id, rates);
-      return view ? withArtist(db, view) : null;
+      return view ? withArtist(db, view, artwork) : null;
     }),
   );
   return views.filter((v): v is AdminArtworkView => v !== null);
@@ -44,7 +56,7 @@ export async function getArtworkForAdmin(db: Firestore, artworkId: string, rates
   if (!snap.exists) return null;
   const artwork = snap.data() as ArtworkDoc;
   const view = await getArtistArtwork(db, artwork.artistId, artworkId, rates);
-  return view ? withArtist(db, view) : null;
+  return view ? withArtist(db, view, artwork, true) : null;
 }
 
 export interface AdminUserView {

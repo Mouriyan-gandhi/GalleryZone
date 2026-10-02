@@ -16,7 +16,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import type { Response } from "express";
-import { DbError } from "@galleryzone/db";
+import { DbError, NfcError } from "@galleryzone/db";
 import { IllegalTransitionError } from "@galleryzone/domain";
 
 interface ProblemDetails {
@@ -64,6 +64,12 @@ function codeFor(status: number): string {
 function domainProblem(exception: unknown): ProblemDetails | null {
   if (exception instanceof IllegalTransitionError) {
     return { type: "about:blank", title: exception.message, status: HttpStatus.CONFLICT, code: "illegal_transition" };
+  }
+  // NFC refusals carry their own status and the `code` the apps switch on
+  // (nfc_already_locked, tag_already_bound, nfc_lock_required, ...).
+  if (exception instanceof NfcError) {
+    if (exception.status === HttpStatus.NOT_FOUND) return { type: "about:blank", title: "Not found", status: HttpStatus.NOT_FOUND, code: "not_found" };
+    return { type: "about:blank", title: exception.message, status: exception.status, code: exception.code };
   }
   if (!(exception instanceof DbError)) return null;
   if (exception.message.startsWith("No ")) {

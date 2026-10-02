@@ -84,8 +84,12 @@ export class RateConfigController {
   @Post("propose")
   @UsePipes(new ZodValidationPipe(proposeRateChangeSchema))
   async propose(@Req() req: AuthenticatedRequest, @Body() body: ProposeRateChangeInput) {
-    const versionId = await new FirestoreRateConfigStore(this.db).propose({
-      rates: body.rates,
+    const store = new FirestoreRateConfigStore(this.db);
+    // A console that predates the NFC flag sends none: keep it as it is in force
+    // rather than let an unrelated rate change quietly switch the gate off.
+    const nfcShipmentGateEnforced = body.rates.nfcShipmentGateEnforced ?? (await loadActiveRates(store)).nfcShipmentGateEnforced;
+    const versionId = await store.propose({
+      rates: { ...body.rates, nfcShipmentGateEnforced },
       effectiveFrom: new Date(body.effectiveFrom),
       proposedBy: req.authUser.uid,
       reason: body.reason,

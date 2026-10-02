@@ -14,6 +14,7 @@ import { listArtworkImages, type ArtworkImage } from "./artwork-images.ts";
 import { getPublicArtwork, type PublicArtworkView } from "./public-artworks.ts";
 import { issueCertificate } from "./coa.ts";
 import { appendArtworkStatus, latestStatusOf, refreshListing } from "./listing-projection.ts";
+import { getArtworkNfc, nfcOwnerFields, type NfcOwnerFields } from "./nfc.ts";
 import { DbError } from "./errors.ts";
 
 export class ArtistArtworkError extends DbError {}
@@ -35,7 +36,6 @@ export interface SubmitArtworkInput {
   paintingStyle?: string | null | undefined;
   insuranceOpted?: boolean | undefined;
   insuranceNumber?: string | null | undefined;
-  nfcTagId?: string | null | undefined;
   physical?: ArtworkPhysical | null | undefined;
   rates: PricingRates;
 }
@@ -83,7 +83,9 @@ export async function submitArtwork(input: SubmitArtworkInput): Promise<{ artwor
     rarityType: null,
     coaCertificateNumber: null,
     coaIssuedAt: null,
-    nfcTagId: input.nfcTagId ?? null,
+    // A chip is only ever linked through nfc.ts, from the app, after it has been written.
+    nfcLinkedAt: null,
+    nfcLockedAt: null,
     insuranceNumber: input.insuranceNumber ?? null,
     insuranceStatus: input.insuranceNumber ? "submitted" : null,
     editableUntil: FieldValue.serverTimestamp() as unknown as FirebaseFirestore.Timestamp, // placeholder, overwritten below with a real computed value
@@ -124,7 +126,6 @@ export type UpdateArtworkPatch = {
     | "paintingStyle"
     | "insuranceOpted"
     | "insuranceNumber"
-    | "nfcTagId"
     | "physical"
   >]?: SubmitArtworkInput[K] | undefined;
 } & { mode?: "draft" | "review" | undefined };
@@ -158,7 +159,6 @@ export async function updateArtwork(
   if (patch.artworkType !== undefined) fields.artworkType = patch.artworkType ?? null;
   if (patch.paintingStyle !== undefined) fields.paintingStyle = patch.paintingStyle ?? null;
   if (patch.insuranceOpted !== undefined) fields.insuranceOpted = patch.insuranceOpted;
-  if (patch.nfcTagId !== undefined) fields.nfcTagId = patch.nfcTagId ?? null;
   if (patch.physical !== undefined) fields.physical = patch.physical ?? null;
   if (patch.insuranceNumber !== undefined && patch.insuranceNumber !== artwork.insuranceNumber) {
     fields.insuranceNumber = patch.insuranceNumber ?? null;
@@ -179,8 +179,8 @@ export async function updateArtwork(
   await refreshListing(db, artworkId, rates);
 }
 
-/** Everything the public sees plus what only the owner may: the artist's price, net, full images, status history, insurance. */
-export interface OwnerArtworkView extends PublicArtworkView {
+/** Everything the public sees plus what only the owner may: the artist's price, net, full images, status history, insurance, the NFC chip. */
+export interface OwnerArtworkView extends PublicArtworkView, NfcOwnerFields {
   artistPricePaise: number;
   /**
    * What the artist would be paid if this sold now, line by line, on each
@@ -201,7 +201,6 @@ export interface OwnerArtworkView extends PublicArtworkView {
   insuranceOpted: boolean;
   insuranceNumber: string | null;
   insuranceStatus: string | null;
-  nfcTagId: string | null;
   artworkType: string | null;
   paintingStyle: string | null;
   physical: ArtworkPhysical | null;
@@ -222,10 +221,11 @@ async function artistContext(db: Firestore, artistId: string): Promise<ArtistCon
 async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc, rates: PricingRates, context: ArtistContext): Promise<OwnerArtworkView | null> {
   const pub = await getPublicArtwork(db, artworkId);
   if (!pub) return null;
-  const [pricingSnap, images, eventsSnap] = await Promise.all([
+  const [pricingSnap, images, eventsSnap, nfc] = await Promise.all([
     db.collection(artworkPricingCol(artworkId)).doc("data").get(),
     listArtworkImages(db, artworkId),
     db.collection(artworkStatusEventsCol(artworkId)).orderBy("changedAt", "asc").get(),
+    getArtworkNfc(db, artworkId),
   ]);
   const artistPricePaise = (pricingSnap.data() as ArtworkPricingDoc | undefined)?.artistPricePaise ?? 0;
   const { isGstRegistered } = context;
@@ -250,7 +250,7 @@ async function toOwnerView(db: Firestore, artworkId: string, artwork: ArtworkDoc
     insuranceOpted: artwork.insuranceOpted ?? false,
     insuranceNumber: artwork.insuranceNumber,
     insuranceStatus: artwork.insuranceStatus,
-    nfcTagId: artwork.nfcTagId,
+    ...nfcOwnerFields(artwork, nfc),
     artworkType: artwork.artworkType,
     paintingStyle: artwork.paintingStyle ?? null,
     physical: artwork.physical ?? null,

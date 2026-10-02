@@ -2,24 +2,31 @@
 // closes the gap the mock frontend had (auto-approve on submit). Real work
 // lives in @galleryzone/db/artist-artworks.ts.
 
-import { BadRequestException, Body, Controller, Get, Inject, NotFoundException, Param, Patch, Post, Req } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, HttpCode, Inject, NotFoundException, Param, Patch, Post, Req } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
+import * as Sentry from "@sentry/node";
 import { z } from "zod";
 import {
   ArtistArtworkError,
   FirestoreRateConfigStore,
+  NfcError,
   approveArtwork,
   artworkRarityValues,
   getArtistArtwork,
+  linkNfcTag,
   listArtistOrders,
   listArtistPenalties,
+  lockNfcTag,
   markSoldElsewhere,
   listArtistArtworksOwned,
+  nfcStateViewOf,
   rejectArtwork,
   setArtworkRarity,
   submitArtwork,
   updateArtwork,
   type Db,
 } from "@galleryzone/db";
+import { reportNfcFailureInputSchema, tagUidInputSchema, type NfcStateDto, type ReportNfcFailureInput, type TagUidInput } from "@galleryzone/contracts";
 import { IllegalTransitionError } from "@galleryzone/domain";
 import { loadActiveRates } from "@galleryzone/config";
 import { Roles } from "./auth/roles.decorator.ts";
@@ -54,14 +61,26 @@ const artworkFields = {
   paintingStyle: z.string().trim().max(80).nullable().optional(),
   insuranceOpted: z.boolean().optional(),
   insuranceNumber: z.string().trim().max(80).nullable().optional(),
-  nfcTagId: z.string().trim().max(80).nullable().optional(),
   physical: physicalSchema.nullable().optional(),
 };
 
-const submitArtworkSchema = z.object(artworkFields).strict();
+// Retired: a chip is linked from the app through /nfc/link, after it has been
+// written (NFC_IMPLEMENTATION.md §3). Web builds from before that still send the
+// field, empty, with every submit — so empty is accepted and dropped, while a
+// value (the old "simulate a tag" button) is refused out loud instead of being
+// silently swallowed.
+const retiredNfcTagId = z
+  .string()
+  .max(80)
+  .nullable()
+  .optional()
+  .refine((value) => !value?.trim(), { message: "NFC tags are linked from the GalleryZone app now: write the chip there, and it is recorded on this artwork" });
+const dropRetired = <T extends { nfcTagId?: unknown }>({ nfcTagId: _retired, ...rest }: T): Omit<T, "nfcTagId"> => rest;
+
+const submitArtworkSchema = z.object({ ...artworkFields, nfcTagId: retiredNfcTagId }).strict().transform(dropRetired);
 type SubmitArtworkBody = z.infer<typeof submitArtworkSchema>;
 
-const updateArtworkSchema = z.object(artworkFields).partial().strict();
+const updateArtworkSchema = z.object({ ...artworkFields, nfcTagId: retiredNfcTagId }).partial().strict().transform(dropRetired);
 type UpdateArtworkBody = z.infer<typeof updateArtworkSchema>;
 
 const rejectSchema = z.object({ reason: z.string().min(1) }).strict();
@@ -175,6 +194,50 @@ export class ArtistArtworksController {
       void this.emails.artworkSubmitted(id, req.authUser.uid, artwork.title).catch(this.emails.swallow("submitted mail"));
     }
     return artwork;
+  }
+
+  // --- NFC tag (NFC_IMPLEMENTATION.md §4.1, §4.2) ---------------------------------
+  // The artist who made the piece, or the aggregator currently holding it, may
+  // call these; nfc.ts checks which (a bare @Roles can't say "this artwork").
+
+  /** The app wrote the URL to a chip and read this UID off it. Same chip again is a no-op; a different one replaces it until the lock. */
+  @Roles("artist", "aggregator")
+  @Throttle({ sustained: { limit: 10, ttl: 60_000 } }) // §9.2: the one-chip-one-artwork check is a query
+  @HttpCode(200)
+  @Post("artist/artworks/:id/nfc/link")
+  async nfcLink(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(tagUidInputSchema)) body: TagUidInput): Promise<NfcStateDto> {
+    const result = await linkNfcTag(this.db, { artworkId: id, tagUid: body.tagUid, actor: { uid: req.authUser.uid, role: req.authUser.role } });
+    if (result.changed) this.bust(id, result.artistId);
+    return nfcStateViewOf(result);
+  }
+
+  /** The app flipped the chip's lock bytes, having re-read the UID. Irreversible. */
+  @Roles("artist", "aggregator")
+  @HttpCode(200)
+  @Post("artist/artworks/:id/nfc/lock")
+  async nfcLock(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(tagUidInputSchema)) body: TagUidInput): Promise<NfcStateDto> {
+    try {
+      const result = await lockNfcTag(this.db, { artworkId: id, tagUid: body.tagUid, actor: { uid: req.authUser.uid, role: req.authUser.role } });
+      if (result.changed) this.bust(id, result.artistId);
+      return nfcStateViewOf(result);
+    } catch (error) {
+      // §13: a lock that fails is worth a look, whichever side it fails on.
+      if (error instanceof NfcError) Sentry.captureException(error, { level: "warning", tags: { artworkId: id, tagUid: body.tagUid, step: error.code } });
+      throw error;
+    }
+  }
+
+  /** The app reporting a link or lock that failed on the phone, so it reaches Sentry with the same tags as a server-side failure (§13). */
+  @Roles("artist", "aggregator")
+  @Throttle({ sustained: { limit: 10, ttl: 60_000 } })
+  @HttpCode(204)
+  @Post("artist/artworks/:id/nfc/failure")
+  nfcFailure(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(reportNfcFailureInputSchema)) body: ReportNfcFailureInput): void {
+    Sentry.captureMessage(`NFC ${body.step} failed: ${body.message || "no detail"}`, {
+      level: "error",
+      tags: { artworkId: id, step: body.step, source: "app", ...(body.tagUid ? { tagUid: body.tagUid } : {}) },
+      user: { id: req.authUser.uid },
+    });
   }
 
   @Roles("admin")
