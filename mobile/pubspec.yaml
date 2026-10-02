@@ -55,6 +55,7 @@ dependencies:
   qr_flutter: ^4.1.0
   pdf: ^3.13.1
   printing: ^5.15.1
+  razorpay_flutter: ^1.4.7
 
 dev_dependencies:
   flutter_test:

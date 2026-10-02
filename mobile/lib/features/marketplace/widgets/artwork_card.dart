@@ -64,40 +64,52 @@ class ImageComingSoon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    Widget logo(double size) => Opacity(
+      opacity: 0.25,
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.2126, 0.7152, 0.0722, 0, 0, //
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0, 0, 0, 1, 0,
+        ]),
+        child: Image.asset(
+          'assets/brand/gz-logo.png',
+          width: size,
+          height: size,
+          errorBuilder: (context, error, stack) => SizedBox(width: size, height: size),
+        ),
+      ),
+    );
+
     return ColoredBox(
       color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Opacity(
-              opacity: 0.25,
-              child: ColorFiltered(
-                colorFilter: const ColorFilter.matrix(<double>[
-                  0.2126, 0.7152, 0.0722, 0, 0, //
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0, 0, 0, 1, 0,
-                ]),
-                child: Image.asset(
-                  'assets/brand/gz-logo.png',
-                  width: 40,
-                  height: 40,
-                  errorBuilder: (context, error, stack) =>
-                      const SizedBox(width: 40, height: 40),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // A thumbnail in a list row is too small to carry the words; it keeps
+          // just the faded mark, scaled to the box.
+          final compact = constraints.maxHeight < 120 || constraints.maxWidth < 110;
+          if (compact) {
+            final size = (constraints.biggest.shortestSide.isFinite ? constraints.biggest.shortestSide : 40) * 0.5;
+            return Center(child: logo(size));
+          }
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                logo(40),
+                const SizedBox(height: 8),
+                Text(
+                  'Image coming soon',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    letterSpacing: 0.3,
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Image coming soon',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

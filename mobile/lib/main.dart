@@ -6,6 +6,7 @@ import 'core/auth/firebase_rest_auth.dart';
 import 'core/auth/token_manager.dart';
 import 'core/backend.dart';
 import 'core/config.dart';
+import 'core/payments/razorpay_gateway.dart';
 import 'core/router/app_router.dart';
 import 'core/storage/secure_session.dart';
 import 'core/theme/app_theme.dart';
@@ -31,7 +32,7 @@ Future<void> main() async {
     final tokens = TokenManager(auth: FirebaseRestAuth(apiKey: AppConfig.firebaseApiKey));
     await tokens.load();
     if (!tokens.hasSession) role = null;
-    overrides.addAll(remoteBackendOverrides(tokens));
+    overrides.addAll(remoteBackendOverrides(tokens, gateway: const RazorpayGateway()));
   }
   runApp(
     ProviderScope(
