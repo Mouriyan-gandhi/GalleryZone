@@ -21,7 +21,6 @@ class SubmitArtworkInput {
     required this.asDraft,
     this.dimensions,
     this.yearCreated,
-    this.nfcTagId,
     this.physical,
     this.artworkType,
     this.paintingStyle,
@@ -44,7 +43,6 @@ class SubmitArtworkInput {
   /// the API derives the size band from this exact shape.
   final String? dimensions;
   final int? yearCreated;
-  final String? nfcTagId;
 
   /// Original / limited edition / open edition / study / commission / other.
   final String? artworkType;
@@ -148,9 +146,6 @@ abstract class ArtistRepository {
   /// artist marking one dispatched.
   Future<List<PhysicalCoaRequest>> listPhysicalCoaRequests();
   Future<PhysicalCoaRequest> dispatchPhysicalCoa(String requestId, String courierRef);
-
-  /// Links a physical NFC tag to a piece. Replaces any tag already linked.
-  Future<Artwork> linkNfcTag(String artworkId, String nfcTagId);
 
   /// The artist's acceptance of the MOU version in force, or null if they have
   /// not signed it (an older version counts as unsigned).

@@ -37,6 +37,7 @@ AggregatorSale _sale({
   String? remittedAt,
   String? dueAt,
   String? courierRef,
+  bool nfcReady = true,
 }) =>
     AggregatorSale(
       id: id,
@@ -59,6 +60,7 @@ AggregatorSale _sale({
       remittedAt: remittedAt,
       remitDueAt: dueAt,
       courierRef: courierRef,
+      nfcReady: nfcReady,
     );
 
 AggregatorHoldingView _view(
@@ -489,6 +491,23 @@ void main() {
       expect(find.text('Monsoon, Madurai'), findsOneWidget, reason: 'the outbound card is named for the piece');
       expect(find.text('Anita Sen · Courier'), findsOneWidget);
       expect(find.text('14 Church Street, Bengaluru, Karnataka 560001'), findsOneWidget);
+    });
+
+    testWidgets('a sale whose piece is unlocked says so before dispatch, and only that one', (tester) async {
+      final ops = _Ops(
+        holdings: [_view('h1', 'aw-1', 'Monsoon, Madurai'), _view('h2', 'aw-2', 'Second One')],
+        sales: [
+          _sale(id: 's1', holdingId: 'h1', artworkId: 'aw-1', nfcReady: false),
+          _sale(id: 's2', holdingId: 'h2', artworkId: 'aw-2'),
+          _sale(id: 's3', holdingId: 'h2', artworkId: 'aw-2', nfcReady: false, ship: ShipmentStatus.dispatched),
+        ],
+      );
+      await _show(tester, ops, AggregatorShippingScreen.path);
+
+      expect(find.byKey(const Key('nfc-unlocked-s1')), findsOneWidget);
+      expect(find.textContaining('Unlocked — lock the tag first'), findsOneWidget);
+      expect(find.byKey(const Key('nfc-unlocked-s2')), findsNothing, reason: 'locked, or the API said nothing');
+      expect(find.byKey(const Key('nfc-unlocked-s3')), findsNothing, reason: 'already on its way');
     });
 
     testWidgets('nothing in either list says so', (tester) async {

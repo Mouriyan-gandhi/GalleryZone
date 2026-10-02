@@ -221,7 +221,14 @@ abstract class Artwork with _$Artwork {
     @Default('') String coaIssueDate,
     required List<SocialProofLink> socialProofLinks,
     required List<ArtworkStatusEvent> statusHistory,
-    String? nfcTagId,
+
+    /// The NFC chip on this piece (NFC_IMPLEMENTATION.md §3). Only the
+    /// artist's own and admin views carry the chip's id ([nfcTagUid]); the two
+    /// timestamps say how far it got: linked, then locked for good. All null
+    /// until the app writes a chip. See [ArtworkNfc.nfcStage].
+    String? nfcTagUid,
+    String? nfcLinkedAt,
+    String? nfcLockedAt,
 
     /// GalleryZone's rank (R / U / O / S). Null until an admin has ranked the
     /// piece, and on fixtures that predate the field.

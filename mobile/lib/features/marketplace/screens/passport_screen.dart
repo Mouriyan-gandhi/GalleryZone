@@ -105,16 +105,18 @@ class PassportBody extends ConsumerWidget {
     final coaIssued = passport?.coaIssuedAt ?? '';
     final artist = ref.watch(artistProfileProvider(artwork.artistId)).value;
 
-    final entries = [
-      ...?passport?.events.where((e) => e.status != TransferStatus.cancelled),
-    ]..sort((a, b) => DateTime.parse(a.initiatedAt).compareTo(DateTime.parse(b.initiatedAt)));
+    // Whether a tag is linked and locked comes from the public record, never
+    // from the artwork's own fields: the chip's id is not public.
+    final nfcLinked = passport?.nfcLinked ?? false;
+    final nfcLocked = passport?.nfcLocked ?? false;
+    final lifecycle = passport?.lifecycle ?? const <LifecycleEntry>[];
 
     return ContentWidth(
       maxWidth: 620,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
         children: [
-          if (artwork.nfcTagId != null) const _NfcVerifiedBanner(),
+          if (nfcLinked) _NfcVerifiedBanner(locked: nfcLocked),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -129,7 +131,8 @@ class PassportBody extends ConsumerWidget {
             artwork: artwork,
             coverUrl: coverUrl,
             coaNumber: coaNumber,
-            nfcLinked: artwork.nfcTagId != null,
+            nfcLinked: nfcLinked,
+            nfcLocked: nfcLocked,
           ),
           const SizedBox(height: 20),
           // IntrinsicHeight: a list gives its children unbounded height, and a
@@ -169,9 +172,9 @@ class PassportBody extends ConsumerWidget {
               ),
             ),
           ],
-          if (entries.isNotEmpty) ...[
+          if (lifecycle.isNotEmpty) ...[
             const SizedBox(height: 36),
-            _ProvenanceTimeline(entries: entries),
+            _LifecycleTimeline(entries: lifecycle),
           ],
           const SizedBox(height: 36),
           Center(child: ArtworkQr(artworkId: artwork.id, size: 128, showUrl: true)),
@@ -244,9 +247,12 @@ class PassportBody extends ConsumerWidget {
 }
 
 /// Shown only when the piece has a linked tag: immediate confirmation that the
-/// tap resolved to a live passport.
+/// tap resolved to a live passport. A tag that is linked but not locked could
+/// still be rewritten, so it is not presented as sealed.
 class _NfcVerifiedBanner extends StatelessWidget {
-  const _NfcVerifiedBanner();
+  const _NfcVerifiedBanner({required this.locked});
+
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +274,7 @@ class _NfcVerifiedBanner extends StatelessWidget {
             const SizedBox(width: 10),
             Flexible(
               child: Text(
-                'Verified via NFC scan',
+                locked ? 'Verified via NFC + locked' : 'NFC tag linked — not yet locked',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.tertiary,
                   fontWeight: FontWeight.w500,
@@ -290,12 +296,14 @@ class _PassportCard extends StatelessWidget {
     required this.coverUrl,
     required this.coaNumber,
     required this.nfcLinked,
+    required this.nfcLocked,
   });
 
   final Artwork artwork;
   final String coverUrl;
   final String coaNumber;
   final bool nfcLinked;
+  final bool nfcLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -402,9 +410,16 @@ class _PassportCard extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LucideIcons.nfc, size: 14, color: theme.colorScheme.tertiary),
+                Icon(nfcLocked ? LucideIcons.lock : LucideIcons.nfc, size: 14, color: theme.colorScheme.tertiary),
                 const SizedBox(width: 6),
-                Text('NFC tag linked', style: theme.textTheme.labelSmall),
+                Flexible(
+                  child: Text(
+                    nfcLocked ? 'Verified via NFC + locked' : 'NFC tag linked · not yet locked',
+                    key: const Key('passport-nfc-chip'),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
               ],
             ),
           ],
@@ -461,22 +476,49 @@ class _FactCard extends StatelessWidget {
   }
 }
 
-/// Every hand-over of ownership and every loan of display rights, oldest
-/// first, from the public record - never from the artwork's own status log.
-/// A hand-over that was cancelled never happened, so it is not shown.
-class _ProvenanceTimeline extends StatelessWidget {
-  const _ProvenanceTimeline({required this.entries});
+/// Everything that happened to the piece, oldest first, from the public record
+/// (NFC_IMPLEMENTATION.md §6): made, approved, listed, shown at a gallery, sold,
+/// handed over, delivered. A place appears only under the artist and a gallery;
+/// for a collector the server sends none, and none is invented here.
+class _LifecycleTimeline extends StatelessWidget {
+  const _LifecycleTimeline({required this.entries});
 
-  final List<PassportEvent> entries;
+  final List<LifecycleEntry> entries;
+
+  static IconData _iconOf(LifecycleKind kind) => switch (kind) {
+    LifecycleKind.created => LucideIcons.palette,
+    LifecycleKind.approved => LucideIcons.badgeCheck,
+    LifecycleKind.listed => LucideIcons.store,
+    LifecycleKind.placedWithGallery => LucideIcons.building2,
+    LifecycleKind.returnedFromGallery => LucideIcons.undo2,
+    LifecycleKind.soldMarketplace || LifecycleKind.soldAtGallery => LucideIcons.shoppingBag,
+    LifecycleKind.transferred => LucideIcons.arrowLeftRight,
+    LifecycleKind.displayed => LucideIcons.frame,
+    LifecycleKind.delivered => LucideIcons.packageCheck,
+  };
+
+  static String labelOf(LifecycleEntry e) => switch (e.kind) {
+    LifecycleKind.created => 'Made by ${e.actorName}',
+    LifecycleKind.approved => 'Approved by GalleryZone',
+    LifecycleKind.listed => 'Listed on the marketplace',
+    LifecycleKind.placedWithGallery => 'On display at ${e.actorName}',
+    LifecycleKind.returnedFromGallery => 'Came back from ${e.actorName}',
+    LifecycleKind.soldMarketplace => 'Sold to ${e.actorName}',
+    LifecycleKind.soldAtGallery => 'Sold at ${e.actorName}',
+    LifecycleKind.transferred => 'Handed over to ${e.actorName}',
+    LifecycleKind.displayed => 'Lent to ${e.actorName} for display',
+    LifecycleKind.delivered => 'Delivered to the new owner',
+  };
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final last = entries.length - 1;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'PROVENANCE',
+          'LIFECYCLE',
           style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1.5),
         ),
         const SizedBox(height: 16),
@@ -492,59 +534,46 @@ class _ProvenanceTimeline extends StatelessWidget {
                       height: 28,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: i == entries.length - 1 ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.cardTheme.color,
+                        color: i == last ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.cardTheme.color,
                         border: Border.all(
-                          color: i == entries.length - 1
-                              ? theme.colorScheme.primary.withValues(alpha: 0.6)
-                              : theme.colorScheme.outline,
+                          color: i == last ? theme.colorScheme.primary.withValues(alpha: 0.6) : theme.colorScheme.outline,
                         ),
                       ),
                       child: Icon(
-                        i == entries.length - 1 ? LucideIcons.sparkles : LucideIcons.circleCheck,
+                        i == last ? LucideIcons.sparkles : _iconOf(entries[i].kind),
                         size: 14,
-                        color: i == entries.length - 1 ? theme.colorScheme.tertiary : theme.textTheme.bodySmall?.color,
+                        color: i == last ? theme.colorScheme.tertiary : theme.textTheme.bodySmall?.color,
                       ),
                     ),
-                    if (i != entries.length - 1) Expanded(child: Container(width: 1, color: theme.colorScheme.outline)),
+                    if (i != last) Expanded(child: Container(width: 1, color: theme.colorScheme.outline)),
                   ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: i == entries.length - 1 ? 0 : 24),
+                    padding: EdgeInsets.only(bottom: i == last ? 0 : 24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 6,
-                          runSpacing: 2,
-                          children: [
-                            Text(entries[i].fromName, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color)),
-                            Icon(LucideIcons.arrowRight, size: 12, color: theme.colorScheme.tertiary),
-                            Text(entries[i].toName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
-                            if (entries[i].kind == TransferKind.display)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
-                                ),
-                                child: Text(
-                                  'Display',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.tertiary,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
                         Text(
-                          formatShortDate(entries[i].acceptedAt ?? entries[i].initiatedAt),
-                          style: theme.textTheme.labelSmall,
+                          labelOf(entries[i]),
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                         ),
+                        if (entries[i].place != null && entries[i].place!.label.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.mapPin, size: 12, color: theme.textTheme.bodySmall?.color),
+                                const SizedBox(width: 4),
+                                Flexible(child: Text(entries[i].place!.label, style: theme.textTheme.labelSmall)),
+                              ],
+                            ),
+                          ),
+                        if (entries[i].note != null && entries[i].note!.isNotEmpty)
+                          Text(entries[i].note!, style: theme.textTheme.labelSmall),
+                        const SizedBox(height: 2),
+                        Text(formatShortDate(entries[i].at), style: theme.textTheme.labelSmall),
                       ],
                     ),
                   ),

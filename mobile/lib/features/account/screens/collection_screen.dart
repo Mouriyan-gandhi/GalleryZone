@@ -174,7 +174,10 @@ class _CollectionDetailSheet extends ConsumerWidget {
             .lastOrNull;
     final transfers = ref.watch(artworkTransfersProvider(artwork.id)).value ?? const <OwnershipTransfer>[];
     final onDisplay = activeDisplayTransfer(transfers);
-    final tagged = artwork.nfcTagId != null;
+    // Whether the tag is linked and locked is on the public passport; the listing doesn't carry it.
+    final passport = ref.watch(passportProvider(artwork.id)).value;
+    final linked = passport?.nfcLinked ?? false;
+    final locked = passport?.nfcLocked ?? false;
 
     return ListView(
       controller: scrollController,
@@ -200,7 +203,7 @@ class _CollectionDetailSheet extends ConsumerWidget {
                 style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
               ),
               const SizedBox(height: 10),
-              _NfcPill(tagged: tagged),
+              _NfcPill(linked: linked, locked: locked),
             ],
           ),
         ),
@@ -325,14 +328,16 @@ class _CollectionDetailSheet extends ConsumerWidget {
 /// Whether a physical tag is on the piece. The chip's own identifier is not
 /// shown: that stays between the artist and GalleryZone.
 class _NfcPill extends StatelessWidget {
-  const _NfcPill({required this.tagged});
+  const _NfcPill({required this.linked, required this.locked});
 
-  final bool tagged;
+  final bool linked;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     const green = Color(0xFF34D399);
+    final tagged = linked;
     final color = tagged ? green : theme.textTheme.bodySmall?.color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -347,7 +352,7 @@ class _NfcPill extends StatelessWidget {
           Icon(tagged ? LucideIcons.scanLine : LucideIcons.badgeCheck, size: 12, color: color),
           const SizedBox(width: 6),
           Text(
-            tagged ? 'NFC tagged' : 'Digital certificate only',
+            locked ? 'NFC tagged · locked' : (tagged ? 'NFC tagged' : 'Digital certificate only'),
             style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
           ),
         ],

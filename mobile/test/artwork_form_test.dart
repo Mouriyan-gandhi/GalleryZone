@@ -428,7 +428,6 @@ void main() {
       expect(sent.artworkType, isNull);
       expect(sent.paintingStyle, isNull);
       expect(sent.insuranceNumber, isNull);
-      expect(sent.nfcTagId, isNull);
       expect(find.text('Saved as draft.'), findsOneWidget);
       expect(find.textContaining('continue editing it any time from My Artworks'), findsOneWidget);
     });
@@ -615,7 +614,8 @@ void main() {
             category: 'painting',
             medium: 'Oil on Canvas',
             status: status,
-            nfcTagId: 'NFC-ABC123',
+            nfcTagUid: '04a1b2c3d4e580',
+            nfcLinkedAt: '2026-09-28T10:00:00.000Z',
           ).copyWith(
             listingType: ListingType.marketplaceOnly,
             artworkType: 'Original',
@@ -648,7 +648,7 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
     });
 
-    testWidgets('saves with the photos it has, the tag untouched, and the size it was given', (tester) async {
+    testWidgets('saves with the photos it has and the size it was given', (tester) async {
       final repository = _Artist(existing: stored());
       await _open(tester, repository, artworkId: 'aw-9', picker: _Picker(camera: _photo('new.jpg')));
 
@@ -661,7 +661,6 @@ void main() {
       expect(patch.title, 'Monsoon, Madurai II');
       expect(patch.images.map((i) => i.id), ['i2', null], reason: 'one kept by id, one new');
       expect(patch.images.last.url, '/device/new.jpg');
-      expect(patch.nfcTagId, 'NFC-ABC123', reason: 'omitting it would unlink the tag');
       expect(patch.dimensions, '24 x 36 in');
       expect(patch.medium, 'oil-on-canvas');
       expect(patch.artworkType, 'Original');

@@ -352,6 +352,7 @@ AggregatorSale saleFromApi(Map<String, dynamic> json) => AggregatorSale(
     _ => null,
   },
   courierRef: _sn(json['courierRef']),
+  nfcReady: json['nfcLocked'] is bool ? (json['nfcLocked'] as bool) || json['nfcGateOverridden'] == true : true,
 );
 
 GallerySpace gallerySpaceFromApi(Map<String, dynamic> json) => GallerySpace(

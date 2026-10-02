@@ -83,7 +83,9 @@ Map<String, dynamic> _ownerArtwork(String id, {String status = 'marketplace', Li
       'insuranceOpted': true,
       'insuranceNumber': 'POL-1',
       'insuranceStatus': 'submitted',
-      'nfcTagId': null,
+      'nfcTagUid': null,
+      'nfcLinkedAt': null,
+      'nfcLockedAt': null,
       'artworkType': 'original',
       'paintingStyle': 'tanjore',
       'physical': {

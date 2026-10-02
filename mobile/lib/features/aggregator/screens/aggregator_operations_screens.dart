@@ -765,6 +765,24 @@ class _ShipmentCardState extends ConsumerState<_ShipmentCard> {
           PortalDetailRow(label: 'Deliver to', value: _address(sale.deliveryAddress)),
           if (sale.dispatchedAt != null) PortalDetailRow(label: 'Dispatched', value: formatShortDate(sale.dispatchedAt!)),
           if (sale.deliveredAt != null) PortalDetailRow(label: 'Delivered', value: formatShortDate(sale.deliveredAt!)),
+          // The piece's NFC tag must be locked before it is dispatched (once the gate
+          // is enforced); say so before the button is pressed, not after it fails.
+          if (sale.shipmentStatus == ShipmentStatus.preparing && !sale.nfcReady) ...[
+            const SizedBox(height: 8),
+            Row(
+              key: Key('nfc-unlocked-${sale.id}'),
+              children: [
+                const Icon(LucideIcons.lock, size: 13, color: AppColors.destructive),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Unlocked — lock the tag first (open the piece from My Inventory)',
+                    style: theme.textTheme.labelSmall?.copyWith(color: AppColors.destructive, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
           if (action != null)
             SizedBox(

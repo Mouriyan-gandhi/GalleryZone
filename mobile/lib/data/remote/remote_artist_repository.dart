@@ -76,7 +76,6 @@ class RemoteArtistRepository implements ArtistRepository {
         'paintingStyle': input.paintingStyle,
         'insuranceOpted': input.insuranceOpted,
         'insuranceNumber': input.insuranceNumber,
-        'nfcTagId': input.nfcTagId,
         if (input.physical != null) 'physical': physicalToApi(input.physical!),
       };
 
@@ -228,12 +227,6 @@ class RemoteArtistRepository implements ArtistRepository {
   Future<List<ExternalSalePenalty>> listPenalties() async {
     final json = await api.getMap('/v1/artist/penalties');
     return asMapList(json['penalties']).map(penaltyFromApi).toList();
-  }
-
-  @override
-  Future<Artwork> linkNfcTag(String artworkId, String nfcTagId) async {
-    await api.patch('/v1/artist/artworks/${Uri.encodeComponent(artworkId)}', body: {'nfcTagId': nfcTagId});
-    return (await _owned(artworkId)).artwork;
   }
 
   // --- Wallet ---------------------------------------------------------------------------

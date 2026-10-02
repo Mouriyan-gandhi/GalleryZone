@@ -98,7 +98,9 @@ _Artwork _$ArtworkFromJson(Map<String, dynamic> json) => _Artwork(
   statusHistory: (json['statusHistory'] as List<dynamic>)
       .map((e) => ArtworkStatusEvent.fromJson(e as Map<String, dynamic>))
       .toList(),
-  nfcTagId: json['nfcTagId'] as String?,
+  nfcTagUid: json['nfcTagUid'] as String?,
+  nfcLinkedAt: json['nfcLinkedAt'] as String?,
+  nfcLockedAt: json['nfcLockedAt'] as String?,
   rarityType: const ArtworkRarityConverter().fromJson(
     json['rarityType'] as String?,
   ),
@@ -140,7 +142,9 @@ Map<String, dynamic> _$ArtworkToJson(_Artwork instance) => <String, dynamic>{
   'coaIssueDate': instance.coaIssueDate,
   'socialProofLinks': instance.socialProofLinks,
   'statusHistory': instance.statusHistory,
-  'nfcTagId': instance.nfcTagId,
+  'nfcTagUid': instance.nfcTagUid,
+  'nfcLinkedAt': instance.nfcLinkedAt,
+  'nfcLockedAt': instance.nfcLockedAt,
   'rarityType': const ArtworkRarityConverter().toJson(instance.rarityType),
   'productCode': instance.productCode,
   'artworkType': instance.artworkType,

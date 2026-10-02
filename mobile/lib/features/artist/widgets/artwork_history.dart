@@ -114,13 +114,27 @@ class ArtworkHistoryView extends ConsumerWidget {
           detail: artwork.coaCertificateNumber,
         ),
       );
-      // No timestamp exists for tagging - the tag is either attached or it is
-      // not - so it is pinned to the certificate's date rather than invented.
-      if (artwork.nfcTagId != null) {
-        ownership.add(
-          HistoryEvent(at: artwork.coaIssueDate, icon: LucideIcons.scanLine, label: 'NFC / QR tag linked'),
-        );
-      }
+    }
+    // The server times both steps, so these sit at the moment they happened.
+    if (artwork.nfcLinkedAt != null) {
+      ownership.add(
+        HistoryEvent(
+          at: artwork.nfcLinkedAt!,
+          icon: LucideIcons.scanLine,
+          label: 'NFC tag linked',
+          detail: artwork.nfcTagUid,
+        ),
+      );
+    }
+    if (artwork.nfcLockedAt != null) {
+      ownership.add(
+        HistoryEvent(
+          at: artwork.nfcLockedAt!,
+          icon: LucideIcons.lock,
+          label: 'NFC tag locked',
+          detail: 'The chip is read-only for good',
+        ),
+      );
     }
 
     for (final transfer in transfers) {

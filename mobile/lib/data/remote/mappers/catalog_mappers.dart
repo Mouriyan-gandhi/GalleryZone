@@ -165,7 +165,9 @@ Artwork artworkFromApi(Map<String, dynamic> json) {
               ),
           ]
         : [ArtworkStatusEvent(status: status, changedAt: isoOf(json['createdAt']))],
-    nfcTagId: _sn(json['nfcTagId']),
+    nfcTagUid: _sn(json['nfcTagUid']),
+    nfcLinkedAt: isoOrNull(json['nfcLinkedAt']),
+    nfcLockedAt: isoOrNull(json['nfcLockedAt']),
     rarityType: artworkRarityFromCode(_sn(json['rarityType'])),
     physical: physicalFromApi(json['physical']),
     productCode: _sn(json['productCode']),
@@ -290,6 +292,42 @@ PassportEvent passportEventFromApi(Map<String, dynamic> json) => PassportEvent(
   displayEndedAt: isoOrNull(json['displayEndedAt']),
 );
 
+LifecycleKind _lifecycleKindOf(Object? raw) => switch (raw) {
+  'created' => LifecycleKind.created,
+  'approved' => LifecycleKind.approved,
+  'listed' => LifecycleKind.listed,
+  'placed_with_gallery' => LifecycleKind.placedWithGallery,
+  'returned_from_gallery' => LifecycleKind.returnedFromGallery,
+  'sold_marketplace' => LifecycleKind.soldMarketplace,
+  'sold_at_gallery' => LifecycleKind.soldAtGallery,
+  'transferred' => LifecycleKind.transferred,
+  'displayed' => LifecycleKind.displayed,
+  _ => LifecycleKind.delivered,
+};
+
+LifecycleEntry lifecycleEntryFromApi(Map<String, dynamic> json) {
+  final actor = asMap(json['actor']);
+  final location = json['location'];
+  final place = location is Map<String, dynamic>
+      ? LifecyclePlace(city: _s(location['city']), state: _s(location['state']), country: _s(location['country']))
+      : null;
+  return LifecycleEntry(
+    id: _s(json['id']),
+    kind: _lifecycleKindOf(json['kind']),
+    at: isoOf(json['at']),
+    actorKind: switch (actor['kind']) {
+      'artist' => LifecycleActorKind.artist,
+      'gallery' => LifecycleActorKind.gallery,
+      'collector' => LifecycleActorKind.collector,
+      _ => LifecycleActorKind.platform,
+    },
+    actorName: _s(actor['displayName']),
+    // A collector's place is never public: even a stray one is dropped here.
+    place: actor['kind'] == 'collector' || actor['kind'] == 'platform' ? null : place,
+    note: _sn(json['note']),
+  );
+}
+
 Passport passportFromApi(Map<String, dynamic> json) {
   final owner = asMap(json['owner']);
   return Passport(
@@ -310,6 +348,10 @@ Passport passportFromApi(Map<String, dynamic> json) {
     ownerKind: owner['kind'] == 'collector' ? PassportOwnerKind.collector : PassportOwnerKind.artist,
     ownerName: _s(owner['displayName']),
     events: asMapList(json['events']).map(passportEventFromApi).toList(),
+    nfcLinked: json['nfcLinked'] == true,
+    // A locked tag implies a linked one; the flags never disagree on screen.
+    nfcLocked: json['nfcLinked'] == true && json['nfcLocked'] == true,
+    lifecycle: asMapList(json['lifecycle']).map(lifecycleEntryFromApi).toList(),
   );
 }
 

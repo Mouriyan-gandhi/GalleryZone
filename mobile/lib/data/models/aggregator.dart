@@ -94,6 +94,11 @@ abstract class AggregatorSale with _$AggregatorSale {
 
     /// Null when [deliveryMode] is [DeliveryMode.selfPickup].
     String? courierRef,
+
+    /// The piece's NFC tag is locked, or GalleryZone let it ship without one,
+    /// so dispatching won't be refused (NFC_IMPLEMENTATION.md §5.2b). True when
+    /// the API says nothing: don't warn about what can't be known.
+    @Default(true) bool nfcReady,
   }) = _AggregatorSale;
 
   factory AggregatorSale.fromJson(Map<String, dynamic> json) =>

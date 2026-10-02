@@ -7,6 +7,7 @@ import '../data/remote/remote_artwork_repository.dart';
 import '../data/remote/remote_auth_repository.dart';
 import '../data/remote/remote_checkout_repository.dart';
 import '../data/remote/remote_customer_repository.dart';
+import '../data/remote/remote_nfc_repository.dart';
 import '../data/remote/remote_ownership_repository.dart';
 import '../features/account/providers/account_providers.dart';
 import '../features/aggregator/providers/aggregator_providers.dart';
@@ -15,6 +16,7 @@ import '../features/artist/providers/artist_providers.dart';
 import '../features/auth/providers/auth_providers.dart';
 import '../features/checkout/providers/checkout_providers.dart';
 import '../features/marketplace/providers/marketplace_providers.dart';
+import '../features/nfc/providers/nfc_providers.dart';
 import '../features/ownership/providers/ownership_providers.dart';
 import 'auth/token_manager.dart';
 import 'payments/payment_gateway.dart';
@@ -50,6 +52,7 @@ List<Override> remoteBackendOverrides(
       customerRepositoryProvider.overrideWith((ref) => RemoteCustomerRepository(ref.watch(apiClientProvider))),
       ownershipRepositoryProvider.overrideWith((ref) => RemoteOwnershipRepository(ref.watch(apiClientProvider))),
       artistRepositoryProvider.overrideWith((ref) => RemoteArtistRepository(ref.watch(apiClientProvider))),
+      nfcRepositoryProvider.overrideWith((ref) => RemoteNfcRepository(ref.watch(apiClientProvider))),
       artistNetworkRepositoryProvider.overrideWith(
         (ref) => RemoteArtistNetworkRepository(ref.watch(apiClientProvider)),
       ),

@@ -54,6 +54,59 @@ class PassportEvent {
       );
 }
 
+/// What happened at one step of a piece's life (NFC_IMPLEMENTATION.md §6).
+enum LifecycleKind {
+  created,
+  approved,
+  listed,
+  placedWithGallery,
+  returnedFromGallery,
+  soldMarketplace,
+  soldAtGallery,
+  transferred,
+  displayed,
+  delivered,
+}
+
+/// Who did it. A collector is named (the passport already names the owner),
+/// but never given a place.
+enum LifecycleActorKind { artist, gallery, collector, platform }
+
+/// Where a step happened. Only ever the artist's or a gallery's: a collector's
+/// home is private, and the server sends none.
+class LifecyclePlace {
+  const LifecyclePlace({required this.city, required this.state, required this.country});
+
+  final String city;
+  final String state;
+  final String country;
+
+  /// "Pune, Maharashtra, India", leaving out what the source did not say.
+  String get label => [city, state, country].where((part) => part.isNotEmpty).join(', ');
+}
+
+/// One step in a piece's life, oldest first on the passport: made, approved,
+/// listed, shown at a gallery, sold, handed over, delivered.
+class LifecycleEntry {
+  const LifecycleEntry({
+    required this.id,
+    required this.kind,
+    required this.at,
+    required this.actorKind,
+    required this.actorName,
+    this.place,
+    this.note,
+  });
+
+  final String id;
+  final LifecycleKind kind;
+  final String at;
+  final LifecycleActorKind actorKind;
+  final String actorName;
+  final LifecyclePlace? place;
+  final String? note;
+}
+
 /// The public artwork passport — what a printed QR code or an NFC tag
 /// resolves to. Anyone can read it: it carries no price of any kind, no
 /// email, phone or address, and no collector's user id.
@@ -76,6 +129,9 @@ class Passport {
     this.yearCreated,
     this.coaCertificateNumber,
     this.coaIssuedAt,
+    this.nfcLinked = false,
+    this.nfcLocked = false,
+    this.lifecycle = const [],
   });
 
   final String artworkId;
@@ -99,6 +155,16 @@ class Passport {
   final PassportOwnerKind ownerKind;
   final String ownerName;
   final List<PassportEvent> events;
+
+  /// A physical tag is linked to the piece. The chip's own id is never public.
+  final bool nfcLinked;
+
+  /// The tag was locked read-only for good, so it cannot be rewritten to point
+  /// anywhere else.
+  final bool nfcLocked;
+
+  /// Everything that happened to the piece, oldest first.
+  final List<LifecycleEntry> lifecycle;
 
   String get coverUrl => images.isEmpty ? '' : images.first.url;
 

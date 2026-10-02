@@ -9,7 +9,10 @@ import '../../../core/pricing.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/aggregator.dart';
 import '../../../data/models/artist_portal.dart';
+import '../../../data/models/nfc.dart';
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../nfc/providers/nfc_providers.dart';
+import '../../nfc/widgets/nfc_sheets.dart';
 import '../../shell/display_clock.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
@@ -94,6 +97,15 @@ class _HoldingBody extends ConsumerWidget {
         !holding.windowExtended &&
         request?.status != ExtensionStatus.pending &&
         !(request != null && request.previousExpiresAt == holding.expiresAt);
+    // The lock-before-shipping rule seen from the gallery (NFC_IMPLEMENTATION.md
+    // §4.7): the piece's tag state, never the chip's id. A phone without NFC is
+    // told, not offered buttons it can't use.
+    final stage = artwork.nfcStage;
+    final hasNfc = ref.watch(nfcAvailableProvider).value ?? true;
+    void refreshTag() {
+      ref.invalidate(aggregatorHoldingProvider(holding.id));
+      ref.invalidate(aggregatorCollectionProvider);
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -137,6 +149,37 @@ class _HoldingBody extends ConsumerWidget {
                       child: const Text('Browse inventory to reserve something else'),
                     ),
                   ),
+                ),
+                const SizedBox(height: 12),
+              ],
+              if (!returned && stage != NfcStage.linkedLocked) ...[
+                PortalNotice(
+                  key: const Key('holding-nfc-banner'),
+                  icon: LucideIcons.lock,
+                  destructive: true,
+                  title: "This piece's NFC tag is not locked",
+                  body: stage == NfcStage.unlinked
+                      ? 'No tag is linked to it yet. Link and lock one before you put it on display or ship it.'
+                      : 'Lock it before you put it on display or ship it: it can’t be dispatched to a buyer until it is.',
+                  action: hasNfc
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: FilledButton.icon(
+                              key: const Key('holding-nfc-action'),
+                              onPressed: () => showNfcSheet(
+                                context,
+                                artwork: artwork,
+                                mode: stage == NfcStage.unlinked ? NfcMode.link : NfcMode.lock,
+                                onChanged: refreshTag,
+                              ),
+                              icon: Icon(stage == NfcStage.unlinked ? LucideIcons.link2 : LucideIcons.lock, size: 14),
+                              label: Text(stage == NfcStage.unlinked ? 'Link tag' : 'Lock tag'),
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 12),
               ],

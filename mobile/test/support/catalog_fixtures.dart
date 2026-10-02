@@ -12,7 +12,9 @@ Artwork fixtureArtwork({
   double price = 48000,
   ArtworkStatus status = ArtworkStatus.marketplace,
   String thumbnail = '',
-  String? nfcTagId,
+  String? nfcTagUid,
+  String? nfcLinkedAt,
+  String? nfcLockedAt,
   String coaNumber = 'GZ-COA-2026-0001',
   String coaIssued = '2026-03-04',
   ArtworkRarity? rank = ArtworkRarity.rare,
@@ -40,7 +42,9 @@ Artwork fixtureArtwork({
     coaIssueDate: coaIssued,
     socialProofLinks: const [],
     statusHistory: history,
-    nfcTagId: nfcTagId,
+    nfcTagUid: nfcTagUid,
+    nfcLinkedAt: nfcLinkedAt,
+    nfcLockedAt: nfcLockedAt,
     rarityType: rank,
     custody: custody,
   );
@@ -100,6 +104,9 @@ Passport fixturePassport({
   String? coaNumber = 'GZ-COA-2026-0001',
   String? coaIssuedAt = '2026-03-04',
   List<PassportEvent> events = const [],
+  bool nfcLinked = false,
+  bool nfcLocked = false,
+  List<LifecycleEntry> lifecycle = const [],
 }) {
   return Passport(
     artworkId: artworkId,
@@ -119,5 +126,8 @@ Passport fixturePassport({
     yearCreated: 2021,
     coaCertificateNumber: coaNumber,
     coaIssuedAt: coaIssuedAt,
+    nfcLinked: nfcLinked,
+    nfcLocked: nfcLocked,
+    lifecycle: lifecycle,
   );
 }

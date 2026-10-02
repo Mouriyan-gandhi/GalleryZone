@@ -541,7 +541,6 @@ class MockArtistRepository implements ArtistRepository {
         coaIssueDate: now,
         socialProofLinks: const [],
         statusHistory: [ArtworkStatusEvent(status: status, changedAt: now)],
-        nfcTagId: input.nfcTagId,
         physical: input.physical,
         artworkType: input.artworkType,
         paintingStyle: input.paintingStyle,
@@ -598,7 +597,6 @@ class MockArtistRepository implements ArtistRepository {
         customerPrice: displayPriceOf(patch.artistPrice),
         listingType: patch.listingType,
         insured: patch.insuranceOpted || isAggregatorListed(patch.listingType),
-        nfcTagId: patch.nfcTagId,
         artworkType: patch.artworkType,
         paintingStyle: patch.paintingStyle,
         insuranceNumber: patch.insuranceNumber,
@@ -1035,20 +1033,6 @@ class MockArtistRepository implements ArtistRepository {
         if (artwork == null) return null;
         return ArtistArtwork(artwork: artwork, artistPrice: _readPrices()[artwork.id] ?? 0);
       });
-
-  @override
-  Future<Artwork> linkNfcTag(String artworkId, String nfcTagId) {
-    final inLive = _readListed().where((a) => a.id == artworkId).firstOrNull;
-    final existing = inLive ?? _readPending().where((a) => a.id == artworkId).firstOrNull;
-    if (existing == null || existing.artistId != currentArtistId) {
-      return mockError('Artwork not found');
-    }
-    return mockDelay(() {
-      final updated = existing.copyWith(nfcTagId: nfcTagId);
-      _replaceArtwork(updated, inLive: inLive != null);
-      return updated;
-    });
-  }
 
   @override
   Future<ArtistSettings> getSettings() => mockDelay(

@@ -820,6 +820,47 @@ void main() {
     });
   });
 
+  group('the holding page: the NFC tag', () {
+    AggregatorHoldingView withTag({String? linked, String? locked, HoldingStatus status = HoldingStatus.reserved}) {
+      final base = _view(_holding('h1', status: status));
+      return AggregatorHoldingView(
+        holding: base.holding,
+        artwork: base.artwork.copyWith(nfcLinkedAt: linked, nfcLockedAt: locked),
+      );
+    }
+
+    testWidgets('an unlocked tag carries a red banner with a Lock button, and never the chip id', (tester) async {
+      await _show(tester, _Agg(holdings: [withTag(linked: '2026-09-28T10:00:00.000Z')]), at: '/aggregator/collection/h1');
+
+      expect(find.byKey(const Key('holding-nfc-banner')), findsOneWidget);
+      expect(find.text("This piece's NFC tag is not locked"), findsOneWidget);
+      expect(find.textContaining('Lock it before you put it on display or ship it'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Lock tag'), findsOneWidget);
+      expect(find.textContaining('04a1b2c3d4e580'), findsNothing);
+    });
+
+    testWidgets('a piece with no tag at all is offered Link, not Lock', (tester) async {
+      await _show(tester, _Agg(holdings: [withTag()]), at: '/aggregator/collection/h1');
+      expect(find.textContaining('No tag is linked to it yet'), findsOneWidget);
+      expect(find.widgetWithText(FilledButton, 'Link tag'), findsOneWidget);
+    });
+
+    testWidgets('a locked piece has no banner', (tester) async {
+      await _show(
+        tester,
+        _Agg(holdings: [withTag(linked: '2026-09-28T10:00:00.000Z', locked: '2026-09-28T10:05:00.000Z')]),
+        at: '/aggregator/collection/h1',
+      );
+      expect(find.text('Held piece'), findsWidgets);
+      expect(find.byKey(const Key('holding-nfc-banner')), findsNothing);
+    });
+
+    testWidgets('a returned piece is no longer theirs to lock', (tester) async {
+      await _show(tester, _Agg(holdings: [withTag(status: HoldingStatus.returned)]), at: '/aggregator/collection/h1');
+      expect(find.byKey(const Key('holding-nfc-banner')), findsNothing);
+    });
+  });
+
   group('the holding page', () {
     testWidgets('lays the lifecycle out: window, rotation, the three figures, what can be done', (tester) async {
       final agg = _Agg(holdings: [_view(_holding('h1', month: 3), title: 'Held piece')]);

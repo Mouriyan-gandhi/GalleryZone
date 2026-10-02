@@ -8,9 +8,12 @@ import '../../../core/launch.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/verify_url.dart';
 import '../../../data/models/artwork.dart';
+import '../../../data/models/nfc.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/screens/passport_screen.dart' show PassportBody;
 import '../../marketplace/widgets/artwork_card.dart';
+import '../../nfc/providers/nfc_providers.dart';
+import '../../nfc/widgets/nfc_sheets.dart';
 import '../../ownership/providers/ownership_providers.dart';
 import '../../ownership/widgets/transfer_widgets.dart';
 import '../providers/artist_providers.dart';
@@ -29,6 +32,8 @@ class CoaNfcScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artworks = ref.watch(artistArtworksProvider);
+    // A phone without NFC can't write or lock a tag; it doesn't see the buttons.
+    final hasNfc = ref.watch(nfcAvailableProvider).value ?? true;
 
     return Scaffold(
       appBar: AppBar(title: const Text('COA & NFC')),
@@ -64,6 +69,23 @@ class CoaNfcScreen extends ConsumerWidget {
                       style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
                     ),
                     const SizedBox(height: 16),
+                    if (!hasNfc) ...[
+                      const _Banner(
+                        key: Key('nfc-unavailable'),
+                        icon: LucideIcons.nfc,
+                        text: 'This phone has no NFC, or it is switched off, so tags can’t be linked or locked here.',
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (list.any((entry) => entry.artwork.nfcNeedsLock)) ...[
+                      _Banner(
+                        key: const Key('nfc-lock-warning'),
+                        icon: LucideIcons.triangleAlert,
+                        danger: true,
+                        text: _unlockedSentence(list.where((entry) => entry.artwork.nfcNeedsLock).length),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     const PhysicalCoaQueue(),
                     if (list.isEmpty)
                       const EmptyState(
@@ -75,7 +97,7 @@ class CoaNfcScreen extends ConsumerWidget {
                       for (final entry in list)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: _CertificateRow(artwork: entry.artwork),
+                          child: _CertificateRow(artwork: entry.artwork, hasNfc: hasNfc),
                         ),
                   ],
                 ),
@@ -88,15 +110,56 @@ class CoaNfcScreen extends ConsumerWidget {
   }
 }
 
+String _unlockedSentence(int count) =>
+    '${count == 1 ? '1 piece has' : '$count pieces have'} a tag that isn’t locked. Lock '
+    '${count == 1 ? 'it' : 'each one'}: a piece can’t be dispatched to a buyer or a gallery until its tag is locked.';
+
+class _Banner extends StatelessWidget {
+  const _Banner({super.key, required this.icon, required this.text, this.danger = false});
+
+  final IconData icon;
+  final String text;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = danger ? theme.colorScheme.error : theme.textTheme.bodySmall?.color ?? theme.colorScheme.outline;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall?.copyWith(height: 1.45))),
+        ],
+      ),
+    );
+  }
+}
+
 class _CertificateRow extends ConsumerWidget {
-  const _CertificateRow({required this.artwork});
+  const _CertificateRow({required this.artwork, required this.hasNfc});
 
   final Artwork artwork;
+  final bool hasNfc;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tagged = artwork.nfcTagId != null;
+    final stage = artwork.nfcStage;
+    final tagged = stage != NfcStage.unlinked;
+
+    void refresh() {
+      ref.invalidate(artistArtworksProvider);
+      ref.invalidate(passportProvider(artwork.id));
+    }
     return PortalCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,9 +188,14 @@ class _CertificateRow extends ConsumerWidget {
                   ],
                 ),
               ),
-              _NfcPill(tagged: tagged),
+              const SizedBox(width: 8),
+              _NfcPill(stage: stage),
             ],
           ),
+          if (stage == NfcStage.linkedUnlocked) ...[
+            const SizedBox(height: 10),
+            _MustLock(key: Key('nfc-must-lock-${artwork.id}')),
+          ],
           if (tagged) ...[
             const SizedBox(height: 10),
             // The address written to the tag - the same one the QR carries.
@@ -151,6 +219,20 @@ class _CertificateRow extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
+              if (hasNfc && stage == NfcStage.linkedUnlocked)
+                FilledButton.icon(
+                  key: Key('lock-nfc-${artwork.id}'),
+                  onPressed: () => showNfcSheet(context, artwork: artwork, mode: NfcMode.lock, onChanged: refresh),
+                  icon: const Icon(LucideIcons.lock, size: 14),
+                  label: const Text('Lock tag'),
+                ),
+              if (hasNfc && stage != NfcStage.linkedLocked)
+                OutlinedButton.icon(
+                  key: Key('link-nfc-${artwork.id}'),
+                  onPressed: () => showNfcSheet(context, artwork: artwork, mode: NfcMode.link, onChanged: refresh),
+                  icon: Icon(LucideIcons.link2, size: 14, color: theme.colorScheme.tertiary),
+                  label: Text(stage == NfcStage.unlinked ? 'Link tag' : 'Replace tag'),
+                ),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -202,33 +284,76 @@ Future<void> _showHistory(BuildContext context, Artwork artwork) {
   );
 }
 
+/// Three states, not two (NFC_IMPLEMENTATION.md §3). "Linked, unlocked" is
+/// deliberately not the gold of a finished tag: the piece cannot ship in it.
 class _NfcPill extends StatelessWidget {
-  const _NfcPill({required this.tagged});
+  const _NfcPill({required this.stage});
 
-  final bool tagged;
+  final NfcStage stage;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = tagged ? theme.colorScheme.tertiary : theme.textTheme.bodySmall?.color;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: tagged ? theme.colorScheme.primary.withValues(alpha: 0.1) : theme.colorScheme.secondary,
-        border: Border.all(color: tagged ? theme.colorScheme.primary.withValues(alpha: 0.4) : theme.colorScheme.outline),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(tagged ? LucideIcons.shieldCheck : LucideIcons.scanLine, size: 12, color: color),
-          const SizedBox(width: 6),
-          Text(
-            tagged ? 'NFC Tagged' : 'Not yet tagged',
-            style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
+    final locked = stage == NfcStage.linkedLocked;
+    final unlocked = stage == NfcStage.linkedUnlocked;
+    const amber = Color(0xFFD9A441);
+    final color = locked ? theme.colorScheme.tertiary : (unlocked ? amber : theme.textTheme.bodySmall?.color);
+    return Flexible(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          color: locked
+              ? theme.colorScheme.primary.withValues(alpha: 0.1)
+              : (unlocked ? amber.withValues(alpha: 0.1) : theme.colorScheme.secondary),
+          border: Border.all(
+            color: locked
+                ? theme.colorScheme.primary.withValues(alpha: 0.4)
+                : (unlocked ? amber.withValues(alpha: 0.4) : theme.colorScheme.outline),
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              locked ? LucideIcons.lock : (unlocked ? LucideIcons.shieldCheck : LucideIcons.scanLine),
+              size: 12,
+              color: color,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                nfcStageLabel(stage),
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// The red flag on a tag that was written but never locked.
+class _MustLock extends StatelessWidget {
+  const _MustLock({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.error;
+    return Row(
+      children: [
+        Icon(LucideIcons.triangleAlert, size: 13, color: color),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            'Must lock before shipping',
+            style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }

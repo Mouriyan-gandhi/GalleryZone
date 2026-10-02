@@ -49,6 +49,7 @@ _AggregatorSale _$AggregatorSaleFromJson(Map<String, dynamic> json) =>
       remitDueAt: json['remitDueAt'] as String?,
       remittedVia: $enumDecodeNullable(_$RemitViaEnumMap, json['remittedVia']),
       courierRef: json['courierRef'] as String?,
+      nfcReady: json['nfcReady'] as bool? ?? true,
     );
 
 Map<String, dynamic> _$AggregatorSaleToJson(_AggregatorSale instance) =>
@@ -71,6 +72,7 @@ Map<String, dynamic> _$AggregatorSaleToJson(_AggregatorSale instance) =>
       'remitDueAt': instance.remitDueAt,
       'remittedVia': _$RemitViaEnumMap[instance.remittedVia],
       'courierRef': instance.courierRef,
+      'nfcReady': instance.nfcReady,
     };
 
 const _$DeliveryModeEnumMap = {

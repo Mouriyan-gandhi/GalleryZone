@@ -88,6 +88,9 @@ class MockOwnershipRepository implements OwnershipRepository {
       listedAt: artwork.statusHistory.firstOrNull?.changedAt ?? '',
       ownerKind: held ? PassportOwnerKind.collector : PassportOwnerKind.artist,
       ownerName: held ? (custody.legalOwnerName ?? 'Collector') : artwork.artistName,
+      nfcLinked: artwork.nfcLinkedAt != null,
+      nfcLocked: artwork.nfcLinkedAt != null && artwork.nfcLockedAt != null,
+      lifecycle: mockLifecycle(artwork, transfers),
       events: [
         for (final t in transfers)
           PassportEvent(
@@ -252,4 +255,51 @@ class MockOwnershipRepository implements OwnershipRepository {
       return cancelled;
     });
   }
+}
+
+/// The lifecycle the offline demo shows: made, approved and listed from the
+/// piece's own status log, then each accepted hand-over. No place is ever
+/// given for a collector - same rule as the server's.
+List<LifecycleEntry> mockLifecycle(Artwork artwork, List<OwnershipTransfer> transfers) {
+  final firstLive = artwork.statusHistory.where((e) => e.status == ArtworkStatus.marketplace).firstOrNull;
+  final place = artwork.artistLocation == null || artwork.artistLocation!.trim().isEmpty
+      ? null
+      : LifecyclePlace(city: artwork.artistLocation!.split(',').first.trim(), state: '', country: 'India');
+  final entries = <LifecycleEntry>[
+    LifecycleEntry(
+      id: 'created',
+      kind: LifecycleKind.created,
+      at: artwork.statusHistory.firstOrNull?.changedAt ?? '',
+      actorKind: LifecycleActorKind.artist,
+      actorName: artwork.artistName,
+      place: place,
+    ),
+    if (firstLive != null) ...[
+      LifecycleEntry(
+        id: 'approved',
+        kind: LifecycleKind.approved,
+        at: firstLive.changedAt,
+        actorKind: LifecycleActorKind.platform,
+        actorName: 'GalleryZone',
+      ),
+      LifecycleEntry(
+        id: 'listed',
+        kind: LifecycleKind.listed,
+        at: firstLive.changedAt,
+        actorKind: LifecycleActorKind.artist,
+        actorName: artwork.artistName,
+        place: place,
+      ),
+    ],
+    for (final t in transfers)
+      if (t.status == TransferStatus.accepted)
+        LifecycleEntry(
+          id: t.id,
+          kind: transferKindOf(t) == TransferKind.display ? LifecycleKind.displayed : LifecycleKind.transferred,
+          at: t.acceptedAt ?? t.initiatedAt,
+          actorKind: LifecycleActorKind.collector,
+          actorName: t.toName,
+        ),
+  ];
+  return entries..sort((a, b) => a.at.compareTo(b.at));
 }

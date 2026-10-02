@@ -357,9 +357,8 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
       // boxes empty keeps it as it was.
       dimensions: composed.isNotEmpty ? composed : _editing?.artwork.dimensions,
       yearCreated: int.tryParse(_year.text.trim()) ?? DateTime.now().year,
-      // This form doesn't touch the tag; an edit must send it back as it was or
-      // the API reads the omission as "unlink".
-      nfcTagId: _editing?.artwork.nfcTagId,
+      // The tag is linked and locked from COA & NFC, in the app, once the piece is
+      // approved; this form never touches it.
       physical: _physical,
       artworkType: artworkTypeToStore(_type, _typeOther.text),
       paintingStyle: paintingStyleToStore(_category, _style, _styleOther.text),

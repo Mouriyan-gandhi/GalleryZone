@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/core/verify_url.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
+import 'package:gallery_zone/data/models/passport.dart';
 import 'package:gallery_zone/data/storage/mock_db.dart';
 import 'package:gallery_zone/features/artist/widgets/artwork_history.dart';
 import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
@@ -156,6 +157,22 @@ void main() {
       final ownership = FakeOwnership(
         passports: {
           'aw-1': fixturePassport(
+            lifecycle: const [
+              LifecycleEntry(
+                id: 'ev-1',
+                kind: LifecycleKind.displayed,
+                at: '2026-04-02T10:00:00.000Z',
+                actorKind: LifecycleActorKind.collector,
+                actorName: 'Gallery Nine',
+              ),
+              LifecycleEntry(
+                id: 'ev-2',
+                kind: LifecycleKind.transferred,
+                at: '2026-05-02T10:00:00.000Z',
+                actorKind: LifecycleActorKind.collector,
+                actorName: 'Dev Mehta',
+              ),
+            ],
             events: [
               fixtureEvent(id: 'ev-2', to: 'Dev Mehta', initiatedAt: '2026-05-01T10:00:00.000Z', acceptedAt: '2026-05-02T10:00:00.000Z'),
               fixtureEvent(id: 'ev-1', from: 'Ananya Rao', to: 'Gallery Nine', kind: TransferKind.display, initiatedAt: '2026-04-01T10:00:00.000Z', acceptedAt: '2026-04-02T10:00:00.000Z'),
@@ -173,24 +190,42 @@ void main() {
       expect(find.text('Dev Mehta'), findsWidgets, reason: 'the owner, from the public record');
       expect(find.text('COA issued 4 March 2026'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('PROVENANCE'), 300);
-      expect(find.text('Gallery Nine'), findsOneWidget);
-      expect(find.text('Display'), findsOneWidget, reason: 'a loan is marked as one');
-      expect(find.text('Nobody'), findsNothing, reason: 'a cancelled hand-over never happened');
+      // The record of hand-overs now lives in the lifecycle (NFC_IMPLEMENTATION.md §6).
+      await tester.scrollUntilVisible(find.text('LIFECYCLE'), 300);
+      expect(find.text('Lent to Gallery Nine for display'), findsOneWidget, reason: 'a loan is marked as one');
+      expect(find.text('Handed over to Dev Mehta'), findsOneWidget);
+      expect(find.textContaining('Nobody'), findsNothing, reason: 'a cancelled hand-over never happened');
     });
 
     testWidgets('says a physical tag is linked, but never which chip', (tester) async {
       _phone(tester);
-      final catalog = FakeCatalog(
-        artworks: [fixtureArtwork(nfcTagId: 'NFC-ABC12345')],
-        artists: [fixtureArtist()],
-      );
-      await tester.pumpWidget(_app(const PassportScreen(artworkId: 'aw-1'), catalog: catalog));
+      final ownership = FakeOwnership(passports: {'aw-1': fixturePassport(nfcLinked: true, nfcLocked: true)});
+      await tester.pumpWidget(_app(const PassportScreen(artworkId: 'aw-1'), ownership: ownership));
       await tester.pumpAndSettle();
 
-      expect(find.text('Verified via NFC scan'), findsOneWidget);
-      expect(find.text('NFC tag linked'), findsOneWidget);
-      expect(find.textContaining('NFC-ABC12345'), findsNothing);
+      expect(find.text('Verified via NFC + locked'), findsWidgets, reason: 'the banner and the chip on the card');
+      expect(find.byKey(const Key('passport-nfc-chip')), findsOneWidget);
+      expect(find.textContaining('04a1b2c3d4e580'), findsNothing);
+    });
+
+    testWidgets('a tag that is linked but not locked is not presented as sealed', (tester) async {
+      _phone(tester);
+      final ownership = FakeOwnership(passports: {'aw-1': fixturePassport(nfcLinked: true)});
+      await tester.pumpWidget(_app(const PassportScreen(artworkId: 'aw-1'), ownership: ownership));
+      await tester.pumpAndSettle();
+
+      expect(find.text('NFC tag linked — not yet locked'), findsOneWidget);
+      expect(find.text('NFC tag linked · not yet locked'), findsOneWidget);
+      expect(find.text('Verified via NFC + locked'), findsNothing);
+    });
+
+    testWidgets('a piece with no tag shows no NFC badge', (tester) async {
+      _phone(tester);
+      await tester.pumpWidget(_app(const PassportScreen(artworkId: 'aw-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('passport-nfc-chip')), findsNothing);
+      expect(find.textContaining('NFC tag linked'), findsNothing);
     });
 
     testWidgets('carries the QR and the certificate download once a number exists', (tester) async {
@@ -238,7 +273,8 @@ void main() {
   group('an artwork\'s history', () {
     test('splits who owns it from who has been allowed to show it', () {
       final artwork = fixtureArtwork(
-        nfcTagId: 'NFC-1',
+        nfcTagUid: '04a1b2c3d4e580',
+        nfcLinkedAt: '2026-03-10T00:00:00.000Z',
         history: const [
           ArtworkStatusEvent(status: ArtworkStatus.pendingApproval, changedAt: '2026-03-01T00:00:00.000Z'),
           ArtworkStatusEvent(status: ArtworkStatus.marketplace, changedAt: '2026-03-04T00:00:00.000Z'),
@@ -249,9 +285,9 @@ void main() {
       final history = ArtworkHistoryView.buildHistory(artwork, const [], const []);
 
       expect(history.ownership.map((e) => e.label), [
+        'NFC tag linked',
         'Approved and listed for sale',
         'Certificate of Authenticity issued',
-        'NFC / QR tag linked',
         'Submitted to GalleryZone for review',
       ]);
       expect(history.display.map((e) => e.label), [

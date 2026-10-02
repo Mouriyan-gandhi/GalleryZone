@@ -85,6 +85,8 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final artwork = ref.watch(artworkProvider(transfer.artworkId)).value;
+    // The tag's state is on the public passport; the listing doesn't carry it.
+    final passport = ref.watch(passportProvider(transfer.artworkId)).value;
     final isDisplay = transferKindOf(transfer) == TransferKind.display;
 
     return ContentWidth(
@@ -150,7 +152,8 @@ class _Body extends ConsumerWidget {
                 // The link is all the recipient gets, so the piece's own tag and
                 // its full record are reachable from here rather than from a
                 // second URL the sender would have to send separately.
-                if (artwork?.nfcTagId != null) const PortalDetailRow(label: 'NFC tag', value: 'Linked'),
+                if (passport?.nfcLinked ?? false)
+                  PortalDetailRow(label: 'NFC tag', value: passport!.nfcLocked ? 'Linked and locked' : 'Linked'),
               ],
             ),
           ),
