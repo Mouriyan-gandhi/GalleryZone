@@ -62,7 +62,8 @@ interface OfferDto {
 interface HoldingDto {
   id: string;
   artworkId: string;
-  artwork: ArtworkDto | null;
+  /** The public piece plus whether its NFC tag is linked and locked (never the chip's ID). */
+  artwork: (ArtworkDto & { nfcLinkedAt?: string | null; nfcLockedAt?: string | null }) | null;
   cycleMonth: number;
   advancePercent: number;
   advancePaise: number;
@@ -208,7 +209,7 @@ export const aggregatorService = {
     try {
       const h = await http.get<HoldingDto>(`/v1/aggregator/holdings/${encodeURIComponent(holdingId)}`);
       if (!h.artwork) return null;
-      return { ...toHolding(h), artwork: toArtwork(h.artwork) };
+      return { ...toHolding(h), artwork: { ...toArtwork(h.artwork), nfcLinkedAt: h.artwork.nfcLinkedAt ?? null, nfcLockedAt: h.artwork.nfcLockedAt ?? null } };
     } catch (error) {
       if (isApiError(error, 404)) return null;
       throw error;

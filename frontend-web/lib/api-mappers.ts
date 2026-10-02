@@ -202,6 +202,7 @@ export interface OrderDto {
   statusHistory?: { status: OrderStatus; changedAt: string }[];
   artwork?: { title: string; artistName: string; artistId: string; thumbnailUrl: string | null; productCode: string } | null;
   artistNetPaise?: number;
+  nfc?: { linked: boolean; locked: boolean; gateOverridden: boolean };
 }
 
 export interface FirestoreTimestampLike {
@@ -231,6 +232,7 @@ export function toOrder(dto: OrderDto): Order {
     createdAt,
     statusHistory: dto.statusHistory?.length ? dto.statusHistory : [{ status: dto.status, changedAt: createdAt }],
     artwork: dto.artwork ? { ...dto.artwork, thumbnailUrl: dto.artwork.thumbnailUrl ?? ARTWORK_PLACEHOLDER_IMAGE } : null,
+    ...(dto.nfc ? { nfc: dto.nfc } : {}),
     payment:
       dto.payment && dto.payment.status === "captured"
         ? {

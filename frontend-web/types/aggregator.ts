@@ -99,6 +99,10 @@ export interface AggregatorSale {
   /** How it was paid in: from the wallet here, or by transfer to GalleryZone's bank. */
   remittedVia?: "wallet" | "bank" | null;
   soldAt: string; // ISO
+  /** The piece's NFC tag is locked, so it may be dispatched. Absent on mock data. */
+  nfcLocked?: boolean;
+  /** GalleryZone let it ship without a locked tag. */
+  nfcGateOverridden?: boolean;
   shipmentStatus: "preparing" | "dispatched" | "delivered";
   dispatchedAt: string | null;
   deliveredAt: string | null;

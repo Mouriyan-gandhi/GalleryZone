@@ -13,6 +13,7 @@ import {
 } from "@/hooks/useAdminCommerce";
 import { useArtwork } from "@/hooks/useArtwork";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
+import { Lock } from "lucide-react";
 import { formatINR } from "@/lib/utils";
 import type { OrderStatus } from "@/types/order";
 
@@ -52,6 +53,32 @@ export default function AdminOrderDetailPage(
         backHref="/admin/orders"
         backLabel="Back to orders"
       />
+
+      {order.nfc &&
+        !order.nfc.locked &&
+        !order.nfc.gateOverridden &&
+        (order.status === "paid" || order.status === "confirmed" || order.status === "packed") && (
+          <div
+            id="order-nfc-warning"
+            role="alert"
+            className="flex flex-col gap-2 rounded-xl border border-red-500/40 bg-red-500/10 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2.5">
+              <Lock className="mt-0.5 size-4 shrink-0 text-red-400" />
+              <p className="text-sm text-red-200">
+                <span className="font-medium text-red-300">The NFC tag on this piece is not locked.</span>{" "}
+                {order.nfc.linked ? "It was written but never locked." : "No tag has been linked yet."} It can&apos;t be dispatched
+                until the artist locks it in the app, or you allow it on the artwork&apos;s page.
+              </p>
+            </div>
+            <Link
+              href={`/admin/artworks/${order.artworkId}`}
+              className="shrink-0 text-sm font-medium text-red-200 underline-offset-2 hover:underline"
+            >
+              Open the artwork
+            </Link>
+          </div>
+        )}
 
       {/* grid-cols-1 below lg isn't decorative — see app/admin/page.tsx's
           identical comment: an implicit grid track sizes to its widest

@@ -37,6 +37,8 @@ export function RateEditor({ initial, onCancel, onSubmit, submitting }: RateEdit
     setDraft((d) => ({ ...d, [key]: fromFormValue(key, raw === "" ? 0 : parsed) }));
   };
 
+  const setToggle = (key: string, next: boolean) => setDraft((d) => ({ ...d, [key]: next }));
+
   const changed = Object.keys(draft).filter((k) => JSON.stringify(draft[k]) !== JSON.stringify(initial[k]));
   const canSubmit = reason.trim().length >= 10 && changed.length > 0 && !submitting;
 
@@ -61,6 +63,7 @@ export function RateEditor({ initial, onCancel, onSubmit, submitting }: RateEdit
                   value={draft[field.key]}
                   original={initial[field.key]}
                   onChange={(raw) => setNumber(field.key, raw)}
+                  onToggle={(next) => setToggle(field.key, next)}
                 />
               ))}
             </div>
@@ -116,14 +119,32 @@ function RateInput({
   value,
   original,
   onChange,
+  onToggle,
 }: {
   field: RateField;
   value: unknown;
   original: unknown;
   onChange: (raw: string) => void;
+  onToggle: (next: boolean) => void;
 }) {
   const editable = field.unit === "percent" || field.unit === "rupees" || field.unit === "days" || field.unit === "number";
   const dirty = JSON.stringify(value) !== JSON.stringify(original);
+
+  if (field.unit === "toggle" && typeof value === "boolean") {
+    return (
+      <label className="flex flex-col gap-1 sm:col-span-2">
+        <span className="text-xs font-medium text-foreground">
+          {field.label}
+          {dirty && <span className="ml-1.5 text-gold-bright">changed</span>}
+        </span>
+        <span className={`flex items-center gap-2.5 rounded-md border px-3 py-2 ${dirty ? "border-gold/60" : "border-border"}`}>
+          <input type="checkbox" checked={value} onChange={(e) => onToggle(e.target.checked)} className="size-4 accent-[var(--gold)]" />
+          <span className="text-sm text-foreground">{value ? "Enforced — an unlocked dispatch is refused" : "Warn only — an unlocked dispatch is allowed and recorded"}</span>
+        </span>
+        <span className="text-[11px] leading-snug text-muted-foreground">{field.hint}</span>
+      </label>
+    );
+  }
 
   if (!editable || typeof value !== "number") {
     return (

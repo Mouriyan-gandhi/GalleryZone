@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag } from "lucide-react";
+import { Lock, ShoppingBag } from "lucide-react";
 import {
   AdminDataTable,
   type AdminDataTableColumn,
@@ -22,6 +22,12 @@ const STATUSES: OrderStatus[] = [
   "delivered",
   "cancelled",
 ];
+
+// A paid order that hasn't shipped yet, whose piece's tag isn't locked and hasn't been waved through.
+function blockedByNfc(order: Order): boolean {
+  const open = order.status === "paid" || order.status === "confirmed" || order.status === "packed";
+  return open && order.nfc !== undefined && !order.nfc.locked && !order.nfc.gateOverridden;
+}
 
 function orderTotal(order: Order): number {
   return order.amount + order.gstAmount + order.deliveryCharge;
@@ -53,7 +59,20 @@ export function OrderAdminTable() {
     {
       key: "status",
       header: "Status",
-      render: (row) => <AdminStatusBadge status={row.status} size="sm" />,
+      render: (row) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <AdminStatusBadge status={row.status} size="sm" />
+          {blockedByNfc(row) && (
+            <span
+              title="The tag isn't locked, so this can't be dispatched once the NFC gate is enforced"
+              className="inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-red-300"
+            >
+              <Lock className="size-3" strokeWidth={2} />
+              Unlocked
+            </span>
+          )}
+        </div>
+      ),
       sortable: true,
       sortValue: (row) => row.status,
     },

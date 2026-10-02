@@ -4,7 +4,7 @@
 // (packages/domain/src/pricing.ts) — anything the API sends that isn't
 // listed here still renders, under "Other", so a new rate is never hidden.
 
-export type RateUnit = "percent" | "rupees" | "days" | "number" | "list" | "zones";
+export type RateUnit = "percent" | "rupees" | "days" | "number" | "list" | "zones" | "toggle";
 
 export interface RateField {
   key: string;
@@ -83,6 +83,13 @@ export const RATE_GROUPS: RateGroup[] = [
     ],
   },
   {
+    title: "NFC tags",
+    description: "The rule that a piece's tag must be locked before it ships.",
+    fields: [
+      { key: "nfcShipmentGateEnforced", label: "Require a locked NFC tag to dispatch", unit: "toggle", hint: "Off: an unlocked dispatch is allowed and only recorded, so you can see what would be blocked and chase it. On: it is refused. Turn on once every piece has been locked or allowed." },
+    ],
+  },
+  {
     title: "Delivery rate card",
     description: "Used when an artwork has a weight and both pincodes are known.",
     fields: [
@@ -102,6 +109,7 @@ export function ungroupedKeys(rates: Record<string, unknown>): string[] {
 
 export function formatRate(key: string, value: unknown): string {
   const unit = FIELD_BY_KEY.get(key)?.unit;
+  if (typeof value === "boolean") return unit === "toggle" ? (value ? "Enforced" : "Warn only") : value ? "On" : "Off";
   if (typeof value === "number") {
     if (unit === "percent") return `${+(value * 100).toFixed(4)}%`;
     if (unit === "rupees") return `₹${(value / 100).toLocaleString("en-IN")}`;

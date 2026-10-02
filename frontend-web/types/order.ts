@@ -29,6 +29,8 @@ export interface Order {
   /** Snapshot of what was bought, joined by the API. Null if the artwork was removed. */
   artwork?: { title: string; artistName: string; artistId: string; thumbnailUrl: string; productCode: string } | null;
   statusHistory: OrderStatusEvent[];
+  /** Admin reads only: the piece's NFC tag. A dispatch is refused while it is not locked (unless overridden) once the gate is on. */
+  nfc?: { linked: boolean; locked: boolean; gateOverridden: boolean };
   // Payment reference from the gateway. Simulated for now (see
   // features/checkout/razorpay-simulation.tsx) — the shape matches what
   // Razorpay returns so wiring the real gateway is a swap, not a rewrite.
