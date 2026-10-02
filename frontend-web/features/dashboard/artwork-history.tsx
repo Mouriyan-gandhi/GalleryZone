@@ -98,14 +98,21 @@ export function ArtworkHistory({ artwork }: { artwork: Artwork }) {
       detail: artwork.coaCertificateNumber,
     });
 
-    // No timestamp exists for tagging — the tag is either attached or it is not
-    // — so it is pinned to the certificate's date rather than invented.
-    if (artwork.nfcTagId) {
+    // The server timestamps both steps, so these sit at the moment they happened.
+    if (artwork.nfcLinkedAt) {
       ownership.push({
-        at: artwork.coaIssueDate,
+        at: artwork.nfcLinkedAt,
         icon: ScanLine,
-        label: "NFC / QR tag linked",
-        detail: artwork.nfcTagId,
+        label: "NFC tag linked",
+        detail: artwork.nfcTagUid ?? undefined,
+      });
+    }
+    if (artwork.nfcLockedAt) {
+      ownership.push({
+        at: artwork.nfcLockedAt,
+        icon: ScanLine,
+        label: "NFC tag locked",
+        detail: "The chip is read-only for good",
       });
     }
 

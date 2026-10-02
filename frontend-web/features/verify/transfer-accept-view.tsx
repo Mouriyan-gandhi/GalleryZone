@@ -8,6 +8,7 @@ import { useMounted } from "@/hooks/useMounted";
 import { ShieldCheck, CircleAlert, ArrowRight, ScanLine } from "lucide-react";
 import { useTransfer, useAcceptTransferMutation } from "@/hooks/useOwnershipTransfers";
 import { useArtwork } from "@/hooks/useArtwork";
+import { useVerifyPassport } from "@/hooks/useVerify";
 import { transferKind } from "@/types/artwork";
 
 // What the incoming owner sees when they open the transfer link. The route is
@@ -26,6 +27,8 @@ export function TransferAcceptView({ transferId }: { transferId: string }) {
   // they need to recognise the piece: the image, the tag on it, and a way
   // through to the full passport.
   const { data: artwork } = useArtwork(transfer?.artworkId ?? "");
+  // The tag's state is on the public passport; the listing doesn't carry it.
+  const { data: passport } = useVerifyPassport(transfer?.artworkId ?? "");
   const acceptMutation = useAcceptTransferMutation();
 
   if (signedOut) {
@@ -144,8 +147,8 @@ export function TransferAcceptView({ transferId }: { transferId: string }) {
           {isDisplay && transfer.displayEndsAt && (
             <Row label="On display until" value={formatDate(transfer.displayEndsAt)} />
           )}
-          {artwork?.nfcTagId && (
-            <Row label="NFC tag" value={artwork.nfcTagId} />
+          {passport?.nfcLinked && (
+            <Row label="NFC tag" value={passport.nfcLocked ? "Linked and locked" : "Linked"} />
           )}
         </dl>
         <Link

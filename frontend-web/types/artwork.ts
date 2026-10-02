@@ -103,10 +103,16 @@ export interface Artwork extends ArtworkSummary {
   insuranceNumber?: string | null;
   /** Admin-reviewed, same shape as GstStatus — see admin-status-badge.tsx. */
   insuranceStatus?: InsuranceStatus;
-  // Physical NFC/QR tag linked to this artwork's digital passport (Onboarding
-  // Guide Stage 5). Optional so the 30+ existing fixture records don't need
-  // a value; undefined/null both mean "not yet tagged".
-  nfcTagId?: string | null;
+  // The physical NFC tag on this piece, in three states (see lib/nfc.ts): not
+  // linked, linked but unlocked, linked and locked for good. Only the artist's
+  // own and admin views carry these; the chip's ID (nfcTagUid) is never public.
+  // Optional so the fixture records don't need a value: absent means unlinked.
+  nfcTagUid?: string | null;
+  nfcLinkedAt?: string | null;
+  nfcLockedAt?: string | null;
+  // Admin views only: an admin let this piece ship without a locked tag (legacy pieces).
+  nfcShipmentGateOverrideAt?: string | null;
+  nfcShipmentGateOverrideReason?: string | null;
   // Ownership, physical custody and location are three independent states,
   // never one "owner" field — a piece can be legally owned by GalleryZone,
   // physically held by an aggregator, and located in a third city all at

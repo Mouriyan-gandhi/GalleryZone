@@ -13,7 +13,6 @@ import {
   Check,
   ArrowLeft,
   Nfc,
-  RefreshCw,
   Building2,
   PlayCircle,
   ScrollText,
@@ -130,7 +129,6 @@ type FormState = {
   listingType: ListingType;
   insuranceOpted: boolean;
   insuranceNumber: string;
-  nfcTagId: string;
   weightKg: string;
   framing: FramingState | "";
   format: string;
@@ -157,7 +155,6 @@ const EMPTY_FORM: FormState = {
   listingType: "marketplace_and_aggregator",
   insuranceOpted: false,
   insuranceNumber: "",
-  nfcTagId: "",
   weightKg: "",
   framing: "",
   format: "",
@@ -202,10 +199,6 @@ type ImagePreview = { id: string; url: string; name: string; file?: File; imageI
 
 // A new listing starts with no images — every photo is a real upload.
 const INITIAL_IMAGES: ImagePreview[] = [];
-
-function generateNfcTagId(): string {
-  return `NFC-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-}
 
 function Requirement({
   met,
@@ -304,7 +297,6 @@ function formStateFor(artwork: EditableArtwork): FormState {
     listingType: artwork.listingType,
     insuranceOpted: artwork.insured,
     insuranceNumber: artwork.insuranceNumber ?? "",
-    nfcTagId: artwork.nfcTagId ?? "",
     weightKg: artwork.physical?.weightKg
       ? String(artwork.physical.weightKg)
       : "",
@@ -478,7 +470,6 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
         hangingHardwareIncluded: form.hangingHardwareIncluded,
         packagingConfirmed: form.packagingConfirmed,
       },
-      nfcTagId: form.nfcTagId || null,
       images: images.map((img, i) => ({
         url: img.url,
         altText: `${form.title || "Artwork"}, photo ${i + 1}`,
@@ -1159,34 +1150,18 @@ export function ArtworkSubmitForm({ artwork }: { artwork?: EditableArtwork }) {
             )}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nfcTagId">NFC / QR tag ID</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Nfc className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="nfcTagId"
-                  placeholder="Scan or enter tag ID"
-                  value={form.nfcTagId}
-                  onChange={(e) => updateField("nfcTagId", e.target.value)}
-                  className="h-10 pl-9"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => updateField("nfcTagId", generateNfcTagId())}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:border-gold/40 hover:text-gold-bright"
-              >
-                <RefreshCw className="size-3.5" />
-                Generate
-              </button>
+          <div className="flex gap-3 rounded-md border border-border bg-muted/30 px-3.5 py-3">
+            <Nfc className="mt-0.5 size-4 shrink-0 text-gold-bright" strokeWidth={1.75} />
+            <div className="text-xs leading-relaxed text-muted-foreground">
+              <p className="font-medium text-foreground">NFC tag</p>
+              <p className="mt-0.5">
+                Once this piece is approved, link and lock its physical tag from
+                Certificates &amp; tags using the GalleryZone app. The tag has
+                to be locked before the piece can be dispatched. A tag costs ₹
+                {nfcCharge.toLocaleString("en-IN")} + ₹
+                {nfcChargeGst.toLocaleString("en-IN")} GST.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Links this piece&rsquo;s physical tag to its digital passport.
-              Leave blank if you haven&rsquo;t attached one yet. Generating a
-              tag costs ₹{nfcCharge.toLocaleString("en-IN")} + ₹
-              {nfcChargeGst.toLocaleString("en-IN")} GST.
-            </p>
           </div>
           {aggregatorSelected && (
             <div className="flex flex-col gap-3.5 rounded-md border border-gold/30 bg-gold/5 p-4">
