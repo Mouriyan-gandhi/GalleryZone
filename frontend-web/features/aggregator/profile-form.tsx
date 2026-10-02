@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { GSTIN_PATTERN } from "@/components/shared/gst-number-card";
+import { GstStatusBadge } from "@/components/shared/gst-status-badge";
 import { UniSwapDialog, type Country } from "@/components/shared/uniswap-dialog";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
@@ -102,8 +103,9 @@ type AggregatorProfileData = NonNullable<
 const profileSchema = z.object({
   companyName: z.string().trim().min(2, "Enter your company name"),
   contactPerson: z.string().trim().min(2, "Enter a contact person"),
-  // Optional for everyone (meeting decision): blank is valid, but a number
-  // that IS entered has to be the right shape.
+  // Blank still saves, so the rest of the profile can be filled in first, but
+  // an aggregator can't reserve until an approved GST number is on file
+  // (client, 30 Sep 2026). A number that IS entered has to be the right shape.
   gstNumber: z
     .string()
     .trim()
@@ -117,6 +119,10 @@ const profileSchema = z.object({
     .refine(isValidPhoneNumber, "Enter a valid phone number"),
   country: z.string().trim().min(2, "Select a country"),
   addressLine1: z.string().trim().min(5, "Enter your business address"),
+  // The MOU's Address blank and GalleryZone's shipments both need the full address.
+  addressCity: z.string().trim().min(2, "Enter the city"),
+  addressState: z.string().trim().min(2, "Enter the state"),
+  addressPincode: z.string().trim().regex(/^[1-9][0-9]{5}$/, "Enter the 6-digit PIN code"),
   // MOU §10 requires one nominated GalleryZone coordinator per premises. All
   // three are required: audit notices, expiry reminders and inbound shipment
   // alerts go to this person, so a half-filled contact is no contact.
@@ -242,6 +248,9 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
       phone: initialCompanyPhone.number,
       country: profile.country,
       addressLine1: profile.addressLine1,
+      addressCity: profile.addressCity,
+      addressState: profile.addressState,
+      addressPincode: profile.addressPincode,
       coordinatorDesignation: profile.coordinatorDesignation,
       coordinatorPhone: initialPhone.number,
       coordinatorEmail: profile.coordinatorEmail,
@@ -398,12 +407,15 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
             name="gstNumber"
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="gstNumber">
-                  GST number{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </FieldLabel>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <FieldLabel htmlFor="gstNumber">
+                    GST number{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (required to reserve)
+                    </span>
+                  </FieldLabel>
+                  <GstStatusBadge status={profile.gstStatus} />
+                </div>
                 <Input
                   id="gstNumber"
                   maxLength={15}
@@ -413,6 +425,9 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
                   onBlur={field.onBlur}
                   aria-invalid={fieldState.invalid}
                 />
+                <p className="text-xs text-muted-foreground">
+                  GalleryZone reviews it before you can reserve artwork.
+                </p>
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}
@@ -453,11 +468,30 @@ function ProfileFormBody({ profile }: { profile: AggregatorProfileData }) {
             <Input
               id="addressLine1"
               className="h-10"
+              placeholder="Building, street, area"
               {...register("addressLine1")}
               aria-invalid={Boolean(errors.addressLine1)}
             />
             <FieldError errors={[errors.addressLine1]} />
           </Field>
+
+          <div className="grid grid-cols-1 gap-4 sm:col-span-2 sm:grid-cols-3">
+            <Field data-invalid={Boolean(errors.addressCity)}>
+              <FieldLabel htmlFor="addressCity">City</FieldLabel>
+              <Input id="addressCity" className="h-10" autoComplete="address-level2" {...register("addressCity")} aria-invalid={Boolean(errors.addressCity)} />
+              <FieldError errors={[errors.addressCity]} />
+            </Field>
+            <Field data-invalid={Boolean(errors.addressState)}>
+              <FieldLabel htmlFor="addressState">State</FieldLabel>
+              <Input id="addressState" className="h-10" autoComplete="address-level1" {...register("addressState")} aria-invalid={Boolean(errors.addressState)} />
+              <FieldError errors={[errors.addressState]} />
+            </Field>
+            <Field data-invalid={Boolean(errors.addressPincode)}>
+              <FieldLabel htmlFor="addressPincode">PIN code</FieldLabel>
+              <Input id="addressPincode" className="h-10" inputMode="numeric" maxLength={6} autoComplete="postal-code" {...register("addressPincode")} aria-invalid={Boolean(errors.addressPincode)} />
+              <FieldError errors={[errors.addressPincode]} />
+            </Field>
+          </div>
         </div>
 
         {/* MOU §10: one nominated GalleryZone coordinator per premises. The

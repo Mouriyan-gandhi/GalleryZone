@@ -1,29 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, PackageSearch } from "lucide-react";
+import { ArrowLeft, PackageSearch, TriangleAlert } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PriceTag } from "@/components/shared/price-tag";
 import { formatINR } from "@/lib/utils";
 import {
   AGGREGATOR_CYCLE_MONTHS,
   AGGREGATOR_COMMISSION_RATE,
-  aggregatorCommissionOf,
-  artistPriceFrom,
-  exGst,
-  gstIncludedIn,
+  PLATFORM_MARKUP,
+  aggregatorTermsAt,
 } from "@/lib/pricing";
-import { useReservableArtwork } from "@/hooks/useAggregatorInventory";
-import { useReserveArtworkMutation } from "@/hooks/useAggregatorInventory";
 import {
-  useAggregatorWallet,
-} from "@/hooks/useAggregatorWallet";
+  useReservableArtwork,
+  useReserveArtworkMutation,
+} from "@/hooks/useAggregatorInventory";
+import { useAggregatorWallet } from "@/hooks/useAggregatorWallet";
 import { CycleStepper } from "./cycle-stepper";
+import {
+  ReserveRequirementsNotice,
+  useReserveRequirements,
+} from "./reserve-requirements";
+import { SuggestedArtworks } from "./suggested-artworks";
 
 // Full-page replacement for what used to be a confirm dialog. Reserving is a
 // real commitment — it holds money from the wallet for thirty days — so it
@@ -31,12 +37,21 @@ import { CycleStepper } from "./cycle-stepper";
 // mis-click through. Confirming lands on the new holding's detail page
 // (holding-detail.tsx), which is the "what happens next" this flow used to
 // leave to a toast.
+//
+// Month 1 is the one month the aggregator sets the price (client, 30 Sep 2026:
+// "the aggregator can set the price only while reserving in month 1"). They may
+// go as high as they like, never below GalleryZone's own price, and it can't be
+// changed once reserved. Every later month the price is GalleryZone's.
 export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
   const router = useRouter();
   const { data: artwork, isPending, isError } =
     useReservableArtwork(artworkId);
   const reserveMutation = useReserveArtworkMutation();
   const { data: wallet } = useAggregatorWallet();
+  const { blockedReason } = useReserveRequirements();
+  // What has been typed into the price field, before GST. null until they touch
+  // it, which means "GalleryZone's price".
+  const [typedPrice, setTypedPrice] = useState<string | null>(null);
 
   if (isPending) {
     return (
@@ -67,34 +82,60 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
   }
 
   const { offer } = artwork;
-  // MOU §8: the aggregator's commission is 20% of (this month's price − the
-  // artist's price), regardless of who set that price — GalleryZone keeps the
-  // rest of the markup. Both artistPrice and the split are derivable straight
-  // from the offer, since standardPrice is exactly the artist's price with the
-  // month-1 markup and zero reduction applied.
-  const artistPrice = artistPriceFrom(offer.standardPrice);
-  const markup = Math.max(0, exGst(offer.offerPrice) - artistPrice);
-  const aggregatorCommission = aggregatorCommissionOf(
-    offer.offerPrice,
-    artistPrice,
-  );
-  const galleryZoneShare = markup - aggregatorCommission;
-  const gst = gstIncludedIn(offer.offerPrice);
-  const commissionPercent = Math.round(AGGREGATOR_COMMISSION_RATE * 100);
-  const free = wallet ? wallet.balance - wallet.lockedBalance : 0;
-  const shortfall = Math.max(0, offer.payable - free);
+  const chosenPrice =
+    offer.canSetPrice && typedPrice !== null
+      ? Number(typedPrice)
+      : offer.sellingPrice;
+  const priceError = !offer.canSetPrice
+    ? null
+    : !Number.isInteger(chosenPrice) || chosenPrice <= 0
+      ? "Enter a price in whole rupees."
+      : chosenPrice < offer.sellingPrice
+        ? `It can't be lower than GalleryZone's price, ${formatINR(offer.sellingPrice)}.`
+        : null;
+  // The numbers below follow what is typed, but never a price the API would refuse.
+  const price = priceError ? offer.sellingPrice : chosenPrice;
 
+  // MOU §8: the aggregator's commission is 20% of (selling price − the artist's
+  // price), before GST, whoever set the price. The artist's price is worked back
+  // from GalleryZone's month-1 price, the same way this screen always has.
+  const artistPrice = Math.round(
+    offer.standardPrice / (1 + offer.gstRate) / (1 + PLATFORM_MARKUP),
+  );
+  const terms = aggregatorTermsAt({
+    sellingPrice: price,
+    artistPrice,
+    gstRate: offer.gstRate,
+  });
+  const commissionPercent = Math.round(AGGREGATOR_COMMISSION_RATE * 100);
+
+  // Month 1's advance follows the price they choose; after that it is fixed.
+  const advance = offer.canSetPrice
+    ? Math.round(price * offer.advanceRate)
+    : offer.advance;
+  const advanceBase = offer.canSetPrice ? price : offer.advanceBase;
+  const payable = advance + offer.deliveryCharge;
+  const free = wallet ? wallet.balance - wallet.lockedBalance : 0;
+  const shortfall = Math.max(0, payable - free);
+  const priceWarning =
+    offer.priceWarnFrom !== null && price >= offer.priceWarnFrom;
 
   function handleConfirm() {
-    reserveMutation.mutate(artworkId, {
-      onSuccess: (holding) => {
-        toast.success("Artwork reserved", {
-          description: `"${artwork!.title}" is now in My Inventory.`,
-        });
-        router.push(`/aggregator/collection/${holding.id}`);
+    reserveMutation.mutate(
+      {
+        artworkId,
+        sellingPrice: offer.canSetPrice ? price : undefined,
       },
-      onError: (error) => toast.error(error.message),
-    });
+      {
+        onSuccess: (holding) => {
+          toast.success("Artwork reserved", {
+            description: `"${artwork!.title}" is now in My Inventory.`,
+          });
+          router.push(`/aggregator/collection/${holding.id}`);
+        },
+        onError: (error) => toast.error(error.message),
+      },
+    );
   }
 
   return (
@@ -106,6 +147,8 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
         <ArrowLeft className="size-3.5" strokeWidth={2} />
         Back to inventory
       </Link>
+
+      <ReserveRequirementsNotice />
 
       <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5">
         <div className="flex items-center gap-3">
@@ -126,19 +169,83 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
               {artwork.artistName}
             </p>
           </div>
-          <PriceTag amount={offer.offerPrice} className="text-base" />
+          <PriceTag amount={terms.displayPrice} className="text-base" />
         </div>
 
         <div className="flex flex-col gap-2">
           <CycleStepper currentMonth={offer.month} />
           <p className="text-sm text-muted-foreground">
-            Month {offer.month} of {AGGREGATOR_CYCLE_MONTHS}. Confirming
-            holds the advance from your wallet and moves this artwork into
-            your Inventory for a 30-day display window. A piece that doesn&rsquo;t
-            sell rotates to a different aggregator each month, cheaper each
-            time, for up to five placements.
+            Month {offer.month} of {AGGREGATOR_CYCLE_MONTHS}. Confirming holds
+            the advance from your wallet and moves this piece into My
+            Inventory for 30 days. After that it moves on to the next
+            aggregator and your advance is back in your wallet on day 31,
+            unless you ask GalleryZone to let you keep it and they agree.
           </p>
         </div>
+
+        {offer.canSetPrice ? (
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-background px-3.5 py-3">
+            <Label htmlFor="sellingPrice">
+              Your selling price, before GST (₹)
+            </Label>
+            <Input
+              id="sellingPrice"
+              type="number"
+              inputMode="numeric"
+              min={offer.sellingPrice}
+              step={1}
+              value={typedPrice ?? String(offer.sellingPrice)}
+              onChange={(e) => setTypedPrice(e.target.value)}
+              aria-invalid={Boolean(priceError)}
+              aria-describedby="sellingPriceHint"
+              className="h-10 font-mono tabular-nums sm:max-w-xs"
+            />
+            {priceError ? (
+              <p id="sellingPriceHint" className="text-xs text-destructive">
+                {priceError}
+              </p>
+            ) : (
+              <p
+                id="sellingPriceHint"
+                className="text-xs text-muted-foreground"
+              >
+                GalleryZone&rsquo;s price is {formatINR(offer.sellingPrice)}.
+                Set it higher if you like, not lower. You set it once: it
+                can&rsquo;t be changed after you reserve.
+              </p>
+            )}
+            {priceWarning && !priceError && (
+              <div
+                role="status"
+                className="flex items-start gap-2 rounded-md border border-gold/40 bg-gold/5 p-2.5"
+              >
+                <TriangleAlert
+                  className="mt-0.5 size-3.5 shrink-0 text-gold-bright"
+                  strokeWidth={1.75}
+                />
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  That&rsquo;s at least double GalleryZone&rsquo;s price. You
+                  can still reserve it, and GalleryZone will be told about the
+                  price.
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3.5 py-3 text-sm">
+            <div>
+              <p className="font-medium text-foreground">
+                Price this month, before GST
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Set by GalleryZone. Only the first aggregator sets a price.
+              </p>
+            </div>
+            <span className="font-mono tabular-nums text-foreground">
+              {formatINR(offer.sellingPrice)}
+            </span>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5 rounded-md border border-border bg-background px-3.5 py-3 text-sm">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -155,7 +262,7 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
               GalleryZone ({100 - commissionPercent}% of the markup)
             </span>
             <span className="font-mono tabular-nums text-foreground">
-              {formatINR(galleryZoneShare)}
+              {formatINR(terms.galleryZoneShare)}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -163,28 +270,32 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
               Your commission if it sells here ({commissionPercent}%)
             </span>
             <span className="font-mono tabular-nums text-foreground">
-              {formatINR(aggregatorCommission)}
+              {formatINR(terms.commission)}
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">GST (5%)</span>
+            <span className="text-muted-foreground">
+              GST ({+(offer.gstRate * 100).toFixed(2)}%)
+            </span>
             <span className="font-mono tabular-nums text-foreground">
-              {formatINR(gst)}
+              {formatINR(terms.gst)}
             </span>
           </div>
           <div className="flex items-center justify-between border-t border-border pt-1.5">
             <span className="font-medium text-foreground">
-              This month&rsquo;s price
+              What customers see
             </span>
             <span className="font-mono font-semibold tabular-nums text-gold-bright">
-              {formatINR(offer.offerPrice)}
+              {formatINR(terms.displayPrice)}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Raise the price once you hold it and your commission grows with
-            it — GalleryZone&rsquo;s and the artist&rsquo;s shares
-            don&rsquo;t change.
-          </p>
+          {offer.canSetPrice && (
+            <p className="text-xs text-muted-foreground">
+              Every extra rupee you charge splits {commissionPercent}% to you
+              and {100 - commissionPercent}% to GalleryZone. The
+              artist&rsquo;s price never changes.
+            </p>
+          )}
         </div>
 
         {offer.monthlyReduction > 0 && (
@@ -224,15 +335,15 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
                 Advance ({Math.round(offer.advanceRate * 100)}%)
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                of the{" "}
-                {offer.advanceBasis === "display_price"
-                  ? "display price"
-                  : "artist price"}
-                , {formatINR(offer.advanceBase)}
+                of{" "}
+                {offer.advanceBasis === "selling_price"
+                  ? "your price before GST"
+                  : "the artist price"}
+                , {formatINR(advanceBase)}
               </p>
             </div>
             <span className="font-mono tabular-nums text-foreground">
-              {formatINR(offer.advance)}
+              {formatINR(advance)}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -254,7 +365,7 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
               </p>
             </div>
             <span className="font-display text-lg font-semibold tabular-nums text-gold-bright">
-              {formatINR(offer.payable)}
+              {formatINR(payable)}
             </span>
           </div>
         </div>
@@ -286,17 +397,28 @@ export function ReserveArtworkPage({ artworkId }: { artworkId: string }) {
           </Button>
           <Button
             onClick={handleConfirm}
-            disabled={reserveMutation.isPending || shortfall > 0}
+            disabled={
+              reserveMutation.isPending ||
+              shortfall > 0 ||
+              Boolean(priceError) ||
+              blockedReason !== undefined
+            }
             title={
-              shortfall > 0
+              blockedReason ??
+              (shortfall > 0
                 ? `Add ${formatINR(shortfall)} to your wallet first`
-                : undefined
+                : undefined)
             }
           >
             {reserveMutation.isPending ? "Reserving…" : "Confirm reservation"}
           </Button>
         </div>
       </div>
+
+      <SuggestedArtworks
+        references={[artwork]}
+        title="Similar pieces you could reserve"
+      />
     </div>
   );
 }

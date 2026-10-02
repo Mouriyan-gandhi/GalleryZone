@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShieldCheck, PackageSearch, FileSignature, Heart, LayoutGrid, List } from "lucide-react";
+import { ShieldCheck, PackageSearch, Heart, LayoutGrid, List } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,11 +17,16 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PriceTag } from "@/components/shared/price-tag";
 import { VerifiedBadge } from "@/components/shared/verified-badge";
 import { useReservableInventory } from "@/hooks/useAggregatorInventory";
+import { useAggregatorCollection } from "@/hooks/useAggregatorCollection";
 import { AGGREGATOR_CYCLE_MONTHS } from "@/lib/pricing";
 import { formatINR, cn } from "@/lib/utils";
 import type { ReservableArtwork } from "@/services/aggregatorService";
-import { useAggregatorProfile } from "@/hooks/useAggregatorProfile";
 import { CycleStepper } from "./cycle-stepper";
+import {
+  ReserveRequirementsNotice,
+  useReserveRequirements,
+} from "./reserve-requirements";
+import { SuggestedArtworks } from "./suggested-artworks";
 
 // Same lower-bound verification treatment ArtworkCard uses -- ArtworkSummary
 // only carries a boolean verifiedArtist, not the full tier count, so this is
@@ -33,13 +38,26 @@ const MINIMUM_VERIFICATION = {
   tier3FirstSale: false,
 } as const;
 
+// Month 1 is the aggregator's to price; after that GalleryZone's ladder steps
+// the price down. Said the same way on the card and the list row.
+function monthLine(offer: ReservableArtwork["offer"]): string {
+  const month = `Month ${offer.month} of ${AGGREGATOR_CYCLE_MONTHS}`;
+  if (offer.canSetPrice) return `${month} · you set the price`;
+  return offer.monthlyReduction > 0
+    ? `${month} · ${formatINR(offer.monthlyReduction)} off month 1`
+    : month;
+}
+
 export function ReservableInventoryGrid() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const { data: profile } = useAggregatorProfile();
-  // undefined while loading — only `false` should disable anything, so a slow
-  // profile fetch never blocks a signed aggregator mid-session.
-  const mouSigned = profile ? Boolean(profile.mouAcceptance) : undefined;
+  const { blockedReason } = useReserveRequirements();
   const { data, isPending, isError } = useReservableInventory();
+  // What this aggregator holds or has sold is what "more like these" is
+  // measured against. A returned piece wasn't theirs to show, so it doesn't count.
+  const { data: holdings } = useAggregatorCollection();
+  const heldPieces = (holdings ?? [])
+    .filter((holding) => holding.status !== "returned")
+    .map((holding) => holding.artwork);
 
   if (isPending) {
     return (
@@ -81,31 +99,18 @@ export function ReservableInventoryGrid() {
 
   return (
     <>
-      {/* The service refuses a reservation without a signed MOU. Say so here
-          rather than letting someone pick a piece and hit the wall in the
-          confirm dialog. */}
-      {mouSigned === false && (
-        <div className="mb-5 flex flex-col gap-3 rounded-lg border border-gold/40 bg-gold/5 p-4 sm:flex-row sm:items-center">
-          <div className="flex items-start gap-3 sm:flex-1 sm:items-center">
-            <FileSignature
-              className="mt-0.5 size-4 shrink-0 text-gold-bright sm:mt-0"
-              strokeWidth={1.75}
-            />
-            <p className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">
-                Sign your Aggregator MOU to reserve artwork.
-              </span>{" "}
-              It covers custody, pricing and settlement — GalleryZone can&rsquo;t
-              place a piece with you until it&rsquo;s signed.
-            </p>
-          </div>
-          <Link
-            href="/aggregator/profile"
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border border-gold/60 px-4 py-2 text-sm font-medium text-gold-bright transition-colors hover:border-gold hover:bg-gold/10"
-          >
-            Go to My Profile
-          </Link>
-        </div>
+      {/* The API refuses a reservation without a signed MOU and an approved
+          GST number. Say so here rather than letting someone pick a piece and
+          hit the wall on the reserve screen. */}
+      <ReserveRequirementsNotice className="mb-5" />
+
+      {heldPieces.length > 0 && (
+        <SuggestedArtworks
+          references={heldPieces}
+          title="Suggested for you"
+          limit={6}
+          className="mb-6"
+        />
       )}
 
       {/* Artworks count and Sort control */}
@@ -177,13 +182,13 @@ export function ReservableInventoryGrid() {
             <InventoryArtworkCard
               key={artwork.id}
               artwork={artwork}
-              disabled={mouSigned === false}
+              blockedReason={blockedReason}
             />
           ) : (
             <InventoryArtworkListRow
               key={artwork.id}
               artwork={artwork}
-              disabled={mouSigned === false}
+              blockedReason={blockedReason}
             />
           )
         )}
@@ -194,12 +199,13 @@ export function ReservableInventoryGrid() {
 
 function InventoryArtworkCard({
   artwork,
-  disabled = false,
+  blockedReason,
 }: {
   artwork: ReservableArtwork;
-  disabled?: boolean;
+  blockedReason?: string | undefined;
 }) {
   const { offer } = artwork;
+  const disabled = blockedReason !== undefined;
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 ease-out hover:-translate-y-1 hover:border-gold/50 hover:shadow-lg active:scale-[0.99]">
       <Link
@@ -252,6 +258,11 @@ function InventoryArtworkCard({
         </p>
 
         <PriceTag amount={offer.offerPrice} className="mt-4 text-lg font-bold text-foreground" />
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {offer.canSetPrice
+            ? "GalleryZone's price, incl. GST. You can set a higher one."
+            : "Fixed this month, incl. GST"}
+        </p>
 
         <div className="mt-3 rounded-lg bg-muted/40 p-3 border border-border/50">
           <CycleStepper
@@ -259,7 +270,7 @@ function InventoryArtworkCard({
             size="sm"
           />
           <p className="mt-2 text-[11px] font-medium text-muted-foreground text-center">
-            Month {offer.month} of {AGGREGATOR_CYCLE_MONTHS} &middot; ₹{offer.monthlyReduction.toLocaleString("en-IN")} off since month 1
+            {monthLine(offer)}
           </p>
         </div>
 
@@ -271,7 +282,7 @@ function InventoryArtworkCard({
             )
           }
           disabled={disabled}
-          title={disabled ? "Sign your Aggregator MOU first" : undefined}
+          title={blockedReason}
           className="mt-4 h-11 w-full rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-gold-deep shadow-sm"
         >
           Reserve Artwork
@@ -283,12 +294,13 @@ function InventoryArtworkCard({
 
 function InventoryArtworkListRow({
   artwork,
-  disabled = false,
+  blockedReason,
 }: {
   artwork: ReservableArtwork;
-  disabled?: boolean;
+  blockedReason?: string | undefined;
 }) {
   const { offer } = artwork;
+  const disabled = blockedReason !== undefined;
   return (
     <div className="group relative flex items-stretch gap-4 rounded-xl border border-border bg-card p-3 transition-colors duration-200 ease-out hover:border-gold/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
       {/* Left: Image */}
@@ -342,6 +354,11 @@ function InventoryArtworkListRow({
         </p>
 
         <PriceTag amount={offer.offerPrice} className="mt-2 text-sm font-semibold" />
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          {offer.canSetPrice
+            ? "GalleryZone's price, incl. GST. You can set a higher one."
+            : "Fixed this month, incl. GST"}
+        </p>
 
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex-1 rounded-lg bg-muted/40 p-2.5 border border-border/50">
@@ -350,7 +367,7 @@ function InventoryArtworkListRow({
               size="sm"
             />
             <p className="mt-1.5 text-[10px] font-medium text-muted-foreground text-center">
-              Month {offer.month} of {AGGREGATOR_CYCLE_MONTHS} &middot; ₹{offer.monthlyReduction.toLocaleString("en-IN")} off since mo 1
+              {monthLine(offer)}
             </p>
           </div>
           <Button
@@ -361,7 +378,7 @@ function InventoryArtworkListRow({
               )
             }
             disabled={disabled}
-            title={disabled ? "Sign your Aggregator MOU first" : undefined}
+            title={blockedReason}
             className="h-10 w-full sm:w-auto sm:px-6 rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-gold-deep shadow-sm shrink-0"
           >
             Reserve

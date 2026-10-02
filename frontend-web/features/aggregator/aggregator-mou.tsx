@@ -8,8 +8,8 @@ import { MouAgreement } from "@/features/mou/mou-agreement";
 import { AGGREGATOR_MOU } from "./aggregator-mou-data";
 
 // The aggregator's partner agreement, on the same signing surface the artist
-// MOU uses. Signed by the nominated contact person, whose name the signature
-// has to match.
+// MOU uses. Signed by the contact person (the account's name), whose name the
+// signature has to match; the business name and address come from the profile.
 export function AggregatorMouAgreement() {
   const { data: profile } = useAggregatorProfile();
   const acceptMutation = useAcceptAggregatorMouMutation();
@@ -32,6 +32,7 @@ export function AggregatorMouAgreement() {
         document={AGGREGATOR_MOU}
         signerName={profile.contactPerson}
         acceptance={profile.mouAcceptance}
+        draft={profile.mouDraft}
         onSign={(input) => acceptMutation.mutate(input)}
         isPending={acceptMutation.isPending}
         error={acceptMutation.error}

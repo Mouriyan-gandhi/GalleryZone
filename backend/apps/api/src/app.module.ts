@@ -26,11 +26,13 @@ import { ResaleController } from "./resale.controller.ts";
 import { ReportsController } from "./reports.controller.ts";
 import { CoaController } from "./coa.controller.ts";
 import { VerifyController } from "./verify.controller.ts";
+import { PassportController } from "./passport.controller.ts";
 import { OwnershipController } from "./ownership.controller.ts";
 import { MouController } from "./mou.controller.ts";
 import { ImagesController } from "./images.controller.ts";
 import { Storage } from "./storage.ts";
 import { ListingBackfill } from "./listing-backfill.ts";
+import { HoldingExpirySweep } from "./holding-expiry.ts";
 import { Mailer } from "./mail/mailer.ts";
 import { Emails } from "./mail/emails.ts";
 import { PaymentsController } from "./payments/payments.controller.ts";
@@ -84,6 +86,7 @@ import { DbModule } from "./db.module.ts";
     ReportsController,
     CoaController,
     VerifyController,
+    PassportController,
     OwnershipController,
     MouController,
     ImagesController,
@@ -96,6 +99,7 @@ import { DbModule } from "./db.module.ts";
     { provide: APP_GUARD, useClass: RolesGuard },
     Storage,
     ListingBackfill,
+    HoldingExpirySweep,
     Mailer,
     Emails,
     Razorpay,

@@ -69,3 +69,37 @@ export function insuranceRecommended(artistPricePaise: number, rates: PricingRat
 export function shouldFlagEarningsAbove5L(yearToDateEarningsPaise: number, rates: PricingRates): boolean {
   return yearToDateEarningsPaise >= rates.earningsAbove5LThresholdPaise;
 }
+
+// One wallet top-up through Razorpay. The floor is about what one reservation
+// needs; the ceiling keeps a mistyped amount from becoming a very large charge.
+// ponytail: fixed here, not in the admin rate console; move it there if it ever needs tuning.
+export const WALLET_TOPUP_MIN_PAISE = 100_000; // ₹1,000
+export const WALLET_TOPUP_MAX_PAISE = 50_000_000; // ₹5,00,000
+
+/** Cash taken at the counter is GalleryZone's money. The full price is due within this many days (client, 30 Sep 2026: "2 days to deposit"). */
+export const CASH_REMITTANCE_DAYS = 2;
+
+export function cashRemittanceDueAt(soldAt: Date): Date {
+  return new Date(soldAt.getTime() + CASH_REMITTANCE_DAYS * 86_400_000);
+}
+
+const IST_OFFSET_MS = 330 * 60_000;
+
+/** 1 April, 00:00 India time, of the financial year that `asOf` falls in. §194-O counts April to March. */
+export function financialYearStart(asOf: Date): Date {
+  const ist = new Date(asOf.getTime() + IST_OFFSET_MS);
+  const year = ist.getUTCMonth() >= 3 ? ist.getUTCFullYear() : ist.getUTCFullYear() - 1;
+  return new Date(Date.UTC(year, 3, 1) - IST_OFFSET_MS);
+}
+
+/**
+ * §194-O TDS on an artist's sale (client, 30 Sep 2026: "only when the artist's
+ * sales this year cross ₹5 lakh"). It applies to the sale that takes the
+ * financial year's total past the threshold, and to every sale after it, on
+ * that sale's whole artist price. `salesSoFarPaise` is the year's sales BEFORE
+ * this one. Deducting on the whole crossing sale, not only the part above the
+ * line, errs towards withholding too much (claimable back) over too little.
+ */
+export function tdsAppliesOnSale(salesSoFarPaise: number, artistPricePaise: number, rates: PricingRates): boolean {
+  return salesSoFarPaise + artistPricePaise > rates.earningsAbove5LThresholdPaise;
+}

@@ -4,27 +4,37 @@
 // (Firestore has no dedicated cycle-id field either), and a sale reads
 // whichever rate is active AT SALE TIME rather than pinning a version at
 // reservation.
+//
+// Pricing (client, 30 Sep 2026): the aggregator sets their price ONLY when
+// reserving, and only in month 1 (never below GalleryZone's offer). From
+// month 2 the price is GalleryZone's and fixed.
 
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import {
   aggregatorAdvanceForMonth,
-  aggregatorAdvancePostings,
+  aggregatorHoldPostings,
   aggregatorOfferPriceOf,
   aggregatorSalePostings,
+  canPlaceWithAnotherAggregator,
+  cashRemittanceDueAt,
   holdingStateMachine,
+  isPriceWarning,
   placementWindow,
   withGst,
   type PricingRates,
 } from "@galleryzone/domain";
 import { FirestoreRateConfigStore } from "./firestore-rate-config-store.ts";
-import { isArtistGstRegistered } from "./profiles.ts";
+import { postArtistSale } from "./artist-sales.ts";
 import { postLedgerEntries } from "./ledger-repository.ts";
+import { getWalletBalance } from "./wallets.ts";
 import { Collections, artworkPricingCol, type AggregatorHoldingDoc, type AggregatorSaleDoc, type ArtworkPricingDoc } from "./collections.ts";
 import { appendArtworkStatus, latestStatusOf, refreshListing } from "./listing-projection.ts";
 import { artworkStateMachine } from "@galleryzone/domain";
 import { DbError } from "./errors.ts";
 
 export class AggregatorFlowError extends DbError {}
+
+const inr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 
 async function requireActiveRates(db: Firestore): Promise<PricingRates> {
   const store = new FirestoreRateConfigStore(db);
@@ -37,6 +47,12 @@ export interface ReserveHoldingResult {
   holdingId: string;
   advanceAmountPaise: number;
   displayPricePaise: number;
+  /** The price before GST the aggregator is selling at. */
+  sellingPricePaise: number;
+  /** GalleryZone's offer before GST: the floor in month 1. */
+  offerSellingPricePaise: number;
+  /** Priced far enough above the offer that GalleryZone should be told. */
+  priceWarning: boolean;
   expiresAt: Date;
 }
 
@@ -44,10 +60,13 @@ export async function reserveHolding({
   db,
   aggregatorId,
   artworkId,
+  sellingPricePaise,
 }: {
   db: Firestore;
   aggregatorId: string;
   artworkId: string;
+  /** The price before GST the aggregator chooses. Month 1 only; omitted means GalleryZone's offer. */
+  sellingPricePaise?: number | undefined;
 }): Promise<ReserveHoldingResult> {
   const pricingSnap = await db.collection(artworkPricingCol(artworkId)).doc("data").get();
   if (!pricingSnap.exists) throw new AggregatorFlowError(`No artwork ${artworkId}`);
@@ -64,13 +83,32 @@ export async function reserveHolding({
   const priorSnap = await db.collection(Collections.aggregatorHoldings).where("artworkId", "==", artworkId).orderBy("assignedAt").get();
   const priorHoldings = priorSnap.docs.map((d) => d.data() as AggregatorHoldingDoc);
 
+  // A piece that doesn't sell moves on to a DIFFERENT aggregator. The same one
+  // can only keep it through an extension GalleryZone approves (holding-lifecycle.ts).
+  if (priorHoldings.some((h) => h.aggregatorId === aggregatorId)) {
+    throw new AggregatorFlowError("You have already held this artwork. It goes to a different aggregator next.");
+  }
+
   const month = priorHoldings.length + 1;
   const now = new Date();
   const cycleStartedAt = priorHoldings[0]?.assignedAt.toDate() ?? now;
+  if (!canPlaceWithAnotherAggregator({ cycleStartedAt: priorHoldings[0]?.assignedAt.toDate() ?? null, placementsSoFar: priorHoldings.length, rates, now: now.getTime() })) {
+    throw new AggregatorFlowError("This artwork has no aggregator placement left in its listing period");
+  }
 
-  const offerPricePaise = aggregatorOfferPriceOf(pricing.artistPricePaise, month, rates);
-  const displayPricePaise = withGst(offerPricePaise, rates);
-  const advance = aggregatorAdvanceForMonth({ month, displayPrice: displayPricePaise, artistPrice: pricing.artistPricePaise, rates, previousAggregatorChangedPrice: false });
+  // Only the month-1 aggregator can price above the offer; whether they did
+  // decides when the next aggregator's monthly drops start.
+  const offerPricePaise = aggregatorOfferPriceOf(pricing.artistPricePaise, month, rates, { appreciated: priorHoldings[0]?.appreciated ?? false });
+  let chosenPricePaise = offerPricePaise;
+  if (sellingPricePaise !== undefined && sellingPricePaise !== offerPricePaise) {
+    if (month > 1) throw new AggregatorFlowError("The selling price is set by GalleryZone after month 1");
+    if (sellingPricePaise < offerPricePaise) throw new AggregatorFlowError("The selling price can't go below GalleryZone's offer price");
+    chosenPricePaise = sellingPricePaise;
+  }
+  const appreciated = month === 1 && chosenPricePaise > offerPricePaise;
+  const priceWarning = month === 1 && isPriceWarning(chosenPricePaise, offerPricePaise, rates);
+  const displayPricePaise = withGst(chosenPricePaise, rates);
+  const advance = aggregatorAdvanceForMonth({ month, sellingPrice: chosenPricePaise, artistPrice: pricing.artistPricePaise, rates });
   const window = placementWindow({ cycleStartedAt, assignedAt: now, rates });
 
   const holdingRef = db.collection(Collections.aggregatorHoldings).doc();
@@ -82,6 +120,9 @@ export async function reserveHolding({
     advanceAmountPaise: advance.advance,
     deliveryDepositPaise: advance.deliveryCharge,
     displayPricePaise,
+    sellingPricePaise: chosenPricePaise,
+    appreciated,
+    priceWarning,
     assignmentSource: "self_reserved",
     assignedAt: Timestamp.fromDate(now),
     expiresAt: Timestamp.fromDate(window.expiresAt),
@@ -89,19 +130,37 @@ export async function reserveHolding({
     status: "reserved",
     returnedAt: null,
   };
-  await holdingRef.set(doc);
 
+  // The advance and the delivery deposit are set aside from the aggregator's
+  // wallet (client, 30 Sep 2026: money comes in by Razorpay top-up). The funds
+  // check, the hold and the holding itself commit in ONE transaction, so a
+  // reservation can never exist without its money, or take money twice.
   await postLedgerEntries(db, {
-    postings: aggregatorAdvancePostings({ aggregatorId, displayPricePaise, rates }),
-    idempotencyPrefix: `holding:${holdingRef.id}:advance`,
+    postings: async (tx) => {
+      const { balancePaise } = await getWalletBalance(db, "aggregator_payable", aggregatorId, tx);
+      if (balancePaise < advance.payable) {
+        throw new AggregatorFlowError(`Your wallet needs ${inr(advance.payable)} free to reserve this piece and has ${inr(Math.max(0, balancePaise))}. Add funds in Earnings & Wallet.`);
+      }
+      return aggregatorHoldPostings({ aggregatorId, advancePaise: advance.advance, deliveryPaise: advance.deliveryCharge });
+    },
+    idempotencyPrefix: `holding:${holdingRef.id}:hold`,
     relatedHoldingId: holdingRef.id,
+    alsoInTransaction: (tx) => tx.create(holdingRef, doc),
   });
 
   artworkStateMachine.assertTransition("marketplace", "with_aggregator");
   await appendArtworkStatus(db, artworkId, { status: "with_aggregator", changedBy: aggregatorId, reason: `holding:${holdingRef.id}` });
   await refreshListing(db, artworkId, rates);
 
-  return { holdingId: holdingRef.id, advanceAmountPaise: advance.advance, displayPricePaise, expiresAt: window.expiresAt };
+  return {
+    holdingId: holdingRef.id,
+    advanceAmountPaise: advance.advance,
+    displayPricePaise,
+    sellingPricePaise: chosenPricePaise,
+    offerSellingPricePaise: offerPricePaise,
+    priceWarning,
+    expiresAt: window.expiresAt,
+  };
 }
 
 export interface RecordSaleInput {
@@ -128,13 +187,10 @@ export async function recordAggregatorSale(input: RecordSaleInput): Promise<{ sa
   // holding.displayPricePaise, so the sale record and the ledger could
   // disagree about what the piece went for — and for a cash_at_premises sale
   // the remittance owed to GalleryZone is chased against that record. The
-  // display price is the agreed selling price (setHoldingDisplayPrice is
-  // where it changes, once, and never below GalleryZone's offer), so a
-  // different figure here means the aggregator should have re-priced first.
+  // display price is the agreed selling price, fixed when the aggregator
+  // reserved, so any other figure here is a mistake.
   if (input.soldPricePaise !== holding.displayPricePaise) {
-    throw new AggregatorFlowError(
-      `A sale must be recorded at the piece's selling price (${holding.displayPricePaise} paise). Update the price on the holding first.`,
-    );
+    throw new AggregatorFlowError(`A sale must be recorded at the piece's selling price (${holding.displayPricePaise} paise).`);
   }
 
   const pricingSnap = await db.collection(artworkPricingCol(holding.artworkId)).doc("data").get();
@@ -143,20 +199,23 @@ export async function recordAggregatorSale(input: RecordSaleInput): Promise<{ sa
 
   const rates = await requireActiveRates(db);
 
-  const postings = aggregatorSalePostings({
-    artistId: pricing.artistId,
-    aggregatorId: holding.aggregatorId,
-    displayPricePaise: holding.displayPricePaise,
-    artistPricePaise: pricing.artistPricePaise,
-    advanceAlreadyHeldPaise: holding.advanceAmountPaise,
-    rates,
-    isGstRegistered: await isArtistGstRegistered(db, pricing.artistId),
-    // The delivery leg the aggregator was actually charged at reservation is
-    // what comes off the artist, not the flat fallback.
-    ...(holding.deliveryDepositPaise === null ? {} : { deliveryChargePaise: holding.deliveryDepositPaise }),
-  });
+  const buildPostings = (tdsApplies: boolean) =>
+    aggregatorSalePostings({
+      artistId: pricing.artistId,
+      aggregatorId: holding.aggregatorId,
+      displayPricePaise: holding.displayPricePaise,
+      artistPricePaise: pricing.artistPricePaise,
+      // What was set aside from the wallet at reservation comes back on a sale.
+      heldPaise: holding.advanceAmountPaise + (holding.deliveryDepositPaise ?? 0),
+      rates,
+      tdsApplies,
+      // The delivery leg the aggregator was actually charged at reservation is
+      // what comes off the artist, not the flat fallback.
+      ...(holding.deliveryDepositPaise === null ? {} : { deliveryChargePaise: holding.deliveryDepositPaise }),
+    });
 
   const saleRef = db.collection(Collections.aggregatorSales).doc();
+  const soldAt = new Date();
   const saleDoc: AggregatorSaleDoc = {
     holdingId,
     artworkId: holding.artworkId,
@@ -168,6 +227,9 @@ export async function recordAggregatorSale(input: RecordSaleInput): Promise<{ sa
     deliveryMode: input.deliveryMode,
     paymentRoute: input.paymentRoute,
     remittedAt: null,
+    // Cash is GalleryZone's money: the full price is due within two days.
+    remitDueAt: input.paymentRoute === "cash_at_premises" ? Timestamp.fromDate(cashRemittanceDueAt(soldAt)) : null,
+    remittedVia: null,
     shipmentStatus: "preparing",
     dispatchedAt: null,
     deliveredAt: null,
@@ -176,10 +238,16 @@ export async function recordAggregatorSale(input: RecordSaleInput): Promise<{ sa
   };
   await saleRef.set(saleDoc);
 
-  const { transactionId } = await postLedgerEntries(db, {
-    postings,
-    idempotencyPrefix: `sale:${saleRef.id}`,
-    relatedHoldingId: holdingId,
+  // TDS depends on what the artist has already sold this financial year, so it
+  // is decided inside the same transaction that posts the ledger entries.
+  const { transactionId } = await postArtistSale(db, {
+    artistId: pricing.artistId,
+    artistPricePaise: pricing.artistPricePaise,
+    channel: "aggregator",
+    rates,
+    saleKey: `holding:${holdingId}`,
+    holdingId,
+    build: buildPostings,
   });
 
   await holdingRef.update({ status: "sold_pending_settlement" });

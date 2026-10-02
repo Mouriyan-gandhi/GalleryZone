@@ -43,12 +43,28 @@ export class ArtistWalletController {
 export class AggregatorWalletController {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  // Read-only per plan.md §3.4 — an aggregator is an agent, not a
-  // principal, and never gets a real withdrawal endpoint; only this view.
+  // No withdrawal route here (plan.md §3.4: an aggregator is an agent, not a
+  // principal). Money comes in by Razorpay top-up (payments.controller.ts) and
+  // out through reservations and sales. `balancePaise` is what can be spent
+  // now; `heldPaise` is set aside for pieces they hold.
   @Roles("aggregator")
   @Get()
   async get(@Req() req: AuthenticatedRequest) {
-    return getWalletBalance(this.db, "aggregator_payable", req.authUser.uid);
+    const [balance, held] = await Promise.all([
+      getWalletBalance(this.db, "aggregator_payable", req.authUser.uid),
+      getWalletBalance(this.db, "aggregator_held", req.authUser.uid),
+    ]);
+    return { ...balance, heldPaise: held.balancePaise };
+  }
+
+  /** Top-ups, holds, returns and commission, oldest first. */
+  @Roles("aggregator")
+  @Get("transactions")
+  async transactions(@Req() req: AuthenticatedRequest) {
+    const entries = await listWalletTransactions(this.db, "aggregator_payable", req.authUser.uid);
+    return {
+      transactions: entries.map((e) => ({ id: e.id, amountPaise: e.amountPaise, reason: e.reason, holdingId: e.relatedHoldingId, at: e.createdAt.toISOString() })),
+    };
   }
 }
 

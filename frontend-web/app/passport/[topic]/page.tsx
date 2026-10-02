@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Check } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { PassportLiveExample } from "@/features/passport/passport-live-example";
+import { PassportHeroCta } from "@/features/passport/passport-hero-cta";
+import { PassportViewerPanel } from "@/features/passport/passport-viewer-panel";
 import {
   PASSPORT_TOPICS,
   getPassportTopic,
@@ -49,13 +50,7 @@ export default async function PassportTopicPage({ params }: PageParams) {
               <p className="mt-4 max-w-md text-base leading-relaxed text-pretty text-muted-foreground">
                 {topic.lede}
               </p>
-              <Link
-                href="/marketplace"
-                className="mt-7 inline-flex h-11 w-fit items-center gap-2 rounded-full bg-gold px-6 text-sm font-semibold text-[#171310] transition-[background-color,transform] duration-150 ease-out hover:bg-gold-bright focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97] dark:bg-gold-bright dark:hover:bg-gold"
-              >
-                Browse artworks
-                <ArrowRight className="size-4" strokeWidth={2} />
-              </Link>
+              <PassportHeroCta />
             </div>
 
             <div className="relative aspect-[16/11] overflow-hidden rounded-xl bg-muted shadow-[0_30px_60px_-30px_rgb(0_0_0/0.6)] ring-1 ring-border">
@@ -111,7 +106,7 @@ export default async function PassportTopicPage({ params }: PageParams) {
           </div>
         </section>
 
-        <PassportLiveExample topic={topic.slug} />
+        <PassportViewerPanel topic={topic.slug} />
 
         <section
           aria-labelledby="steps"

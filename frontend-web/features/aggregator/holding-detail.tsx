@@ -4,7 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, GalleryVerticalEnd, ShieldOff } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleCheckBig,
+  CircleX,
+  GalleryVerticalEnd,
+  Hourglass,
+  ShieldOff,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -13,14 +20,16 @@ import { ArtworkPassportCard } from "@/features/verify/artwork-passport-card";
 import { ExpiryCountdown } from "./expiry-countdown";
 import { CycleStepper } from "./cycle-stepper";
 import { RecordSaleDialog } from "./record-sale-dialog";
+import { RequestExtensionDialog } from "./request-extension-dialog";
 import { ReturnHoldingDialog } from "./return-holding-dialog";
+import { SuggestedArtworks } from "./suggested-artworks";
 import { HOLDING_STATUS_CONFIG } from "./holding-status";
 import {
   useAggregatorHolding,
 } from "@/hooks/useAggregatorCollection";
-import { useReservableInventory } from "@/hooks/useAggregatorInventory";
 import { AGGREGATOR_CYCLE_MONTHS } from "@/lib/pricing";
 import { formatINR } from "@/lib/utils";
+import type { HoldingExtensionRequest } from "@/types/aggregator";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -40,6 +49,7 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
   const { data: holding, isPending, isError } = useAggregatorHolding(holdingId);
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   // Snapshotted once (react-hooks/purity forbids a bare Date.now() in render
   // — see expiry-countdown.tsx). Only used to notice "the window has already
   // passed" for the banner below; a stale-by-a-few-seconds value doesn't
@@ -77,13 +87,21 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
   const status = HOLDING_STATUS_CONFIG[holding.status];
   const isReserved = holding.status === "reserved";
   const isReturned = holding.status === "returned";
-  // Nothing in this mock ever auto-expires a placement — there's no
-  // background job, so a piece past its 30 days just sits "Reserved" showing
-  // a red countdown until the aggregator does something about it. This
-  // banner is that "something about it" prompt; Return/Record sale below are
-  // the two ways it actually resolves.
+  // The API takes a piece back itself once its window has passed (a sweep
+  // every 15 minutes), so this only shows in the gap before that runs. Recording
+  // a sale is the one thing still worth doing from here.
   const isExpired =
     isReserved && new Date(holding.expiresAt).getTime() <= now;
+  // One answer per window: GalleryZone's reply stands until the window moves.
+  // The API also refuses a second request while one is waiting, and once the
+  // piece is already held to the end of its listing.
+  const request = holding.extensionRequest;
+  const canAskToKeep =
+    isReserved &&
+    !isExpired &&
+    !holding.windowExtended &&
+    request?.status !== "pending" &&
+    !(request && request.previousExpiresAt === holding.expiresAt);
   // The note's rule: COA/NFC access follows the ACTIVE allocation. Once a
   // piece is returned it moves on to the next aggregator, so the passport
   // stops showing here — it isn't deleted, just no longer this aggregator's
@@ -105,24 +123,17 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
         <div className="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-foreground">
-              This piece&rsquo;s 30-day display window has passed.
+              This piece&rsquo;s 30-day window has ended.
             </p>
             <p className="text-sm text-muted-foreground">
-              Nothing happens on its own — record the sale if it sold, or
-              return it so GalleryZone can offer it to another aggregator at
-              next month&rsquo;s price.
+              GalleryZone takes it back and offers it to another aggregator,
+              and your advance returns to your wallet. If it sold before then,
+              record the sale now.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Button size="sm" onClick={() => setSaleDialogOpen(true)}>
               Record sale
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setReturnDialogOpen(true)}
-            >
-              Return
             </Button>
           </div>
         </div>
@@ -135,7 +146,7 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
           </p>
           <p className="text-sm text-muted-foreground">
             It has gone back to GalleryZone and is now available to another
-            aggregator.{" "}
+            aggregator. Your advance is back in your wallet.{" "}
             <Link
               href="/aggregator/inventory"
               className="font-medium text-gold-bright hover:underline"
@@ -185,6 +196,9 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
               Reserved {formatDate(holding.assignedAt)} &middot; expires{" "}
               {formatDate(holding.expiresAt)}
             </p>
+            {request && (
+              <ExtensionStatus request={request} expiresAt={holding.expiresAt} />
+            )}
           </div>
         )}
 
@@ -221,7 +235,7 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
         </div>
 
         {isReserved && (
-          <div className="flex items-center gap-2 border-t border-border pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
             <Button onClick={() => setSaleDialogOpen(true)}>
               Record sale
             </Button>
@@ -231,6 +245,14 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
             >
               Return
             </Button>
+            {canAskToKeep && (
+              <Button
+                variant="outline"
+                onClick={() => setExtensionDialogOpen(true)}
+              >
+                Ask to keep it longer
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -251,7 +273,7 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
         </div>
       )}
 
-      <SimilarArtworks category={artwork.category} excludeId={artwork.id} />
+      <SuggestedArtworks references={[artwork]} title="Similar artworks" />
 
       <RecordSaleDialog
         holding={holding}
@@ -264,55 +286,69 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
         open={returnDialogOpen}
         onOpenChange={setReturnDialogOpen}
       />
+
+      <RequestExtensionDialog
+        holding={holding}
+        open={extensionDialogOpen}
+        onOpenChange={setExtensionDialogOpen}
+      />
     </div>
   );
 }
 
-// "Suggestion based search" from the note: same-category pieces still open
-// for reservation, so a returned or sold holding still gives the aggregator
-// somewhere to go next. Plain category match, no ranking model — the
-// reservable list is already small enough that anything cleverer is
-// speculative for what this needs to do.
-function SimilarArtworks({
-  category,
-  excludeId,
+const EXTENSION_TONE = {
+  pending: {
+    icon: Hourglass,
+    title: "Waiting for GalleryZone",
+    className: "border-gold/30 bg-gold/5",
+  },
+  approved: {
+    icon: CircleCheckBig,
+    title: "GalleryZone agreed",
+    className: "border-emerald-500/30 bg-emerald-500/10",
+  },
+  declined: {
+    icon: CircleX,
+    title: "GalleryZone said no",
+    className: "border-border bg-muted/40",
+  },
+} as const;
+
+// Asking to keep a piece longer, and what GalleryZone answered. The answer
+// stands for the window it was asked about.
+function ExtensionStatus({
+  request,
+  expiresAt,
 }: {
-  category: string;
-  excludeId: string;
+  request: HoldingExtensionRequest;
+  expiresAt: string;
 }) {
-  const { data } = useReservableInventory();
-  const similar = (data ?? [])
-    .filter((a) => a.category === category && a.id !== excludeId)
-    .slice(0, 4);
-
-  if (similar.length === 0) return null;
-
+  const tone = EXTENSION_TONE[request.status];
+  const ends = formatDate(expiresAt);
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        Similar artworks
-      </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {similar.map((artwork) => (
-          <Link
-            key={artwork.id}
-            href={`/aggregator/inventory/${artwork.id}/reserve`}
-            className="flex flex-col gap-1.5 rounded-lg border border-border p-2 transition-colors hover:border-gold/50"
-          >
-            <div className="relative aspect-[4/5] w-full overflow-hidden rounded-md bg-muted">
-              <Image
-                src={artwork.thumbnailUrl}
-                alt={artwork.title}
-                fill
-                sizes="(min-width: 640px) 20vw, 45vw"
-                className="object-cover"
-              />
-            </div>
-            <p className="truncate text-xs font-medium text-foreground">
-              {artwork.title}
-            </p>
-          </Link>
-        ))}
+    <div
+      className={`mt-1 flex items-start gap-2.5 rounded-md border p-3 ${tone.className}`}
+    >
+      <tone.icon className="mt-0.5 size-4 shrink-0 text-foreground/70" strokeWidth={1.75} />
+      <div className="min-w-0 text-sm">
+        <p className="font-medium text-foreground">{tone.title}</p>
+        <p className="mt-0.5 text-muted-foreground">
+          {request.status === "pending" &&
+            `You asked to keep this piece longer. If it isn't approved by ${ends}, it goes back on sale and your advance is released.`}
+          {request.status === "approved" && `The window now runs to ${ends}.`}
+          {request.status === "declined" &&
+            `The window ends on ${ends}. Then the piece goes back on sale and your advance is released.`}
+        </p>
+        {request.status === "pending" && (
+          <p className="mt-1 text-muted-foreground">
+            Your assurance: &ldquo;{request.assurance}&rdquo;
+          </p>
+        )}
+        {request.note && (
+          <p className="mt-1 text-muted-foreground">
+            GalleryZone wrote: &ldquo;{request.note}&rdquo;
+          </p>
+        )}
       </div>
     </div>
   );

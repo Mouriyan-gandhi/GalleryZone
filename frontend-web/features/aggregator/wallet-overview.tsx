@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   Wallet,
   Clock3,
@@ -25,9 +26,13 @@ import {
   useUpdateAggregatorProfileMutation,
 } from "@/hooks/useAggregatorProfile";
 import { GstNumberCard } from "@/components/shared/gst-number-card";
+import { PaymentDismissedError } from "@/lib/razorpay-checkout";
 import type { WalletTransaction } from "@/features/dashboard/dashboard-data";
 
 const MIN_WITHDRAWAL = 1000;
+// One Razorpay payment. Same bounds as the API (WALLET_TOPUP_MIN/MAX_PAISE).
+const TOPUP_MIN = 1000;
+const TOPUP_MAX = 500_000;
 
 // Parallel sibling of features/dashboard/wallet-overview.tsx (Artist
 // Dashboard), same layout and rules, aggregator data source.
@@ -49,7 +54,7 @@ export function WalletOverview() {
       key: "free",
       label: "Free to use",
       value: free,
-      hint: "Available to reserve artwork or withdraw",
+      hint: "Available to reserve artwork",
       icon: Wallet,
       tone: "gold" as const,
     },
@@ -118,18 +123,31 @@ export function WalletOverview() {
   );
 }
 
-// Without this the wallet can never be funded, and with the advance now held
-// from it rather than charged separately, an empty wallet means nothing can be
-// reserved at all. Simulated, like the Razorpay checkout.
+// The advance and delivery are held from this balance, so an empty wallet
+// means nothing can be reserved. Money comes in from the aggregator's own bank
+// account, card or UPI through Razorpay.
 function AddFundsCard() {
   const addFunds = useAddAggregatorFundsMutation();
   const [amount, setAmount] = useState("");
   const amountNumber = Number(amount) || 0;
+  const outOfRange = amount !== "" && (!Number.isInteger(amountNumber) || amountNumber < TOPUP_MIN || amountNumber > TOPUP_MAX);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (amountNumber <= 0) return;
-    addFunds.mutate(amountNumber, { onSuccess: () => setAmount("") });
+    if (amountNumber < TOPUP_MIN || outOfRange) return;
+    addFunds.mutate(amountNumber, {
+      onSuccess: () => {
+        toast.success("Added to your wallet", { description: `₹${amountNumber.toLocaleString("en-IN")} is ready to reserve with.` });
+        setAmount("");
+      },
+      onError: (error) => {
+        if (error instanceof PaymentDismissedError) {
+          toast.info("Payment cancelled — nothing was charged.");
+          return;
+        }
+        toast.error(error.message);
+      },
+    });
   }
 
   return (
@@ -146,9 +164,10 @@ function AddFundsCard() {
             Add funds
           </h2>
           <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
+            Pay from your bank account, card or UPI through Razorpay.
             Reserving artwork holds the advance and delivery from this balance.
-            Top up once and every reservation draws on it — the money comes back
-            when a piece sells.
+            The advance comes back if a piece doesn&rsquo;t sell; the delivery
+            deposit comes back when it does.
           </p>
         </div>
       </div>
@@ -159,22 +178,31 @@ function AddFundsCard() {
           <Input
             id="topUpAmount"
             type="number"
-            min={1}
+            min={TOPUP_MIN}
+            max={TOPUP_MAX}
             step={1}
             placeholder="25000"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="h-10 w-44"
+            aria-invalid={outOfRange}
+            aria-describedby="topUpHint"
           />
         </div>
         <button
           type="submit"
-          disabled={amountNumber <= 0 || addFunds.isPending}
+          disabled={amountNumber < TOPUP_MIN || outOfRange || addFunds.isPending}
           className="inline-flex h-10 items-center gap-2 rounded-md border border-gold/50 px-5 text-sm font-medium text-gold-bright transition-colors hover:border-gold hover:bg-gold/10 disabled:pointer-events-none disabled:opacity-40"
         >
-          {addFunds.isPending ? "Adding…" : "Add to wallet"}
+          {addFunds.isPending ? "Waiting for payment…" : "Add to wallet"}
         </button>
       </div>
+      <p
+        id="topUpHint"
+        className={`text-xs ${outOfRange ? "text-destructive" : "text-muted-foreground"}`}
+      >
+        ₹1,000 to ₹5,00,000 in whole rupees, one payment at a time.
+      </p>
     </form>
   );
 }

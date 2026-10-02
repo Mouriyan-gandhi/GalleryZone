@@ -1,33 +1,41 @@
 // Aggregator (partner gallery) portal.
 //   GET  /v1/aggregator/inventory              reservable pieces with this month's terms
 //   GET  /v1/aggregator/holdings               what I hold (any status)
-//   POST /v1/aggregator/holdings               reserve — records the advance and takes the piece off the marketplace
+//   POST /v1/aggregator/holdings               reserve — sets the price (month 1 only), records the advance, takes the piece off the marketplace
 //   GET  /v1/aggregator/holdings/:id
-//   POST /v1/aggregator/holdings/:id/price     the one allowed price change (never below the offer)
+//   POST /v1/aggregator/holdings/:id/extension ask to keep the piece past its window, with an assurance it will sell
 //   POST /v1/aggregator/holdings/:id/return    unsold return — advance refunded, piece back on the marketplace
 //   POST /v1/aggregator/holdings/:id/sale      record an in-gallery sale
-// The signed MOU is a precondition for reserving (custody without an
-// agreement is not a state this platform allows).
+// The signed MOU and an approved GST number are preconditions for reserving
+// (custody without an agreement is not a state this platform allows).
 
-import { BadRequestException, Body, Controller, ConflictException, Get, Inject, NotFoundException, Param, Post, Req } from "@nestjs/common";
-import { z } from "zod";
+import { BadRequestException, Body, Controller, ConflictException, ForbiddenException, Get, Inject, NotFoundException, Param, Post, Req } from "@nestjs/common";
 import {
   AggregatorFlowError,
   AggregatorReadError,
   FirestoreRateConfigStore,
+  HoldingLifecycleError,
   getAggregatorHolding,
-  getLatestMouAcceptance,
+  hasApprovedGst,
+  hasSignedCurrentMou,
   listAggregatorHoldings,
   listAggregatorInventory,
   recordAggregatorSale,
+  requestHoldingExtension,
   reserveHolding,
   returnHolding,
-  setHoldingDisplayPrice,
   type Db,
 } from "@galleryzone/db";
 import { loadActiveRates } from "@galleryzone/config";
 import { IllegalTransitionError } from "@galleryzone/domain";
-import { reserveHoldingInputSchema, recordAggregatorSaleInputSchema, type ReserveHoldingInput, type RecordAggregatorSaleInput } from "@galleryzone/contracts";
+import {
+  reserveHoldingInputSchema,
+  recordAggregatorSaleInputSchema,
+  requestHoldingExtensionInputSchema,
+  type ReserveHoldingInput,
+  type RecordAggregatorSaleInput,
+  type RequestHoldingExtensionInput,
+} from "@galleryzone/contracts";
 import { Roles } from "./auth/roles.decorator.ts";
 import { Emails } from "./mail/emails.ts";
 import type { AuthenticatedRequest } from "./auth/roles.guard.ts";
@@ -35,13 +43,10 @@ import { DB } from "./db.module.ts";
 import { ReadCache } from "./read-cache.ts";
 import { ZodValidationPipe } from "./zod-validation.pipe.ts";
 
-const priceSchema = z.object({ displayPricePaise: z.number().int().positive() }).strict();
-type PriceBody = z.infer<typeof priceSchema>;
-
 const notFound = () => new NotFoundException({ type: "about:blank", title: "Not found", status: 404, code: "not_found" });
 
 function rethrow(error: unknown): never {
-  if (error instanceof AggregatorFlowError || error instanceof AggregatorReadError) {
+  if (error instanceof AggregatorFlowError || error instanceof AggregatorReadError || error instanceof HoldingLifecycleError) {
     if (error.message.startsWith("No ")) throw notFound();
     throw new ConflictException({ type: "about:blank", title: error.message, status: 409, code: "conflict" });
   }
@@ -63,8 +68,8 @@ export class AggregatorController {
 
   @Roles("aggregator")
   @Get("inventory")
-  async inventory() {
-    return { artworks: await listAggregatorInventory(this.db, await this.rates()) };
+  async inventory(@Req() req: AuthenticatedRequest) {
+    return { artworks: await listAggregatorInventory(this.db, await this.rates(), req.authUser.uid) };
   }
 
   @Roles("aggregator")
@@ -84,11 +89,23 @@ export class AggregatorController {
   @Roles("aggregator")
   @Post("holdings")
   async reserve(@Req() req: AuthenticatedRequest, @Body(new ZodValidationPipe(reserveHoldingInputSchema)) body: ReserveHoldingInput) {
-    const mou = await getLatestMouAcceptance(this.db, req.authUser.uid, "aggregator");
-    if (!mou) throw new BadRequestException({ type: "about:blank", title: "Sign your Aggregator MOU in My Profile before reserving artwork", status: 403, code: "mou_required" });
+    // The version in force, not any signature: a revised MOU has to be signed again before new custody.
+    if (!(await hasSignedCurrentMou(this.db, req.authUser.uid, "aggregator"))) {
+      throw new BadRequestException({ type: "about:blank", title: "Sign the current Aggregator MOU in My Profile before reserving artwork", status: 403, code: "mou_required" });
+    }
+    // GST is required for an aggregator before they can reserve anything (client, 30 Sep 2026).
+    if (!(await hasApprovedGst(this.db, req.authUser.uid))) {
+      throw new ForbiddenException({ type: "about:blank", title: "Add your GST number in My Profile, and wait for GalleryZone to approve it, before reserving artwork", status: 403, code: "gst_required" });
+    }
     try {
-      const result = await reserveHolding({ db: this.db, aggregatorId: req.authUser.uid, artworkId: body.artworkId });
+      const result = await reserveHolding({ db: this.db, aggregatorId: req.authUser.uid, artworkId: body.artworkId, sellingPricePaise: body.sellingPricePaise });
       this.cache.clear();
+      // Priced far above the offer: allowed, but GalleryZone is told.
+      if (result.priceWarning) {
+        void this.emails
+          .holdingPriceWarning({ holdingId: result.holdingId, artworkId: body.artworkId, aggregatorId: req.authUser.uid, sellingPricePaise: result.sellingPricePaise, offerSellingPricePaise: result.offerSellingPricePaise })
+          .catch(this.emails.swallow("holding price warning mail"));
+      }
       // The artist's work is leaving their studio — until now nobody told them.
       void this.emails
         .aggregatorReserved({
@@ -107,12 +124,16 @@ export class AggregatorController {
     }
   }
 
+  /** Ask to keep a piece past its window. GalleryZone decides each time. */
   @Roles("aggregator")
-  @Post("holdings/:id/price")
-  async setPrice(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(priceSchema)) body: PriceBody) {
+  @Post("holdings/:id/extension")
+  async requestExtension(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(requestHoldingExtensionInputSchema)) body: RequestHoldingExtensionInput) {
     try {
-      await setHoldingDisplayPrice(this.db, req.authUser.uid, id, body.displayPricePaise);
-      return getAggregatorHolding(this.db, req.authUser.uid, id);
+      const holding = await requestHoldingExtension(this.db, { aggregatorId: req.authUser.uid, holdingId: id, assurance: body.assurance, rates: await this.rates() });
+      void this.emails
+        .holdingExtensionRequested({ holdingId: id, artworkId: holding.artworkId, aggregatorId: req.authUser.uid, assurance: body.assurance, expiresAt: new Date(holding.expiresAt) })
+        .catch(this.emails.swallow("holding extension requested mail"));
+      return holding;
     } catch (error) {
       rethrow(error);
     }

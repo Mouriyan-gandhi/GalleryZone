@@ -22,7 +22,8 @@ export function useReservableArtwork(artworkId: string) {
 export function useReserveArtworkMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (artworkId: string) => aggregatorService.reserve(artworkId),
+    mutationFn: ({ artworkId, sellingPrice }: { artworkId: string; sellingPrice?: number | undefined }) =>
+      aggregatorService.reserve(artworkId, sellingPrice),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aggregator-inventory"] });
       queryClient.invalidateQueries({ queryKey: ["aggregator-collection"] });

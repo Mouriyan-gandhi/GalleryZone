@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Landmark } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ import {
   useProcessSettlementMutation,
   useRemittancesDue,
 } from "@/hooks/useAggregatorSettlements";
+import { useAggregatorWallet } from "@/hooks/useAggregatorWallet";
 import { PayeeDetails } from "@/components/shared/payee-details";
 import { formatINR } from "@/lib/utils";
 import type { Settlement, SettlementStatus } from "@/types/admin";
@@ -153,11 +155,26 @@ export function SettlementsTable() {
 // their entitlement, and mixing the two is how people end up netting off.
 function RemittancesDueCard() {
   const { data: due } = useRemittancesDue();
+  const { data: wallet } = useAggregatorWallet();
   const markRemitted = useMarkRemittedMutation();
+  // Snapshotted once: react-hooks/purity forbids Date.now() in render, and a
+  // few minutes of drift can't change which day a deadline falls on.
+  const [now] = useState(() => Date.now());
 
   if (!due || due.length === 0) return null;
 
   const total = due.reduce((sum, sale) => sum + sale.soldPrice, 0);
+  const free = wallet ? wallet.balance - wallet.lockedBalance : 0;
+
+  function pay(saleId: string, via: "wallet" | "bank") {
+    markRemitted.mutate(
+      { saleId, via },
+      {
+        onSuccess: () => toast.success(via === "wallet" ? "Paid from your wallet" : "Marked as transferred"),
+        onError: (error) => toast.error(error.message),
+      },
+    );
+  }
 
   return (
     <div className="mb-6 flex flex-col gap-4 rounded-lg border border-gold/40 bg-gold/5 p-5 sm:p-6">
@@ -167,8 +184,14 @@ function RemittancesDueCard() {
             Owed to GalleryZone
           </h2>
           <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">
-            Cash you collected on GalleryZone&rsquo;s behalf. Transfer the full
-            amount — your commission is settled separately, below.
+            Cash you collected on GalleryZone&rsquo;s behalf. Pay in the full
+            amount within 2 days, either from your wallet (add the cash to it
+            first in{" "}
+            <Link href="/aggregator/wallet" className="text-gold-bright hover:underline">
+              Earnings &amp; Wallet
+            </Link>
+            ) or by transfer to GalleryZone&rsquo;s bank account. Your commission
+            is settled separately, below.
           </p>
         </div>
         <span className="font-display text-2xl font-semibold tabular-nums text-gold-bright">
@@ -177,42 +200,68 @@ function RemittancesDueCard() {
       </div>
 
       <ul className="flex flex-col gap-2">
-        {due.map((sale) => (
-          <li
-            key={sale.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3.5 py-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">
-                {sale.buyerName}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                Sold {new Date(sale.soldAt).toLocaleDateString("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-sm tabular-nums text-foreground">
-                {formatINR(sale.soldPrice)}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={markRemitted.isPending}
-                onClick={() =>
-                  markRemitted.mutate(sale.id, {
-                    onSuccess: () => toast.success("Marked as transferred"),
-                    onError: (error) => toast.error(error.message),
-                  })
-                }
-              >
-                Mark transferred
-              </Button>
-            </div>
-          </li>
-        ))}
+        {due.map((sale) => {
+          const dueAt = sale.remitDueAt ? new Date(sale.remitDueAt).getTime() : null;
+          const overdueMs = dueAt !== null ? now - dueAt : 0;
+          const overdueDays = Math.floor(overdueMs / 86_400_000);
+          const short = Math.max(0, sale.soldPrice - free);
+          return (
+            <li
+              key={sale.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3.5 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {sale.buyerName}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  Sold {new Date(sale.soldAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                  {dueAt !== null && overdueMs <= 0 && (
+                    <>
+                      {" "}&middot; due{" "}
+                      {new Date(dueAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </>
+                  )}
+                </p>
+                {overdueMs > 0 && (
+                  <p className="text-xs font-medium text-destructive">
+                    {overdueDays >= 1
+                      ? `Overdue by ${overdueDays} day${overdueDays > 1 ? "s" : ""}`
+                      : "Overdue"}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-mono text-sm tabular-nums text-foreground">
+                  {formatINR(sale.soldPrice)}
+                </span>
+                <Button
+                  size="sm"
+                  disabled={markRemitted.isPending || short > 0}
+                  title={short > 0 ? `Add ${formatINR(short)} to your wallet first` : undefined}
+                  onClick={() => pay(sale.id, "wallet")}
+                >
+                  Pay from wallet
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={markRemitted.isPending}
+                  title="You have transferred it to GalleryZone's bank account"
+                  onClick={() => pay(sale.id, "bank")}
+                >
+                  Mark transferred
+                </Button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       <PayeeDetails

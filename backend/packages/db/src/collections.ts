@@ -68,6 +68,7 @@ export const Collections = {
   physicalCoaRequests: "physicalCoaRequests",
   orders: "orders",
   payments: "payments",
+  walletTopups: "walletTopups",
   ledgerAccounts: "ledgerAccounts",
   ledgerEntries: "ledgerEntries",
   settlements: "settlements",
@@ -82,6 +83,7 @@ export const Collections = {
   messageThreads: "messageThreads",
   artistReviews: "artistReviews",
   resaleListings: "resaleListings",
+  artistSales: "artistSales",
   supportTickets: "supportTickets",
   artistConnections: "artistConnections",
 } as const;
@@ -321,9 +323,23 @@ export interface PaymentDoc {
   createdAt: FirebaseFirestore.Timestamp;
 }
 
+/** One Razorpay top-up of an aggregator's wallet. Server-only: the catch-all rule denies clients. */
+export interface WalletTopupDoc {
+  userId: string;
+  amountPaise: number;
+  status: "pending" | "paid" | "failed";
+  /** The gateway's own order id (Razorpay order_…), set when checkout opens. */
+  providerOrderId: string | null;
+  providerPaymentId: string | null;
+  method: string | null;
+  createdAt: FirebaseFirestore.Timestamp;
+  paidAt: FirebaseFirestore.Timestamp | null;
+}
+
 export type LedgerAccountType =
   | "artist_payable"
   | "aggregator_payable"
+  | "aggregator_held"
   | "customer_wallet"
   | "platform_revenue"
   | "razorpay_escrow"
@@ -374,13 +390,60 @@ export interface AggregatorHoldingDoc {
   advancePercent: number;
   advanceAmountPaise: number;
   deliveryDepositPaise: number | null;
+  /** What the customer sees: sellingPricePaise plus GST. */
   displayPricePaise: number;
+  /**
+   * The price before GST. Month 1: what the aggregator chose when reserving,
+   * never below GalleryZone's offer. Later months: GalleryZone's price, fixed.
+   * Absent on holdings from before 30 Sep 2026: displayPricePaise less GST.
+   */
+  sellingPricePaise?: number;
+  /** Month 1 only: priced above GalleryZone's offer. Decides when the next aggregator's monthly drops start. Absent = false. */
+  appreciated?: boolean;
+  /** Priced far enough above the offer (aggregatorPriceWarnRate) that GalleryZone was warned. */
+  priceWarning?: boolean;
   assignmentSource: "self_reserved" | "gz_assigned";
   assignedAt: FirebaseFirestore.Timestamp;
   expiresAt: FirebaseFirestore.Timestamp;
   windowExtended: boolean;
   status: HoldingStatus;
   returnedAt: FirebaseFirestore.Timestamp | null;
+  /** The latest request to keep the piece past its window. Only the latest is kept; decisions are also in the audit log. */
+  extensionRequest?: HoldingExtensionRequest;
+}
+
+export interface HoldingExtensionRequest {
+  requestedAt: FirebaseFirestore.Timestamp;
+  /** The aggregator's assurance that the piece will sell. */
+  assurance: string;
+  status: "pending" | "approved" | "declined";
+  decidedAt: FirebaseFirestore.Timestamp | null;
+  /** The admin who decided. Null when the window ended before anyone did. */
+  decidedBy: string | null;
+  note: string | null;
+  /** Where the window ended before this request, so a decision can show what changed. */
+  previousExpiresAt: FirebaseFirestore.Timestamp;
+}
+
+/**
+ * One artist sale, kept for §194-O: what counted towards the ₹5 lakh
+ * financial-year line and what was withheld on it. Written in the same
+ * transaction as the sale's ledger entries (artist-sales.ts), its id is the
+ * sale's idempotency key, and it is server-only (firestore.rules denies
+ * clients), so nothing here can reach a buyer.
+ */
+export interface ArtistSaleDoc {
+  artistId: string;
+  /** Financial year, e.g. "2026-27". */
+  fyKey: string;
+  channel: "marketplace" | "aggregator";
+  artistPricePaise: number;
+  tdsPaise: number;
+  /** What the sale credited to the artist's payable, after every deduction. */
+  netPaise: number;
+  orderId: string | null;
+  holdingId: string | null;
+  soldAt: FirebaseFirestore.Timestamp;
 }
 
 export interface AggregatorSaleDoc {
@@ -394,6 +457,10 @@ export interface AggregatorSaleDoc {
   deliveryMode: "courier" | "self_pickup";
   paymentRoute: "direct_to_galleryzone" | "cash_at_premises";
   remittedAt: FirebaseFirestore.Timestamp | null;
+  /** Cash sales: when the full price is due at GalleryZone. Absent on sales recorded before there was a deadline. */
+  remitDueAt?: FirebaseFirestore.Timestamp | null;
+  /** How the price was paid in: from the aggregator's wallet here, or by transfer to GalleryZone's bank. */
+  remittedVia?: "wallet" | "bank" | null;
   shipmentStatus: ShipmentStatus;
   dispatchedAt: FirebaseFirestore.Timestamp | null;
   deliveredAt: FirebaseFirestore.Timestamp | null;

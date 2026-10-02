@@ -270,27 +270,31 @@ export class Emails {
   // ── Compliance ───────────────────────────────────────────────────────
 
   /**
-   * GST and KYC decisions both gate money — KYC blocks payouts outright, and
-   * an approved GSTIN switches on TDS withholding, which changes what lands
-   * in the artist's wallet. Deciding these silently left the artist guessing.
+   * GST and KYC decisions both gate something — KYC blocks payouts outright,
+   * and an aggregator can't reserve a piece until their GSTIN is approved
+   * (client, 30 Sep 2026). TDS does not depend on GST: it follows the artist's
+   * financial-year sales. Deciding these silently left people guessing.
    */
   async complianceDecided(input: { userId: string; kind: "gst" | "kyc"; approved: boolean; reason?: string | undefined }) {
     const user = await this.user(input.userId);
     if (!user) return;
+    const aggregator = user.role === "aggregator";
     const label = input.kind === "gst" ? "GSTIN" : "KYC";
     const approvedBody =
       input.kind === "gst"
-        ? "Your GSTIN is verified. Invoices now carry it, and TDS is withheld on your settlements at the statutory rate — you'll see it itemised on every payout."
+        ? aggregator
+          ? "Your GSTIN is verified. You can now reserve artwork."
+          : "Your GSTIN is verified. Invoices now carry it."
         : "Your KYC is verified. Withdrawals from your wallet are now open.";
     const rejectedBody =
       input.kind === "gst"
-        ? "We couldn't verify your GSTIN. Correct the details in your profile and resubmit — settlements continue in the meantime, without TDS."
+        ? `We couldn't verify your GSTIN. Correct the details in your profile and resubmit${aggregator ? ". You can't reserve artwork until it is approved." : " — selling and settlements carry on in the meantime."}`
         : "We couldn't verify your KYC documents. Withdrawals stay on hold until this is resolved. Re-upload from your profile and we'll review again.";
     await this.deliver(`${input.kind}-${input.approved ? "approved" : "rejected"}/${input.userId}`, user.email, input.approved ? `${label} verified` : `${label} needs another look`, {
       heading: input.approved ? `Your ${label} is verified` : `We couldn't verify your ${label}`,
       paragraphs: [input.approved ? approvedBody : rejectedBody],
       ...(input.reason ? { footnote: `Reviewer's note: ${esc(input.reason)}` } : {}),
-      cta: { label: "Open my profile", url: `${this.site}/dashboard/profile` },
+      cta: { label: "Open my profile", url: `${this.site}${aggregator ? "/aggregator/profile" : "/dashboard/profile"}` },
     });
   }
 
@@ -366,6 +370,76 @@ export class Emails {
         cta: { label: "Open my holdings", url: `${this.site}/aggregator/collection` },
       });
     }
+  }
+
+  /**
+   * An aggregator priced a piece far above GalleryZone's offer. It is allowed
+   * (client, 30 Sep 2026: no limit), but GalleryZone is told.
+   */
+  async holdingPriceWarning(input: { holdingId: string; artworkId: string; aggregatorId: string; sellingPricePaise: number; offerSellingPricePaise: number }) {
+    const [artwork, aggregator, admins] = await Promise.all([this.artwork(input.artworkId), this.user(input.aggregatorId), this.admins()]);
+    const title = artwork?.title ?? "an artwork";
+    const over = Math.round((input.sellingPricePaise / input.offerSellingPricePaise - 1) * 100);
+    await this.deliver(`holding-price-warning/${input.holdingId}`, admins, `Price warning: “${title}” priced ${over}% above the offer`, {
+      heading: "A piece was priced far above your offer",
+      paragraphs: [
+        `<strong>${esc(aggregator?.name ?? "An aggregator")}</strong> reserved “${esc(title)}” at <strong>${inr(input.sellingPricePaise)}</strong> before GST, ${over}% above GalleryZone's price of ${inr(input.offerSellingPricePaise)}.`,
+        "This is allowed and the reservation went through. It is a heads-up in case you want to look at it.",
+      ],
+      cta: { label: "Open this artwork", url: `${this.site}/admin/artworks/${input.artworkId}` },
+    });
+  }
+
+  /** An aggregator wants to keep a piece past its window. GalleryZone decides each time. */
+  async holdingExtensionRequested(input: { holdingId: string; artworkId: string; aggregatorId: string; assurance: string; expiresAt: Date }) {
+    const [artwork, aggregator, admins] = await Promise.all([this.artwork(input.artworkId), this.user(input.aggregatorId), this.admins()]);
+    const title = artwork?.title ?? "an artwork";
+    const until = input.expiresAt.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    await this.deliver(`holding-extension-requested/${input.holdingId}/${input.expiresAt.getTime()}`, admins, `Extension to decide: “${title}”`, {
+      heading: "An aggregator wants to keep a piece longer",
+      paragraphs: [
+        `<strong>${esc(aggregator?.name ?? "An aggregator")}</strong> is asking to keep “${esc(title)}” past <strong>${esc(until)}</strong>.`,
+        `Their assurance that it will sell: “${esc(input.assurance)}”`,
+        "If nobody answers before the window ends, the piece goes back and the advance is released.",
+      ],
+      cta: { label: "Review the request", url: `${this.site}/admin/artworks/${input.artworkId}` },
+    });
+  }
+
+  async holdingExtensionDecided(input: { holdingId: string; artworkId: string; aggregatorId: string; approved: boolean; newExpiresAt: Date | null; note: string | null }) {
+    const [artwork, aggregator] = await Promise.all([this.artwork(input.artworkId), this.user(input.aggregatorId)]);
+    if (!aggregator) return;
+    const title = artwork?.title ?? "your piece";
+    const until = input.newExpiresAt?.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+    await this.deliver(`holding-extension-decided/${input.holdingId}/${input.approved ? "yes" : "no"}`, aggregator.email, input.approved ? `You can keep “${title}” longer` : `Your request for “${title}” was not approved`, {
+      heading: input.approved ? "Your request was approved" : "Your request was not approved",
+      paragraphs: [
+        input.approved
+          ? `You can keep “${esc(title)}” until <strong>${esc(until ?? "")}</strong>. Your advance stays held until then.`
+          : `“${esc(title)}” goes back at the end of its window, and your advance is released then.`,
+      ],
+      ...(input.note ? { footnote: `GalleryZone's note: ${esc(input.note)}` } : {}),
+      cta: { label: "Open my inventory", url: `${this.site}/aggregator/collection` },
+    });
+  }
+
+  /** The window ended and the piece moved on. The advance is released the same day. */
+  async holdingPeriodEnded(input: { holdingId: string; artworkId: string; aggregatorId: string; advancePaise: number }) {
+    const [artwork, aggregator] = await Promise.all([this.artwork(input.artworkId), this.user(input.aggregatorId)]);
+    if (!aggregator) return;
+    const title = artwork?.title ?? "your piece";
+    await this.deliver(`holding-period-ended/${input.holdingId}`, aggregator.email, `Your period has ended: “${title}”`, {
+      heading: "Your display period has ended",
+      paragraphs: [
+        `Your period for “${esc(title)}” has ended and it is now available to another aggregator.`,
+        `Your advance of <strong>${inr(input.advancePaise)}</strong> has been released. The delivery deposit is not refunded on an unsold piece.`,
+      ],
+      cta: { label: "See my wallet", url: `${this.site}/aggregator/wallet` },
+    });
+  }
+
+  private async artwork(artworkId: string): Promise<{ title?: string } | undefined> {
+    return (await this.db.collection(Collections.artworks).doc(artworkId).get()).data() as { title?: string } | undefined;
   }
 
   // ── Money ────────────────────────────────────────────────────────────

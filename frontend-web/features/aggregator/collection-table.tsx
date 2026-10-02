@@ -25,13 +25,12 @@ function formatDate(iso: string): string {
 
 type CollectionRow = AggregatorHolding & { artwork: ArtworkSummary };
 
-type StatusFilter = "all" | AggregatorHolding["status"];
+type StatusFilter = "all" | "reserved" | "sold_pending_settlement";
 
 const STATUS_TABS: Array<{ key: StatusFilter; label: string }> = [
   { key: "all", label: "All" },
   { key: "reserved", label: "Reserved" },
   { key: "sold_pending_settlement", label: "Sold" },
-  { key: "returned", label: "Returned" },
 ];
 
 export function CollectionTable() {
@@ -62,7 +61,11 @@ export function CollectionTable() {
     );
   }
 
-  if (!data || data.length === 0) {
+  // A piece that has gone back to GalleryZone is no longer this aggregator's to
+  // show, so it leaves the list entirely (client, 30 Sep 2026).
+  const rows = (data ?? []).filter((holding) => holding.status !== "returned");
+
+  if (rows.length === 0) {
     return (
       <EmptyState
         icon={GalleryVerticalEnd}
@@ -79,8 +82,8 @@ export function CollectionTable() {
 
   const filtered =
     statusFilter === "all"
-      ? data
-      : data.filter((holding) => holding.status === statusFilter);
+      ? rows
+      : rows.filter((holding) => holding.status === statusFilter);
 
   return (
     <>
@@ -88,8 +91,8 @@ export function CollectionTable() {
         {STATUS_TABS.map((tab) => {
           const count =
             tab.key === "all"
-              ? data.length
-              : data.filter((h) => h.status === tab.key).length;
+              ? rows.length
+              : rows.filter((h) => h.status === tab.key).length;
           const active = statusFilter === tab.key;
           return (
             <button
@@ -126,7 +129,6 @@ export function CollectionTable() {
           {/* ── MOBILE CARD LIST ───────────────────────────────────── */}
           <div className="flex flex-col gap-3 lg:hidden">
             {filtered.map((holding) => {
-              const isSold = holding.status === "sold_pending_settlement";
               const isReserved = holding.status === "reserved";
               const status = HOLDING_STATUS_CONFIG[holding.status];
               return (
@@ -164,6 +166,11 @@ export function CollectionTable() {
                         {isReserved && (
                           <ExpiryCountdown expiresAt={holding.expiresAt} className="text-xs" />
                         )}
+                        {isReserved && holding.extensionRequest?.status === "pending" && (
+                          <span className="text-[11px] font-medium text-gold-bright">
+                            Extension requested
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>
@@ -189,7 +196,7 @@ export function CollectionTable() {
                   {!isReserved && (
                     <div className="border-t border-border px-3 py-2">
                       <span className="text-xs text-muted-foreground">
-                        {isSold ? "Sale recorded" : "Went back to GalleryZone"}
+                        Sale recorded
                       </span>
                     </div>
                   )}
@@ -229,7 +236,6 @@ export function CollectionTable() {
               </thead>
               <tbody>
                 {filtered.map((holding) => {
-                  const isSold = holding.status === "sold_pending_settlement";
                   const isReserved = holding.status === "reserved";
                   const status = HOLDING_STATUS_CONFIG[holding.status];
                   return (
@@ -260,16 +266,15 @@ export function CollectionTable() {
                       </td>
                       <td className="px-4 py-3.5">
                         <PriceTag amount={holding.displayPrice} className="text-sm" />
-                        {!isSold && (
-                          <p className="mt-0.5 text-[11px] text-muted-foreground">Set by GalleryZone</p>
-                        )}
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {(holding.cycleMonth ?? 1) <= 1 ? "Set by you" : "Set by GalleryZone"}
+                        </p>
                       </td>
                       <td className="px-4 py-3.5">
                         <PriceTag amount={holding.advanceAmount} className="text-sm" />
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          {holding.advancePercent}% of the{" "}
-                          {(holding.cycleMonth ?? 1) <= 1 ? "display" : "artist"}{" "}
-                          price
+                          {holding.advancePercent}% of{" "}
+                          {(holding.cycleMonth ?? 1) <= 1 ? "your price before GST" : "the artist price"}
                         </p>
                       </td>
                       <td className="px-4 py-3.5">
@@ -283,6 +288,11 @@ export function CollectionTable() {
                             <p className="mt-1 text-[11px] text-muted-foreground">
                               Reserved {formatDate(holding.assignedAt)} &middot; expires {formatDate(holding.expiresAt)}
                             </p>
+                            {holding.extensionRequest?.status === "pending" && (
+                              <p className="mt-1 text-[11px] font-medium text-gold-bright">
+                                Asked to keep it longer
+                              </p>
+                            )}
                           </>
                         ) : (
                           <span className="text-xs text-muted-foreground">&mdash;</span>
@@ -302,7 +312,7 @@ export function CollectionTable() {
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">
-                            {isSold ? "Sale recorded" : "Went back to GalleryZone"}
+                            Sale recorded
                           </span>
                         )}
                       </td>

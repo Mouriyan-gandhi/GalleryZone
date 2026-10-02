@@ -18,9 +18,13 @@ export function useRemittancesDue() {
 export function useMarkRemittedMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (saleId: string) => aggregatorSalesService.markRemitted(saleId),
+    mutationFn: ({ saleId, via }: { saleId: string; via: "wallet" | "bank" }) =>
+      aggregatorSalesService.markRemitted(saleId, via),
+    // Paying from the wallet moves the balance, so the wallet reads refresh too.
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["aggregator-remittances"] });
+      queryClient.invalidateQueries({ queryKey: ["aggregator-settlements"] });
+      queryClient.invalidateQueries({ queryKey: ["aggregator-wallet"] });
       queryClient.invalidateQueries({
         queryKey: ["aggregator-wallet-transactions"],
       });

@@ -20,4 +20,15 @@ ${body}`);
 assert.ok(!FORBIDDEN_PII.test(body), `VerifyPassportDto contains a contact/identity field:
 ${body}`);
 
-console.log("packages/contracts/verify-dto.ts: public passport carries no price or contact fields");
+// GET /v1/passport/mine wraps the same passport plus the viewer's relation to
+// it, so it gets the same gate on its own fields (the passport inside is
+// already covered above).
+const mineStart = source.indexOf("interface MyPassportsDto");
+assert.ok(mineStart >= 0);
+const mineBody = source.slice(source.indexOf("{", mineStart));
+assert.ok(!FORBIDDEN_PRICE.test(mineBody), `MyPassportsDto contains a price-shaped field:
+${mineBody}`);
+assert.ok(!FORBIDDEN_PII.test(mineBody), `MyPassportsDto contains a contact/identity field:
+${mineBody}`);
+
+console.log("packages/contracts/verify-dto.ts: public passport and my-passports carry no price or contact fields");

@@ -31,6 +31,49 @@ export function toPublicEvent(e: OwnershipEvent): VerifyPassportDto["events"][nu
   };
 }
 
+/**
+ * The public passport for one artwork, through the 60s read cache. Shared with
+ * GET /v1/passport/mine so a person's own list is built from exactly what a
+ * scan shows, and reads the same cached copy.
+ */
+export function passportFor(db: Db, cache: ReadCache, artworkId: string): Promise<VerifyPassportDto> {
+  return cache.getOrFill(CacheKeys.verify(artworkId), TTL.artwork, () => buildPassport(db, artworkId));
+}
+
+async function buildPassport(db: Db, artworkId: string): Promise<VerifyPassportDto> {
+  const artwork = await getPublicArtwork(db, artworkId);
+  if (!artwork) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
+  let owner;
+  try {
+    owner = await getCurrentOwner(db, artworkId);
+  } catch (error) {
+    if (error instanceof OwnershipNotFoundError) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
+    throw error;
+  }
+  const events = await listOwnershipEvents(db, artworkId);
+
+  // Built field-by-field: no spread of the artwork view, so a future field
+  // on it can't leak here by accident.
+  return {
+    artworkId: artwork.id,
+    productCode: artwork.productCode,
+    title: artwork.title,
+    artistId: artwork.artistId,
+    artistName: artwork.artistName,
+    category: artwork.category,
+    medium: artwork.medium,
+    dimensions: artwork.dimensions,
+    yearCreated: artwork.yearCreated,
+    images: artwork.images,
+    status: artwork.status,
+    coaCertificateNumber: artwork.coaCertificateNumber,
+    coaIssuedAt: artwork.coaIssuedAt,
+    listedAt: artwork.createdAt,
+    owner: { kind: owner.kind, displayName: owner.displayName },
+    events: events.map(toPublicEvent),
+  };
+}
+
 @Controller("v1/verify")
 export class VerifyController {
   constructor(
@@ -42,40 +85,6 @@ export class VerifyController {
   @Get(":artworkId")
   @Header("Cache-Control", "public, max-age=30, s-maxage=60, stale-while-revalidate=60")
   passport(@Param("artworkId") artworkId: string): Promise<VerifyPassportDto> {
-    return this.cache.getOrFill(CacheKeys.verify(artworkId), TTL.artwork, () => this.buildPassport(artworkId));
-  }
-
-  private async buildPassport(artworkId: string): Promise<VerifyPassportDto> {
-    const artwork = await getPublicArtwork(this.db, artworkId);
-    if (!artwork) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
-    let owner;
-    try {
-      owner = await getCurrentOwner(this.db, artworkId);
-    } catch (error) {
-      if (error instanceof OwnershipNotFoundError) throw new NotFoundException({ type: "about:blank", title: "Artwork not found", status: 404, code: "not_found" });
-      throw error;
-    }
-    const events = await listOwnershipEvents(this.db, artworkId);
-
-    // Built field-by-field: no spread of the artwork view, so a future field
-    // on it can't leak here by accident.
-    return {
-      artworkId: artwork.id,
-      productCode: artwork.productCode,
-      title: artwork.title,
-      artistId: artwork.artistId,
-      artistName: artwork.artistName,
-      category: artwork.category,
-      medium: artwork.medium,
-      dimensions: artwork.dimensions,
-      yearCreated: artwork.yearCreated,
-      images: artwork.images,
-      status: artwork.status,
-      coaCertificateNumber: artwork.coaCertificateNumber,
-      coaIssuedAt: artwork.coaIssuedAt,
-      listedAt: artwork.createdAt,
-      owner: { kind: owner.kind, displayName: owner.displayName },
-      events: events.map(toPublicEvent),
-    };
+    return passportFor(this.db, this.cache, artworkId);
   }
 }

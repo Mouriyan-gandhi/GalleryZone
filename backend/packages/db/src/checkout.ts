@@ -17,8 +17,7 @@ import {
   artworkStateMachine,
   type PricingRates, artistSettlementOf } from "@galleryzone/domain";
 import { FirestoreRateConfigStore } from "./firestore-rate-config-store.ts";
-import { isArtistGstRegistered } from "./profiles.ts";
-import { postLedgerEntries } from "./ledger-repository.ts";
+import { getArtistSale, postArtistSale } from "./artist-sales.ts";
 import { Collections, artworkPricingCol, orderStatusEventsCol, type ArtworkPricingDoc, type OrderDoc, type PaymentDoc } from "./collections.ts";
 import { appendArtworkStatus, latestStatusOf } from "./listing-projection.ts";
 import { recordSaleTransfer } from "./ownership.ts";
@@ -181,17 +180,17 @@ export async function markOrderPaid(db: Firestore, orderId: string, capture: Pay
   const version = await rateStore.getActiveVersion(order.createdAt.toDate());
   if (!version) throw new CheckoutError("Order references a rate_config_version that is no longer resolvable");
 
-  const postings = marketplaceCheckoutPostings({
+  // TDS depends on what the artist has already sold this financial year, so
+  // it is decided inside the same transaction that posts the ledger entries.
+  const { transactionId } = await postArtistSale(db, {
     artistId: pricing.artistId,
     artistPricePaise: pricing.artistPricePaise,
+    channel: "marketplace",
     rates: version.rates,
-    isGstRegistered: await isArtistGstRegistered(db, pricing.artistId),
-  });
-
-  const { transactionId } = await postLedgerEntries(db, {
-    postings,
-    idempotencyPrefix: `order:${orderId}`,
-    relatedOrderId: orderId,
+    saleKey: `order:${orderId}`,
+    orderId,
+    build: (tdsApplies) =>
+      marketplaceCheckoutPostings({ artistId: pricing.artistId, artistPricePaise: pricing.artistPricePaise, rates: version.rates, tdsApplies }),
   });
 
   await orderRef.update({ status: "paid" });
@@ -232,6 +231,10 @@ async function confirmationFor(db: Firestore, orderId: string, order: OrderDoc, 
   const rateStore = new FirestoreRateConfigStore(db);
   const version = await rateStore.getActiveVersion(order.createdAt.toDate());
   const artworkTitle = (artworkSnap.data() as { title?: string } | undefined)?.title ?? "your artwork";
+  // What was actually paid out is on the sale record. An order paid before
+  // sales were recorded has none; it falls back to the artist's price, which
+  // the old rules only ever moved by 0.1% TDS.
+  const sale = await getArtistSale(db, `order:${orderId}`);
   return {
     transactionId: transactionId ?? `order:${orderId}`,
     orderId,
@@ -240,11 +243,6 @@ async function confirmationFor(db: Firestore, orderId: string, order: OrderDoc, 
     artworkId: order.artworkId,
     artworkTitle,
     totalPaise: order.totalPaise,
-    artistNetPaise:
-      pricing && version
-        ? artistSettlementOf(pricing.artistPricePaise, "marketplace", version.rates, {
-            isGstRegistered: await isArtistGstRegistered(db, pricing.artistId),
-          }).net
-        : 0,
+    artistNetPaise: sale?.netPaise ?? (pricing && version ? artistSettlementOf(pricing.artistPricePaise, "marketplace", version.rates).net : 0),
   };
 }

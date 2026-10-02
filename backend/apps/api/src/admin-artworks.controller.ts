@@ -3,7 +3,8 @@ import { z } from "zod";
 import { NotFoundException } from "@nestjs/common";
 import { FirestoreRateConfigStore, getArtworkForAdmin, listArtworksForAdmin, setArtworkRarity, delistArtwork, getAuditLog, artworkRarityValues, reindexAllListings, refreshListing, Collections, type Db } from "@galleryzone/db";
 import { loadActiveRates } from "@galleryzone/config";
-import { activeHoldingForArtwork, adminPullBackHolding, listAggregatorHoldings, AggregatorReadError } from "@galleryzone/db";
+import { activeHoldingForArtwork, adminPullBackHolding, decideHoldingExtension, listAggregatorHoldings, AggregatorReadError, HoldingLifecycleError } from "@galleryzone/db";
+import { decideHoldingExtensionInputSchema, type DecideHoldingExtensionInput } from "@galleryzone/contracts";
 import { BadRequestException } from "@nestjs/common";
 import { Roles } from "./auth/roles.decorator.ts";
 import type { AuthenticatedRequest } from "./auth/roles.guard.ts";
@@ -20,6 +21,7 @@ export class AdminArtworksController {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly cache: ReadCache,
+    private readonly emails: Emails,
   ) {}
 
   @Roles("admin")
@@ -92,6 +94,37 @@ export class AdminArtworksController {
       return { holding };
     } catch (error) {
       if (error instanceof AggregatorReadError) {
+        if (error.message.startsWith("No ")) throw new NotFoundException({ type: "about:blank", title: "Holding not found", status: 404, code: "not_found" });
+        throw new BadRequestException({ type: "about:blank", title: error.message, status: 409, code: "conflict" });
+      }
+      throw error;
+    }
+  }
+
+  /** Answer an aggregator's request to keep a piece past its window. Approving moves the window's end out by one placement. */
+  @Roles("admin")
+  @Post("holdings/:id/extension/approve")
+  approveExtension(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(decideHoldingExtensionInputSchema)) body: DecideHoldingExtensionInput) {
+    return this.decideExtension(req, id, "approved", body);
+  }
+
+  @Roles("admin")
+  @Post("holdings/:id/extension/decline")
+  declineExtension(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(decideHoldingExtensionInputSchema)) body: DecideHoldingExtensionInput) {
+    return this.decideExtension(req, id, "declined", body);
+  }
+
+  private async decideExtension(req: AuthenticatedRequest, id: string, decision: "approved" | "declined", body: DecideHoldingExtensionInput) {
+    try {
+      const rates = await loadActiveRates(new FirestoreRateConfigStore(this.db));
+      const result = await decideHoldingExtension(this.db, { holdingId: id, adminId: req.authUser.uid, decision, note: body.note, rates });
+      this.cache.clear();
+      void this.emails
+        .holdingExtensionDecided({ holdingId: id, artworkId: result.artworkId, aggregatorId: result.aggregatorId, approved: decision === "approved", newExpiresAt: result.newExpiresAt, note: body.note?.trim() || null })
+        .catch(this.emails.swallow("holding extension decided mail"));
+      return { holding: result.holding };
+    } catch (error) {
+      if (error instanceof HoldingLifecycleError) {
         if (error.message.startsWith("No ")) throw new NotFoundException({ type: "about:blank", title: "Holding not found", status: 404, code: "not_found" });
         throw new BadRequestException({ type: "about:blank", title: error.message, status: 409, code: "conflict" });
       }

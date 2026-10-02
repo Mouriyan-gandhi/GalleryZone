@@ -6,11 +6,11 @@
 // is what calls this on a schedule and turns the result into DB writes.
 
 import {
+  addDays,
   aggregatorAdvanceForMonth,
   aggregatorOfferPriceOf,
   canPlaceWithAnotherAggregator,
-  placementWindow,
-  withGst,
+  listingEndsAt,
   type AggregatorAdvance,
   type PricingRates,
 } from "./pricing.ts";
@@ -20,8 +20,8 @@ export interface HoldingHistoryEntry {
   month: number;
   assignedAt: string | Date;
   returnedAt: string | Date | null;
-  /** Did this aggregator use their one price change during their placement? */
-  changedPrice: boolean;
+  /** Did this aggregator price the piece above GalleryZone's offer? Only month 1 can. */
+  appreciated: boolean;
 }
 
 export type AggregatorCycleOutcome =
@@ -71,22 +71,18 @@ export function decideNextAggregatorStep({
   }
 
   const nextMonth = placementsSoFar + 1;
-  const previous = history[history.length - 1];
-  const offerPricePaise = aggregatorOfferPriceOf(artistPricePaise, nextMonth, rates);
-  // Since 26 Aug 2026 aggregators can no longer set their own price (a
-  // deliberate product change that contradicts the signed MOU's §6 "one
-  // price change" clause — see the plan's reference to this), GalleryZone's
-  // own offer price IS the effective display price. Month 1's advance basis
-  // is therefore this offer, GST-applied, rather than an aggregator-chosen
-  // figure — pricing.check.ts's worked example predates that product change
-  // and used a hypothetical aggregator-set 1,50,000; this orchestration
-  // reflects current product behavior, not that historical example.
+  // Only the month-1 aggregator can price above GalleryZone's offer; whether
+  // they did decides when the monthly drops start (aggregatorOfferPriceOf).
+  const appreciated = history[0]?.appreciated ?? false;
+  const offerPricePaise = aggregatorOfferPriceOf(artistPricePaise, nextMonth, rates, { appreciated });
+  // The advance shown alongside an offer is the one at the offer price: the
+  // aggregator may set a higher price when they reserve in month 1, which
+  // raises their month-1 advance with it.
   const advance = aggregatorAdvanceForMonth({
     month: nextMonth,
-    displayPrice: withGst(offerPricePaise, rates),
+    sellingPrice: offerPricePaise,
     artistPrice: artistPricePaise,
     rates,
-    previousAggregatorChangedPrice: previous?.changedPrice ?? false,
   });
 
   return {
@@ -95,5 +91,42 @@ export function decideNextAggregatorStep({
     offerPricePaise,
     advance,
   };
+}
+
+/**
+ * Whether GalleryZone can still extend this placement: only while it ends
+ * before the whole 180-day listing does.
+ */
+export function canExtendPlacement({
+  expiresAt,
+  cycleStartedAt,
+  rates,
+}: {
+  expiresAt: Date;
+  cycleStartedAt: Date;
+  rates: PricingRates;
+}): boolean {
+  return expiresAt.getTime() < listingEndsAt(cycleStartedAt, rates).getTime();
+}
+
+/**
+ * Where an approved extension ends: one more placement window (30 days) from
+ * whichever is later, the current end or now, and never past the end of the
+ * 180-day listing.
+ */
+export function extendedPlacementEnd({
+  expiresAt,
+  cycleStartedAt,
+  now,
+  rates,
+}: {
+  expiresAt: Date;
+  cycleStartedAt: Date;
+  now: Date;
+  rates: PricingRates;
+}): Date {
+  const wanted = addDays(new Date(Math.max(expiresAt.getTime(), now.getTime())), rates.aggregatorPlacementDays);
+  const listingEnd = listingEndsAt(cycleStartedAt, rates);
+  return wanted.getTime() > listingEnd.getTime() ? listingEnd : wanted;
 }
 

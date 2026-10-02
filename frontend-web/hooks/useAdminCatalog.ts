@@ -124,6 +124,24 @@ export function usePullBackHoldingMutation() {
   });
 }
 
+// GalleryZone's answer to "let me keep it longer". The aggregator's own
+// collection and the reservable grid both move with it.
+export function useDecideExtensionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      holdingId: string;
+      decision: "approve" | "decline";
+      note?: string;
+    }) => adminService.decideExtension(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-artwork-holding"] });
+      queryClient.invalidateQueries({ queryKey: ["aggregator-collection"] });
+      queryClient.invalidateQueries({ queryKey: ["aggregator-inventory"] });
+    },
+  });
+}
+
 export function useAdminCategories() {
   return useQuery({
     queryKey: ["admin-categories"],

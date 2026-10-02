@@ -24,12 +24,11 @@ import type {
   WithdrawalRequest,
 } from "@/types/admin";
 import type { Address } from "@/types/customer";
-import type { AggregatorHolding } from "@/types/aggregator";
+import type { AggregatorHolding, HoldingExtensionRequest } from "@/types/aggregator";
 import { adminApi } from "@/services/adminApi";
 import { artistService } from "@/services/artworkService";
 import { http } from "@/lib/api";
-import { paiseToRupees, toArtwork, type ArtworkDto } from "@/lib/api-mappers";
-import { toSummary } from "@/lib/artwork-summary";
+import { paiseToRupees, toArtworkSummary, type ArtworkDto } from "@/lib/api-mappers";
 import { aggregatorService } from "@/services/aggregatorService";
 
 // ---------------------------------------------------------------------------
@@ -129,6 +128,9 @@ interface AdminHoldingDto {
   windowExtended: boolean;
   status: AggregatorHolding["status"];
   returnedAt: string | null;
+  appreciated: boolean;
+  priceWarning: boolean;
+  extensionRequest: HoldingExtensionRequest | null;
 }
 function toAdminHolding(h: AdminHoldingDto): AggregatorHolding & { artwork: ArtworkSummary } {
   return {
@@ -145,7 +147,10 @@ function toAdminHolding(h: AdminHoldingDto): AggregatorHolding & { artwork: Artw
     returnedAt: h.returnedAt,
     windowExtended: h.windowExtended,
     assignmentSource: h.assignmentSource,
-    artwork: h.artwork ? toSummary(toArtwork(h.artwork)) : { id: h.artworkId, title: "Artwork", artistId: "", artistName: "", verifiedArtist: false, category: "", medium: "", customerPrice: 0, thumbnailUrl: "/artworks/framed-painting.png", insured: false, status: "marketplace", listingType: "marketplace_and_aggregator" },
+    appreciated: h.appreciated,
+    priceWarning: h.priceWarning,
+    extensionRequest: h.extensionRequest,
+    artwork: h.artwork ? toArtworkSummary(h.artwork) : { id: h.artworkId, title: "Artwork", artistId: "", artistName: "", verifiedArtist: false, category: "", medium: "", customerPrice: 0, thumbnailUrl: "/artworks/framed-painting.png", insured: false, status: "marketplace", listingType: "marketplace_and_aggregator" },
   };
 }
 
@@ -282,6 +287,12 @@ export const adminService = {
     if (!input.reason.trim()) throw new Error("Give the gallery a reason for the pull-back");
     const { holding } = await http.post<{ holding: AdminHoldingDto | null }>(`/v1/admin/holdings/${encodeURIComponent(input.holdingId)}/pull-back`);
     return { released: holding ? paiseToRupees(holding.advancePaise) : 0, deliveryCharged: holding?.deliveryDepositPaise ? paiseToRupees(holding.deliveryDepositPaise) : 0 };
+  },
+
+  // An aggregator asked to keep a piece past its window. Approving moves the
+  // window on 30 days; declining lets it end and the piece go back on sale.
+  decideExtension: async (input: { holdingId: string; decision: "approve" | "decline"; note?: string }): Promise<void> => {
+    await http.post(`/v1/admin/holdings/${encodeURIComponent(input.holdingId)}/extension/${input.decision}`, input.note?.trim() ? { note: input.note.trim() } : {});
   },
 
   // GalleryZone ranks the work, the artist does not. The rank is written back

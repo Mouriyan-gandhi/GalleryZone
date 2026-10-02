@@ -11,7 +11,7 @@ import { isPlaceholderImage } from "@/lib/api-mappers";
 import { isDemoId } from "@/lib/demo-artworks-flag";
 import type { PassportTopicSlug } from "./passport-topics";
 
-function formatDate(iso: string | null | undefined): string {
+export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "Pending";
   return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 }

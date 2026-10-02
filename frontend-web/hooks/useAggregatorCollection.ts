@@ -38,6 +38,17 @@ export function useRecordSaleMutation() {
   });
 }
 
+// Asking to keep a piece changes the holding in place, and GalleryZone's answer
+// arrives the same way, so only the collection needs to re-read.
+export function useRequestExtensionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ holdingId, assurance }: { holdingId: string; assurance: string }) =>
+      aggregatorService.requestExtension(holdingId, assurance),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["aggregator-collection"] }),
+  });
+}
+
 // Dev-only time travel (see aggregatorService.debugSkipAheadDays). Same
 // invalidation set as reserving/releasing: back-dating a holding can also
 // change whether its artwork is placeable again, so Inventory's eligibility

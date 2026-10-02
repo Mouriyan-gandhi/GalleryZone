@@ -34,6 +34,7 @@ export const pricingRatesSchema = z
     aggregatorAdvanceRate: percent(0.5),
     aggregatorCommissionRate: percent(0.5),
     artistConvenienceRate: percent(0.2),
+    artistTechnologyRate: percent(0.1),
     artistOtherChargePaise: z.number().int().min(0),
     customerConvenienceRate: percent(0.05),
     nfcTagChargePaise: z.number().int().min(0),
@@ -44,6 +45,9 @@ export const pricingRatesSchema = z
     aggregatorListingDays: z.number().int().min(1).max(730),
     aggregatorPlacementDays: z.number().int().min(1).max(365),
     aggregatorMonthlyDiscountRates: z.array(percent(1)).min(1),
+    // How far above GalleryZone's price an aggregator may go before GalleryZone
+    // is warned (1 = double). It never blocks: a sanity ceiling only.
+    aggregatorPriceWarnRate: z.number().min(0).max(10),
     deliveryZoneRates: z
       .object({
         local: deliveryZoneRateSchema,

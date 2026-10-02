@@ -43,7 +43,16 @@ export class Razorpay {
   }
 
   /** POST /v1/orders on Razorpay. `receipt` is our order id; `notes` carries it too so a webhook can find us without the receipt. */
-  async createOrder(input: { orderId: string; amountPaise: number; customerId: string }): Promise<RazorpayOrder> {
+  createOrder(input: { orderId: string; amountPaise: number; customerId: string }): Promise<RazorpayOrder> {
+    return this.post({ receipt: input.orderId, amountPaise: input.amountPaise, notes: { gzOrderId: input.orderId, gzCustomerId: input.customerId } });
+  }
+
+  /** The same, for an aggregator adding money to their wallet. The notes carry the top-up id for the webhook. */
+  createTopupOrder(input: { topupId: string; amountPaise: number; userId: string }): Promise<RazorpayOrder> {
+    return this.post({ receipt: input.topupId, amountPaise: input.amountPaise, notes: { gzTopupId: input.topupId, gzUserId: input.userId } });
+  }
+
+  private async post(input: { receipt: string; amountPaise: number; notes: Record<string, string> }): Promise<RazorpayOrder> {
     const { keyId, keySecret } = this.require();
     const res = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
@@ -51,12 +60,7 @@ export class Razorpay {
         Authorization: `Basic ${Buffer.from(`${keyId}:${keySecret}`).toString("base64")}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        amount: input.amountPaise,
-        currency: "INR",
-        receipt: input.orderId.slice(0, 40),
-        notes: { gzOrderId: input.orderId, gzCustomerId: input.customerId },
-      }),
+      body: JSON.stringify({ amount: input.amountPaise, currency: "INR", receipt: input.receipt.slice(0, 40), notes: input.notes }),
     });
     const body = (await res.json()) as RazorpayOrder & { error?: { description?: string } };
     if (!res.ok) {

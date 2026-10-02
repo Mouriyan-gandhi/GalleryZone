@@ -1,20 +1,27 @@
 // The aggregator's own profile on the API (GET/PATCH /v1/me/profile) plus
-// the partner MOU record (GET/POST /v1/aggregator/mou). An acceptance of
-// an older MOU version reads as unsigned, which forces a re-sign.
+// the partner MOU (GET/POST /v1/aggregator/mou): the signature of the version
+// in force and the draft with its blanks filled from this profile. An
+// acceptance of an older MOU version reads as unsigned, which forces a re-sign.
 
-import { http } from "@/lib/api";
 import { profileApi, type OwnProfileDto, type OwnProfilePatch } from "@/services/profileApi";
-import { AGGREGATOR_MOU_VERSION } from "@/features/aggregator/aggregator-mou-data";
+import { mouService, type MouState } from "@/services/mouService";
+import type { MouAcceptanceRecord, MouDraft } from "@/features/mou/mou-document";
 
 export interface AggregatorProfileView {
   companyName: string;
   contactPerson: string;
   avatar: string | null;
   gstNumber: string;
+  /** An aggregator needs an approved GST number before they can reserve anything. */
+  gstStatus: "not_submitted" | "submitted" | "approved" | "rejected";
   phone: string;
   email: string;
   country: string;
+  /** The address as the MOU and GalleryZone's shipments need it: street line, city, state, PIN. */
   addressLine1: string;
+  addressCity: string;
+  addressState: string;
+  addressPincode: string;
   bankAccountMasked: string;
   /** Write-only: never returned by the API. */
   bankAccountNumber?: string;
@@ -24,27 +31,24 @@ export interface AggregatorProfileView {
   coordinatorDesignation: string;
   coordinatorPhone: string;
   coordinatorEmail: string;
-  mouAcceptance: { acceptedAt: string; signatureName: string; version: string; signatureDataUrl: string | null } | null;
+  mouAcceptance: MouAcceptanceRecord | null;
+  mouDraft: MouDraft;
 }
 
-interface MouDto {
-  party: "artist" | "aggregator";
-  version: string;
-  signatureName: string;
-  signatureDataUrl: string | null;
-  acceptedAt: string;
-}
-
-function toView(p: OwnProfileDto, mou: MouDto | null): AggregatorProfileView {
+function toView(p: OwnProfileDto, mou: MouState): AggregatorProfileView {
   return {
     companyName: p.companyName ?? p.fullName,
     contactPerson: p.fullName,
     avatar: p.profileImageUrl,
     gstNumber: p.gstin ?? "",
+    gstStatus: p.gstStatus,
     phone: p.phone ?? "",
     email: p.email,
     country: "IN",
-    addressLine1: [p.pickupLine1, p.pickupLine2, p.pickupCity, p.pickupState, p.pickupPincode].filter(Boolean).join(", "),
+    addressLine1: p.pickupLine1 ?? "",
+    addressCity: p.pickupCity ?? "",
+    addressState: p.pickupState ?? "",
+    addressPincode: p.pickupPincode ?? "",
     bankAccountMasked: p.bankAccountMasked ?? "",
     ifsc: p.ifsc ?? "",
     securityDepositStatus: "pending",
@@ -52,28 +56,20 @@ function toView(p: OwnProfileDto, mou: MouDto | null): AggregatorProfileView {
     coordinatorDesignation: p.headline ?? "",
     coordinatorPhone: p.phone ?? "",
     coordinatorEmail: p.email,
-    mouAcceptance: mou && mou.version === AGGREGATOR_MOU_VERSION ? { acceptedAt: mou.acceptedAt, signatureName: mou.signatureName, version: mou.version, signatureDataUrl: mou.signatureDataUrl } : null,
+    mouAcceptance: mou.acceptance,
+    mouDraft: mou.draft,
   };
-}
-
-async function mou(): Promise<MouDto | null> {
-  return (await http.get<{ acceptance: MouDto | null }>("/v1/aggregator/mou")).acceptance;
 }
 
 export const aggregatorProfileService = {
   getProfile: async (): Promise<AggregatorProfileView> => {
-    const [p, m] = await Promise.all([profileApi.get(), mou()]);
+    const [p, m] = await Promise.all([profileApi.get(), mouService.get("aggregator")]);
     return toView(p, m);
   },
 
-  acceptMou: async (input: { signatureName: string; version: string; signatureDataUrl?: string | null }): Promise<AggregatorProfileView> => {
-    if (!input.signatureName.trim()) throw new Error("Type your full name to sign");
-    const accepted = await http.post<MouDto>("/v1/aggregator/mou/accept", {
-      version: input.version,
-      signatureName: input.signatureName.trim(),
-      signatureDataUrl: input.signatureDataUrl ?? null,
-    });
-    return toView(await profileApi.get(), accepted);
+  acceptMou: async (input: { signatureName: string; version: string; signatureDataUrl: string }): Promise<AggregatorProfileView> => {
+    await mouService.accept("aggregator", input);
+    return aggregatorProfileService.getProfile();
   },
 
   updateProfile: async (patch: Partial<AggregatorProfileView>): Promise<AggregatorProfileView> => {
@@ -83,10 +79,13 @@ export const aggregatorProfileService = {
     if (patch.phone !== undefined) body.phone = patch.phone || null;
     if (patch.gstNumber !== undefined) body.gstin = patch.gstNumber || null;
     if (patch.addressLine1 !== undefined) body.pickupLine1 = patch.addressLine1 || null;
+    if (patch.addressCity !== undefined) body.pickupCity = patch.addressCity || null;
+    if (patch.addressState !== undefined) body.pickupState = patch.addressState || null;
+    if (patch.addressPincode !== undefined) body.pickupPincode = patch.addressPincode || null;
     if (patch.ifsc !== undefined) body.ifsc = patch.ifsc || null;
     if (patch.bankAccountNumber !== undefined) body.bankAccountNumber = patch.bankAccountNumber || null;
     if (patch.coordinatorDesignation !== undefined) body.headline = patch.coordinatorDesignation || null;
     const p = await profileApi.update(body);
-    return toView(p, await mou());
+    return toView(p, await mouService.get("aggregator"));
   },
 };

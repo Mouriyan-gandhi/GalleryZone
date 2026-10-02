@@ -1,6 +1,7 @@
 import { BadRequestException, Body, ConflictException, Controller, Get, Inject, NotFoundException, Param, Patch, Post, Req } from "@nestjs/common";
 import { z } from "zod";
 import { IllegalTransitionError } from "@galleryzone/domain";
+import { remitSaleInputSchema, type RemitSaleInput } from "@galleryzone/contracts";
 import { listAggregatorSales, advanceShipment, markRemitted, listRemittancesDue, AggregatorSalesError, type Db } from "@galleryzone/db";
 import { Roles } from "./auth/roles.decorator.ts";
 import type { AuthenticatedRequest } from "./auth/roles.guard.ts";
@@ -49,9 +50,9 @@ export class AggregatorSalesController {
 
   @Roles("aggregator")
   @Post(":id/remit")
-  async remit(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
+  async remit(@Req() req: AuthenticatedRequest, @Param("id") id: string, @Body(new ZodValidationPipe(remitSaleInputSchema)) body: RemitSaleInput) {
     try {
-      return await markRemitted(this.db, req.authUser.uid, id);
+      return await markRemitted(this.db, req.authUser.uid, id, body.via);
     } catch (error) {
       rethrow(error);
     }

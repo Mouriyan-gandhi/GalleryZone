@@ -1,6 +1,7 @@
 import { notify } from "@/lib/notify";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { artistDashboardService } from "@/services/artistDashboardService";
+import { mouDateTime } from "@/features/mou/mou-document";
 
 // Named "Account" rather than "Profile" to avoid colliding with
 // hooks/useArtistProfile.ts, which is for *viewing another artist's* public
@@ -37,7 +38,7 @@ export function useAcceptMouMutation() {
     ) => artistDashboardService.acceptMou(input),
     onError: notify.error("The agreement wasn't signed"),
     onSuccess: (profile) => {
-      notify.success("Agreement signed", profile.mouAcceptance ? `Signed ${new Date(profile.mouAcceptance.acceptedAt).toLocaleString("en-IN")} — a copy is on your profile.` : undefined);
+      notify.success("Agreement signed", profile.mouAcceptance ? `Signed ${mouDateTime(profile.mouAcceptance.acceptedAt)}. A copy is on your profile.` : undefined);
       queryClient.invalidateQueries({ queryKey: ["artist-account-profile"] });
       queryClient.invalidateQueries({ queryKey: ["artist-activity"] });
     },
