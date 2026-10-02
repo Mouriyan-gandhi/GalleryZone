@@ -187,7 +187,7 @@ void main() {
       240,
       scrollable: artworksList,
     );
-    expect(find.text('In review'), findsWidgets);
+    expect(find.text('Pending Approval'), findsWidgets);
 
     await tester.scrollUntilVisible(
       find.text('Portrait in Amber'),

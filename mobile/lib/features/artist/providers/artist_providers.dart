@@ -5,6 +5,7 @@ import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart';
 import '../../../data/models/customer.dart';
 import '../../../data/repositories/artist_repository.dart';
+import '../verification_tiers.dart';
 
 final artistRepositoryProvider = Provider<ArtistRepository>((ref) {
   return MockArtistRepository();
@@ -76,4 +77,25 @@ final artistMessagesProvider = FutureProvider.autoDispose<List<MessageThread>>((
 
 final artistSupportTicketsProvider = FutureProvider.autoDispose<List<SupportTicket>>((ref) {
   return ref.watch(artistRepositoryProvider).listSupportTickets();
+});
+
+/// The verification ladder, projected from the profile, the signed agreement
+/// and the artworks. Falls back to "nothing done yet" while they load, and when
+/// one fails: a ladder that blanks out on a flaky connection is worse than one
+/// that briefly shows the first rung open.
+final verificationTiersProvider = Provider.autoDispose<List<VerificationTier>>((ref) {
+  return verificationTiersFor(
+    profile: ref.watch(artistProfileDetailsProvider).value,
+    mou: ref.watch(mouAcceptanceProvider).value,
+    artworks: ref.watch(artistArtworksProvider).value ?? const [],
+  );
+});
+
+/// What needs doing next, most pressing first.
+final artistAttentionProvider = Provider.autoDispose<List<AttentionItem>>((ref) {
+  return attentionItemsFor(
+    artworks: ref.watch(artistArtworksProvider).value ?? const [],
+    settlements: ref.watch(artistSettlementsProvider).value ?? const [],
+    tiers: ref.watch(verificationTiersProvider),
+  );
 });

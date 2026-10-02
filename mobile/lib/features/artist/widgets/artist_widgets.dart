@@ -23,19 +23,19 @@ class ArtworkStatusPill extends StatelessWidget {
 
   static (String, IconData, Color) _style(ArtworkStatus status) => switch (status) {
         ArtworkStatus.draft => ('Draft', LucideIcons.pencil, Color(0xFF9C9686)),
-        ArtworkStatus.pendingApproval => ('In review', LucideIcons.clock3, _amber),
+        ArtworkStatus.pendingApproval => ('Pending Approval', LucideIcons.clock3, _amber),
         ArtworkStatus.marketplace => ('Live', LucideIcons.circleCheckBig, _emerald),
         ArtworkStatus.reserved => ('Reserved', LucideIcons.bookmarkCheck, _sky),
-        ArtworkStatus.preparingDispatch => ('Preparing dispatch', LucideIcons.packageCheck, _amber),
-        ArtworkStatus.inTransit => ('In transit', LucideIcons.truck, _amber),
-        ArtworkStatus.withAggregator => ('With aggregator', LucideIcons.frame, _sky),
+        ArtworkStatus.preparingDispatch => ('Preparing Dispatch', LucideIcons.packageCheck, _amber),
+        ArtworkStatus.inTransit => ('In Transit', LucideIcons.truck, _amber),
+        ArtworkStatus.withAggregator => ('With Aggregator', LucideIcons.frame, _sky),
         ArtworkStatus.sold => ('Sold', LucideIcons.circleCheckBig, _emerald),
         ArtworkStatus.settlementComplete => ('Settled', LucideIcons.wallet, _emerald),
         ArtworkStatus.delivered => ('Delivered', LucideIcons.checkCheck, _emerald),
         ArtworkStatus.completed => ('Completed', LucideIcons.checkCheck, _emerald),
         ArtworkStatus.returned => ('Returned', LucideIcons.circleX, AppColors.destructive),
         ArtworkStatus.soldExternally =>
-          ('Sold elsewhere', LucideIcons.externalLink, Color(0xFF9C9686)),
+          ('Sold Elsewhere', LucideIcons.externalLink, Color(0xFF9C9686)),
       };
 
   @override

@@ -403,36 +403,3 @@ List<RevenuePoint> artistRevenueSeries() => const [
       RevenuePoint(month: 'Jul', amount: 118400),
       RevenuePoint(month: 'Aug', amount: 184320),
     ];
-
-List<VerificationTier> artistVerificationTiers() => const [
-      VerificationTier(
-        tier: 1,
-        title: 'Social media',
-        description: 'Linked an official handle to authenticate your identity.',
-        detail:
-            'Link at least one official social media handle (Instagram, YouTube, or a '
-            "personal site) so collectors can verify you're a real, active artist.",
-        status: VerificationTierStatus.complete,
-        completedOn: '2026-02-14',
-      ),
-      VerificationTier(
-        tier: 2,
-        title: 'Active plan',
-        description: 'Maintained an active plan for 3 months.',
-        detail:
-            'Keep an active GalleryZone plan for 3 consecutive months. This is free '
-            'with the physical/aggregator listing model.',
-        status: VerificationTierStatus.complete,
-        completedOn: '2026-05-20',
-      ),
-      VerificationTier(
-        tier: 3,
-        title: 'First sale',
-        description: 'Complete your first confirmed sale on GalleryZone.',
-        detail:
-            'Sell one artwork through the marketplace or an aggregator. Once confirmed, '
-            "you'll unlock the Gold ✦ Verified badge shown on your public profile and "
-            'listings.',
-        status: VerificationTierStatus.active,
-      ),
-    ];

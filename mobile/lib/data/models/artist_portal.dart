@@ -290,8 +290,9 @@ abstract class RevenuePoint with _$RevenuePoint {
 
 enum VerificationTierStatus { complete, active, locked }
 
-/// The 3-tier ladder to the Gold ✦ Verified badge. Static in this phase —
-/// nothing in the app advances a tier yet.
+/// One rung of the 3-tier ladder to the Gold ✦ Verified badge. Worked out from
+/// the profile, the signed agreement and the artworks (see
+/// `verification_tiers.dart`), never stored.
 class VerificationTier {
   const VerificationTier({
     required this.tier,

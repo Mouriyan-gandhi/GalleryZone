@@ -7,7 +7,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../core/adaptive.dart';
 import '../../../core/format.dart';
 import '../../../core/launch.dart';
-import '../../../data/mock/seed/artist_seed.dart';
 import '../../../data/models/artist_portal.dart';
 import '../../../data/models/artwork.dart' show ReviewStatus, reviewStatusLabel;
 import '../../account/widgets/delete_account.dart';
@@ -147,15 +146,17 @@ class ArtistSettlementsTab extends ConsumerWidget {
 
 /// Port of `app/dashboard/verification/page.tsx` — the three-tier ladder to
 /// the Gold ✦ Verified badge, with what each tier actually requires.
-class ArtistVerificationScreen extends StatelessWidget {
+class ArtistVerificationScreen extends ConsumerWidget {
   const ArtistVerificationScreen({super.key});
 
   static const path = '/dashboard/verification';
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tiers = artistVerificationTiers();
+    // Worked out from the profile, the signed agreement and the artworks - not
+    // a fixed list - so each rung is ticked when it is true.
+    final tiers = ref.watch(verificationTiersProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Verification')),
