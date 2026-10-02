@@ -133,8 +133,10 @@ abstract class ArtistRepository {
 
   Future<ArtistProfileDetails> getProfile();
   Future<ArtistProfileDetails> updateProfile(ArtistProfileDetails profile);
+  /// The account number is write-only (only its last four digits ever come
+  /// back). Leave it empty to change just the IFSC.
   Future<ArtistProfileDetails> updateBankDetails({
-    required String accountNumber,
+    String accountNumber = '',
     required String ifsc,
   });
 

@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/launch.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/models/artwork.dart' show ReviewStatus;
 import '../legal/data/faq_data.dart';
 import '../legal/screens/faq_screen.dart';
 
@@ -226,6 +227,168 @@ class ProvisionalPayoutNotice extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// A notice that sits above a form: an icon, an optional bold [title], the
+/// [body], and optionally an [action]. [gold] frames it as something to do,
+/// [destructive] as something wrong.
+class PortalNotice extends StatelessWidget {
+  const PortalNotice({
+    super.key,
+    required this.icon,
+    required this.body,
+    this.title,
+    this.gold = false,
+    this.destructive = false,
+    this.action,
+  });
+
+  final IconData icon;
+  final String? title;
+  final String body;
+  final bool gold;
+  final bool destructive;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PortalCard(
+      gold: gold,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 16, color: destructive ? AppColors.destructive : theme.colorScheme.tertiary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (title != null) ...[
+                  Text(title!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                ],
+                Text(body, style: theme.textTheme.labelSmall?.copyWith(height: 1.45)),
+                ?action,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A dashed-outline placeholder for something the product has promised and not
+/// built (a walkthrough video, a preview card), so the gap is visible and
+/// labelled rather than silently absent.
+class ComingSoonTile extends StatelessWidget {
+  const ComingSoonTile({super.key, required this.icon, required this.title, required this.text});
+
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.labelLarge),
+                Text(text, style: theme.textTheme.labelSmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small status/label pill. The status vocabularies across the portals
+/// (holding, shipment, settlement, review verdicts) all render as one, so the
+/// colour choice lives in a single place rather than a copy per screen.
+class StatusPill extends StatelessWidget {
+  const StatusPill({super.key, required this.label, required this.color, this.icon});
+
+  final String label;
+  final Color color;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.xl4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The colour a review verdict reads in: quiet when nothing has happened,
+/// gold while it is with GalleryZone, green once approved, red when it is not.
+Color reviewStatusColor(BuildContext context, ReviewStatus status) => switch (status) {
+      ReviewStatus.notSubmitted => Theme.of(context).colorScheme.onSurfaceVariant,
+      ReviewStatus.submitted => Theme.of(context).colorScheme.tertiary,
+      ReviewStatus.approved => const Color(0xFF34D399),
+      ReviewStatus.rejected => AppColors.destructive,
+    };
+
+/// Where a GST number stands with GalleryZone. Shared by the artist and
+/// aggregator profiles so the same state never reads two ways. Port of
+/// `components/shared/gst-status-badge.tsx`.
+class GstStatusBadge extends StatelessWidget {
+  const GstStatusBadge({super.key, required this.status});
+
+  final ReviewStatus status;
+
+  static const labels = {
+    ReviewStatus.notSubmitted: 'Not started',
+    ReviewStatus.submitted: 'Pending GalleryZone approval',
+    ReviewStatus.approved: 'Approved',
+    ReviewStatus.rejected: 'Rejected — resubmit',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return StatusPill(label: labels[status]!, color: reviewStatusColor(context, status));
   }
 }
 

@@ -8,47 +8,13 @@ import '../../../data/models/artist_portal.dart';
 import '../../../data/repositories/aggregator_repository.dart';
 import '../../shell/portal_widgets.dart';
 
+// StatusPill moved to the shared portal widgets; re-exported so this portal's
+// screens keep their single widgets import.
+export '../../shell/portal_widgets.dart' show StatusPill;
+
 const _sky = Color(0xFF38BDF8);
 const _emerald = Color(0xFF34D399);
 const _slate = Color(0xFF94A3B8);
-
-/// Small status/label pill. The three status vocabularies in this portal
-/// (holding, shipment, settlement) all render as one, so the colour choice
-/// lives in a single place rather than three copies of the same container.
-class StatusPill extends StatelessWidget {
-  const StatusPill({super.key, required this.label, required this.color, this.icon});
-
-  final String label;
-  final Color color;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.xl4),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 6),
-          ],
-          Text(
-            label,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: color, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class HoldingStatusPill extends StatelessWidget {
   const HoldingStatusPill({super.key, required this.status});

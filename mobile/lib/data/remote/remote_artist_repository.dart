@@ -316,12 +316,15 @@ class RemoteArtistRepository implements ArtistRepository {
   }
 
   @override
-  Future<ArtistProfileDetails> updateBankDetails({required String accountNumber, required String ifsc}) async =>
+  Future<ArtistProfileDetails> updateBankDetails({String accountNumber = '', required String ifsc}) async =>
       artistProfileDetailsFromApi(
         asMap(
           await api.patch(
             '/v1/me/profile',
-            body: {'bankAccountNumber': accountNumber.trim(), 'ifsc': ifsc.trim().toUpperCase()},
+            body: {
+              if (accountNumber.trim().isNotEmpty) 'bankAccountNumber': accountNumber.trim(),
+              'ifsc': ifsc.trim().toUpperCase(),
+            },
           ),
         ),
       );

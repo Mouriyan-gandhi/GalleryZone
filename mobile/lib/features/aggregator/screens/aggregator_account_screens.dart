@@ -15,7 +15,6 @@ import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../shell/portal_widgets.dart';
 import '../providers/aggregator_providers.dart';
-import '../widgets/aggregator_widgets.dart';
 
 /// Port of `features/aggregator/gallery-spaces-board.tsx` — the aggregator's
 /// own premises. Not the artist portal's screen of the same name, which

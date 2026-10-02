@@ -502,7 +502,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (panMissing) ...[
-                  _Banner(
+                  PortalNotice(
                     icon: LucideIcons.triangleAlert,
                     gold: true,
                     title: 'PAN required before this can go live',
@@ -516,7 +516,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                   const SizedBox(height: 16),
                 ],
                 if (approvedFee > 0) ...[
-                  _Banner(
+                  PortalNotice(
                     icon: LucideIcons.triangleAlert,
                     destructive: true,
                     title: '${formatInr(approvedFee)} off-platform sale fee is due on this listing',
@@ -527,7 +527,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                   const SizedBox(height: 16),
                 ],
                 if (reviewingFee > 0) ...[
-                  _Banner(
+                  PortalNotice(
                     icon: LucideIcons.clock3,
                     gold: true,
                     title: '${formatInr(reviewingFee)} off-platform sale fee is with GalleryZone for review',
@@ -545,7 +545,7 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                   const SizedBox(height: 16),
                 ],
                 if (editState != null) ...[
-                  _Banner(
+                  PortalNotice(
                     icon: editState.editable ? LucideIcons.clock3 : LucideIcons.lock,
                     gold: editState.editable,
                     destructive: !editState.editable,
@@ -996,13 +996,13 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          const _ComingSoon(
+          const ComingSoonTile(
             icon: LucideIcons.circlePlay,
             title: 'Explainer video',
             text: 'A short walkthrough of the aggregator process goes here. Coming soon.',
           ),
           const SizedBox(height: 8),
-          const _ComingSoon(icon: LucideIcons.layoutTemplate, title: 'Display card', text: 'Coming soon.'),
+          const ComingSoonTile(icon: LucideIcons.layoutTemplate, title: 'Display card', text: 'Coming soon.'),
         ],
       ),
     );
@@ -1074,7 +1074,8 @@ class _ArtworkUploadScreenState extends ConsumerState<ArtworkUploadScreen> {
                 Row(
                   children: [
                     Expanded(child: Text('Insurance verification', style: theme.textTheme.titleSmall)),
-                    if (_isEdit) _StatusPill(status: status),
+                    if (_isEdit)
+                      StatusPill(label: insuranceStatusLabel[status]!, color: reviewStatusColor(context, status)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -1131,55 +1132,6 @@ class _Section extends StatelessWidget {
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
           ...children,
-        ],
-      ),
-    );
-  }
-}
-
-class _Banner extends StatelessWidget {
-  const _Banner({
-    required this.icon,
-    required this.body,
-    this.title,
-    this.gold = false,
-    this.destructive = false,
-    this.action,
-  });
-
-  final IconData icon;
-  final String? title;
-  final String body;
-  final bool gold;
-  final bool destructive;
-  final Widget? action;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return PortalCard(
-      gold: gold,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, size: 16, color: destructive ? AppColors.destructive : theme.colorScheme.tertiary),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title != null) ...[
-                  Text(title!, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                ],
-                Text(body, style: theme.textTheme.labelSmall?.copyWith(height: 1.45)),
-                ?action,
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1409,70 +1361,6 @@ class _CheckTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon({required this.icon, required this.title, required this.text});
-
-  final IconData icon;
-  final String title;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: theme.colorScheme.tertiary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: theme.textTheme.labelLarge),
-                Text(text, style: theme.textTheme.labelSmall),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
-
-  final ReviewStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = switch (status) {
-      ReviewStatus.notSubmitted => theme.colorScheme.onSurfaceVariant,
-      ReviewStatus.submitted => theme.colorScheme.tertiary,
-      ReviewStatus.approved => const Color(0xFF34D399),
-      ReviewStatus.rejected => AppColors.destructive,
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppRadius.xl4),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Text(
-        insuranceStatusLabel[status]!,
-        style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w500),
       ),
     );
   }

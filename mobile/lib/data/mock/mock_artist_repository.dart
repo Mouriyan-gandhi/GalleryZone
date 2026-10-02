@@ -778,10 +778,12 @@ class MockArtistRepository implements ArtistRepository {
 
   @override
   Future<ArtistProfileDetails> updateBankDetails({
-    required String accountNumber,
+    String accountNumber = '',
     required String ifsc,
   }) {
-    if (accountNumber.trim().isEmpty) return mockError('Enter an account number');
+    if (accountNumber.trim().isEmpty && ifsc.trim().isEmpty) {
+      return mockError('Enter an account number');
+    }
     return mockDelay(() {
       final current = _readSingle(
         _profileKey,
@@ -790,12 +792,15 @@ class MockArtistRepository implements ArtistRepository {
         (p) => p.toJson(),
       );
       // Only the last four digits are ever stored — the full account number
-      // is never persisted anywhere on the device.
+      // is never persisted anywhere on the device. Left empty, the number on
+      // file stays and only the IFSC changes.
       final trimmed = accountNumber.trim();
-      final last4 = trimmed.substring(trimmed.length < 4 ? 0 : trimmed.length - 4);
+      final last4 = trimmed.isEmpty
+          ? null
+          : trimmed.substring(trimmed.length < 4 ? 0 : trimmed.length - 4);
       final updated = current.copyWith(
-        bankAccountMasked: '•••• •••• •••• $last4',
-        ifsc: ifsc.trim(),
+        bankAccountMasked: last4 == null ? current.bankAccountMasked : '•••• •••• •••• $last4',
+        ifsc: ifsc.trim().toUpperCase(),
       );
       _writeSingle(_profileKey, updated, (p) => p.toJson());
       return updated;
