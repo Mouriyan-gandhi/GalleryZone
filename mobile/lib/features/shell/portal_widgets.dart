@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/launch.dart';
+import '../../core/format.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/artwork.dart' show ReviewStatus;
+import '../../data/models/customer.dart' show WalletTransaction, WalletTransactionStatus;
 import '../legal/data/faq_data.dart';
 import '../legal/screens/faq_screen.dart';
 
@@ -474,6 +476,69 @@ class _GstNumberCardState extends State<GstNumberCard> {
                 ),
               ],
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One line of a wallet's ledger: an arrow (green up for money in), the label
+/// with its date - or "Pending" / "Failed" - and the signed amount. Shared by the
+/// artist and aggregator wallets so a credit never reads two ways.
+class WalletTransactionRow extends StatelessWidget {
+  const WalletTransactionRow({super.key, required this.transaction});
+
+  final WalletTransaction transaction;
+
+  static const _emerald = Color(0xFF34D399);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isCredit = transaction.amount >= 0;
+    final status = switch (transaction.status) {
+      WalletTransactionStatus.pending =>
+        Text('Pending', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.tertiary)),
+      WalletTransactionStatus.failed =>
+        Text('Failed', style: theme.textTheme.labelSmall?.copyWith(color: AppColors.destructive)),
+      WalletTransactionStatus.completed => Text(formatDay(transaction.date), style: theme.textTheme.labelSmall),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outline))),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCredit ? _emerald.withValues(alpha: 0.1) : theme.colorScheme.surfaceContainerHighest,
+            ),
+            child: Icon(
+              isCredit ? LucideIcons.arrowUpRight : LucideIcons.arrowDownRight,
+              size: 14,
+              color: isCredit ? _emerald : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(transaction.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodyMedium),
+                status,
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${isCredit ? '+' : '−'}${formatInr(transaction.amount.abs())}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: isCredit ? _emerald : null,
+            ),
           ),
         ],
       ),

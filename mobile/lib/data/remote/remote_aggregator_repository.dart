@@ -26,8 +26,8 @@ class RemoteAggregatorRepository implements AggregatorRepository {
 
   /// The wallet top-up bounds (₹1,000 to ₹5,00,000). The API enforces them;
   /// checking here saves a round trip and words the refusal well.
-  static const topupMin = 1000.0;
-  static const topupMax = 500000.0;
+  static const topupMin = aggregatorTopupMin;
+  static const topupMax = aggregatorTopupMax;
 
   // --- Holdings -----------------------------------------------------------------
 

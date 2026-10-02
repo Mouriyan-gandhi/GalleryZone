@@ -37,6 +37,11 @@ double aggregatorCommissionFor({
 /// [placementWindow].
 const holdingWindow = Duration(days: aggregatorPlacementDays);
 
+/// One wallet top-up, in whole rupees: the same bounds as the API
+/// (`WALLET_TOPUP_MIN_PAISE` / `WALLET_TOPUP_MAX_PAISE`).
+const aggregatorTopupMin = 1000.0;
+const aggregatorTopupMax = 500000.0;
+
 /// Minimum a withdrawal request is allowed to be. Same floor as the artist
 /// wallet — this is earned commission, not refund credit.
 const aggregatorMinimumWithdrawal = 1000.0;

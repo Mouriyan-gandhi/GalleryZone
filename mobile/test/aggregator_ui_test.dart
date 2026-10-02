@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gallery_zone/core/format.dart';
+import 'package:gallery_zone/core/payments/payment_gateway.dart' show PaymentDismissedException;
 import 'package:gallery_zone/core/pricing.dart';
 import 'package:gallery_zone/core/theme/app_theme.dart';
 import 'package:gallery_zone/data/models/aggregator.dart';
 import 'package:gallery_zone/data/models/artist_portal.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
-import 'package:gallery_zone/data/models/customer.dart' show WalletSummary;
+import 'package:gallery_zone/data/models/customer.dart' show WalletSummary, WalletTransaction, WalletTransactionStatus, WalletTransactionType;
 import 'package:gallery_zone/data/repositories/aggregator_repository.dart';
 import 'package:gallery_zone/features/auth/providers/auth_providers.dart';
 import 'package:gallery_zone/features/aggregator/providers/aggregator_providers.dart';
@@ -16,6 +17,7 @@ import 'package:gallery_zone/features/aggregator/screens/aggregator_collection_s
 import 'package:gallery_zone/features/aggregator/screens/aggregator_holding_screen.dart';
 import 'package:gallery_zone/features/aggregator/screens/aggregator_inventory_screen.dart';
 import 'package:gallery_zone/features/aggregator/screens/aggregator_reserve_screen.dart';
+import 'package:gallery_zone/features/aggregator/screens/aggregator_wallet_screen.dart';
 import 'package:gallery_zone/features/aggregator/widgets/aggregator_widgets.dart';
 
 import 'support/catalog_fixtures.dart';
@@ -166,6 +168,10 @@ class _Agg implements AggregatorRepository {
   AggregatorProfile profile;
   double free;
 
+  List<WalletTransaction> ledger = [];
+  final topups = <double>[];
+  final withdrawals = <double>[];
+  Object? failTopupWith;
   final reserved = <({String id, double? price, bool conflict})>[];
   final sales = <RecordSaleInput>[];
   final returned = <String>[];
@@ -185,6 +191,36 @@ class _Agg implements AggregatorRepository {
 
   @override
   Future<List<AggregatorHoldingView>> listCollection() async => List.of(holdings);
+
+  @override
+  Future<List<WalletTransaction>> listWalletTransactions() async => List.of(ledger);
+
+  @override
+  Future<WalletTransaction> addFunds(double amount) async {
+    if (failTopupWith != null) throw failTopupWith!;
+    topups.add(amount);
+    return WalletTransaction(
+      id: 't1',
+      type: WalletTransactionType.adjustment,
+      label: 'Added to wallet',
+      amount: amount,
+      date: '2026-10-02T00:00:00.000Z',
+      status: WalletTransactionStatus.completed,
+    );
+  }
+
+  @override
+  Future<WalletTransaction> requestWithdrawal(double amount) async {
+    withdrawals.add(amount);
+    return WalletTransaction(
+      id: 'w1',
+      type: WalletTransactionType.withdrawal,
+      label: 'Withdrawal',
+      amount: -amount,
+      date: '2026-10-02T00:00:00.000Z',
+      status: WalletTransactionStatus.pending,
+    );
+  }
 
   @override
   Future<AggregatorHoldingView?> getHolding(String holdingId) async =>
@@ -287,7 +323,8 @@ Future<void> _show(
           ),
         ],
       ),
-      GoRoute(path: '/aggregator/wallet', builder: (context, state) => _stub('WALLET PAGE')),
+      GoRoute(path: AggregatorWalletScreen.path, builder: (context, state) => const AggregatorWalletScreen()),
+      GoRoute(path: '/aggregator/dashboard/support', builder: (context, state) => _stub('SUPPORT PAGE')),
       GoRoute(path: '/aggregator/dashboard/profile', builder: (context, state) => _stub('PROFILE PAGE')),
       GoRoute(path: '/aggregator/dashboard/mou', builder: (context, state) => _stub('MOU PAGE')),
       GoRoute(path: '/aggregator/dashboard/settlements', builder: (context, state) => _stub('SETTLEMENTS PAGE')),
@@ -560,7 +597,7 @@ void main() {
       expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Confirm reservation')).onPressed, isNull);
 
       await _tap(tester, find.text('Go to wallet'));
-      expect(find.text('WALLET PAGE'), findsOneWidget);
+      expect(find.text('Earnings & wallet'), findsOneWidget);
     });
 
     testWidgets('an open requirement keeps Confirm closed too', (tester) async {
@@ -899,6 +936,153 @@ void main() {
       await _show(tester, _Agg(holdings: [view]), at: '/aggregator/collection/h1');
       expect(find.text('Pending approval'), findsOneWidget);
       expect(find.text('—'), findsOneWidget);
+    });
+  });
+
+  group('the wallet', () {
+    WalletTransaction tx(String id, String label, double amount, {WalletTransactionStatus status = WalletTransactionStatus.completed}) =>
+        WalletTransaction(
+          id: id,
+          type: amount >= 0 ? WalletTransactionType.settlement : WalletTransactionType.adjustment,
+          label: label,
+          amount: amount,
+          date: '2026-09-20T00:00:00.000Z',
+          status: status,
+        );
+
+    testWidgets('free, held and pending are three different things, each with its own line', (tester) async {
+      await _show(tester, _Agg(free: 50000), at: AggregatorWalletScreen.path);
+      expect(find.text('Free to use'), findsOneWidget);
+      expect(find.text('₹50,000'), findsOneWidget);
+      expect(find.text('Available to reserve artwork'), findsOneWidget);
+      expect(find.text('Held against reservations'), findsOneWidget);
+      expect(find.text('₹1,000'), findsWidgets);
+      expect(find.text('Advances and delivery on pieces you are displaying'), findsOneWidget);
+      expect(find.text('Commission pending'), findsOneWidget);
+      expect(find.text('Earned on sales, waiting to be settled'), findsOneWidget);
+      // The old "Available balance" counted money behind live reservations as available.
+      expect(find.text('Available balance'), findsNothing);
+    });
+
+    testWidgets('the ledger reads credits and debits with their sign, pending and failed in words', (tester) async {
+      final agg = _Agg()
+        ..ledger = [
+          tx('1', 'Added to wallet', 25000),
+          tx('2', 'Held for reservation · Monsoon', -9000, status: WalletTransactionStatus.pending),
+          tx('3', 'Wallet adjustment', -500, status: WalletTransactionStatus.failed),
+        ];
+      await _show(tester, agg, at: AggregatorWalletScreen.path);
+      await tester.scrollUntilVisible(find.text('Added to wallet'), 300, scrollable: find.byType(Scrollable).first);
+      expect(find.text('+₹25,000'), findsOneWidget);
+      expect(find.text('−₹9,000'), findsOneWidget);
+      expect(find.text('Pending'), findsOneWidget);
+      expect(find.text('Failed'), findsOneWidget);
+      expect(find.text('20 Sep'), findsOneWidget);
+    });
+
+    testWidgets('an amount outside the API\'s bounds, or in paise, cannot be sent', (tester) async {
+      final agg = _Agg();
+      await _show(tester, agg, at: AggregatorWalletScreen.path);
+      Finder add() => find.widgetWithText(OutlinedButton, 'Add to wallet');
+      final field = find.widgetWithText(TextField, 'Amount (₹)').first;
+      await tester.ensureVisible(field);
+      await tester.pump();
+
+      await tester.enterText(field, '999');
+      await tester.pumpAndSettle();
+      expect(find.text('₹1,000 to ₹5,00,000 in whole rupees, one payment at a time.'), findsOneWidget);
+      expect(tester.widget<OutlinedButton>(add()).onPressed, isNull);
+
+      await tester.enterText(field, '500001');
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(add()).onPressed, isNull);
+
+      await tester.enterText(field, '2500.5');
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(add()).onPressed, isNull);
+
+      await tester.enterText(field, '25000');
+      await tester.pumpAndSettle();
+      expect(tester.widget<OutlinedButton>(add()).onPressed, isNotNull);
+      expect(agg.topups, isEmpty);
+    });
+
+    testWidgets('adding funds pays, says so, and clears the field', (tester) async {
+      final agg = _Agg();
+      await _show(tester, agg, at: AggregatorWalletScreen.path);
+      final field = find.widgetWithText(TextField, 'Amount (₹)').first;
+      await tester.ensureVisible(field);
+      await tester.pump();
+      await tester.enterText(field, '25000');
+      await tester.pumpAndSettle();
+      await _tap(tester, find.widgetWithText(OutlinedButton, 'Add to wallet'));
+
+      expect(agg.topups, [25000]);
+      expect(find.text('Added to your wallet. ₹25,000 is ready to reserve with.'), findsOneWidget);
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+    });
+
+    testWidgets('closing the payment sheet is not an error', (tester) async {
+      final agg = _Agg()..failTopupWith = const PaymentDismissedException();
+      await _show(tester, agg, at: AggregatorWalletScreen.path);
+      final field = find.widgetWithText(TextField, 'Amount (₹)').first;
+      await tester.ensureVisible(field);
+      await tester.pump();
+      await tester.enterText(field, '25000');
+      await tester.pumpAndSettle();
+      await _tap(tester, find.widgetWithText(OutlinedButton, 'Add to wallet'));
+      expect(find.text('Payment cancelled — nothing was charged.'), findsOneWidget);
+      expect(find.text('Added to your wallet. ₹25,000 is ready to reserve with.'), findsNothing);
+    });
+
+    testWidgets('a refused top-up shows the reason', (tester) async {
+      final agg = _Agg()..failTopupWith = Exception('Payment could not be verified');
+      await _show(tester, agg, at: AggregatorWalletScreen.path);
+      final field = find.widgetWithText(TextField, 'Amount (₹)').first;
+      await tester.ensureVisible(field);
+      await tester.pump();
+      await tester.enterText(field, '25000');
+      await tester.pumpAndSettle();
+      await _tap(tester, find.widgetWithText(OutlinedButton, 'Add to wallet'));
+      expect(find.text('Payment could not be verified'), findsOneWidget);
+    });
+
+    testWidgets('against the real service, withdrawing says it is not open yet, instead of offering a form', (tester) async {
+      await _show(tester, _Agg(), at: AggregatorWalletScreen.path);
+      await tester.scrollUntilVisible(find.text('Withdraw funds'), 300, scrollable: find.byType(Scrollable).first);
+      expect(
+        find.text("Withdrawals from the wallet aren't open yet. Contact GalleryZone to have unused money returned to your bank account."),
+        findsOneWidget,
+      );
+      expect(find.text('Request withdrawal'), findsNothing);
+
+      await _tap(tester, find.text('Contact GalleryZone'));
+      expect(find.text('SUPPORT PAGE'), findsOneWidget);
+    });
+
+    testWidgets('the offline demo withdraws from the FREE balance only', (tester) async {
+      final agg = _Agg(free: 5000);
+      await _show(tester, agg, at: AggregatorWalletScreen.path, remote: false);
+      final field = find.widgetWithText(TextField, 'Amount (₹)').last;
+      await tester.ensureVisible(field);
+      await tester.pump();
+      expect(find.text('Minimum ₹1,000 · Available ₹5,000'), findsOneWidget);
+
+      await tester.enterText(field, '500');
+      await tester.pumpAndSettle();
+      expect(find.text('Minimum withdrawal is ₹1,000'), findsOneWidget);
+
+      await tester.enterText(field, '5001');
+      await tester.pumpAndSettle();
+      expect(find.text('Exceeds your available balance'), findsOneWidget);
+      expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Request withdrawal')).onPressed, isNull);
+
+      await tester.enterText(field, '4000');
+      await tester.pumpAndSettle();
+      await _tap(tester, find.widgetWithText(FilledButton, 'Request withdrawal'));
+      expect(agg.withdrawals, [4000]);
+      expect(find.text('Withdrawal requested.'), findsOneWidget);
+      expect(find.textContaining('₹4,000 will be sent to your bank account'), findsOneWidget);
     });
   });
 

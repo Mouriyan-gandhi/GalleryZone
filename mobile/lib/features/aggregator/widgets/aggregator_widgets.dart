@@ -176,8 +176,8 @@ class WalletMechanicsNotice extends StatelessWidget {
               'balance rather than charging you. The hold is released when the '
               'piece sells; if it goes back unsold the advance is released but '
               'the delivery leg is spent. Commission is 20% of your markup '
-              "over the artist's price, and becomes withdrawable once the "
-              'settlement is processed.',
+              "over the artist's price, and is credited to this wallet once "
+              'the settlement is processed.',
               style: theme.textTheme.labelSmall?.copyWith(height: 1.45),
             ),
           ),

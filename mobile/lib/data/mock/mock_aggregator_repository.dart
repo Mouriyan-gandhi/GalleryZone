@@ -709,14 +709,16 @@ class MockAggregatorRepository implements AggregatorRepository {
 
   @override
   Future<WalletTransaction> addFunds(double amount) {
-    if (amount <= 0) return mockError('Enter an amount to add');
+    if (amount < aggregatorTopupMin || amount > aggregatorTopupMax) {
+      return mockError('Add between ₹1,000 and ₹5,00,000 at a time.');
+    }
     return mockDelay(() {
       final wallet = _readWallet();
       _writeWallet(wallet.copyWith(balance: wallet.balance + amount));
       final transaction = WalletTransaction(
         id: 'wt-${DateTime.now().microsecondsSinceEpoch}',
         type: WalletTransactionType.adjustment,
-        label: 'Wallet top-up',
+        label: 'Added to wallet',
         amount: amount,
         date: DateTime.now().toIso8601String().substring(0, 10),
         status: WalletTransactionStatus.completed,

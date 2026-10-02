@@ -11,7 +11,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/mock/mock_artist_repository.dart'
     show minimumWithdrawal, simulateDeliveryAndRelease;
 import '../../../data/models/artist_portal.dart';
-import '../../../data/models/customer.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../marketplace/widgets/artwork_card.dart';
 import '../../shell/portal_widgets.dart';
@@ -153,7 +152,7 @@ class ArtistWalletTab extends ConsumerWidget {
                   )
                 else
                   for (final transaction in transactionsAsync.requireValue)
-                    _TransactionRow(transaction: transaction),
+                    WalletTransactionRow(transaction: transaction),
                 const SizedBox(height: 24),
                 Consumer(
                   builder: (context, ref, _) {
@@ -509,82 +508,3 @@ class _PendingSettlements extends ConsumerWidget {
   }
 }
 
-class _TransactionRow extends StatelessWidget {
-  const _TransactionRow({required this.transaction});
-
-  final WalletTransaction transaction;
-
-  static const _emerald = Color(0xFF34D399);
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isCredit = transaction.amount >= 0;
-    final status = switch (transaction.status) {
-      WalletTransactionStatus.pending => Text(
-        'Pending',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.tertiary,
-        ),
-      ),
-      WalletTransactionStatus.failed => Text(
-        'Failed',
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: AppColors.destructive,
-        ),
-      ),
-      WalletTransactionStatus.completed => Text(
-        formatDay(transaction.date),
-        style: theme.textTheme.labelSmall,
-      ),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: theme.colorScheme.outline)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCredit
-                  ? _emerald.withValues(alpha: 0.1)
-                  : theme.colorScheme.surfaceContainerHighest,
-            ),
-            child: Icon(
-              isCredit ? LucideIcons.arrowUpRight : LucideIcons.arrowDownRight,
-              size: 14,
-              color: isCredit ? _emerald : theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction.label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                status,
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${isCredit ? '+' : '−'}${formatInr(transaction.amount.abs())}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-              color: isCredit ? _emerald : null,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
