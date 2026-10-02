@@ -17,6 +17,7 @@ import {
   decideLock,
   decideUnlink,
   dispatchGateVerdict,
+  holdingSubStatusOf,
   linkNfcTag,
   lockNfcTag,
   nfcOwnerFields,
@@ -186,6 +187,13 @@ assert.equal(dispatchGateVerdict({ locked: true, overridden: false }, true), "al
 assert.equal(dispatchGateVerdict({ locked: false, overridden: true }, true), "allow");
 assert.equal(dispatchGateVerdict({ locked: false, overridden: false }, true), "block");
 assert.equal(dispatchGateVerdict({ locked: false, overridden: false }, false), "warn");
+
+// A held piece waits for its lock; the holding's own status is untouched.
+assert.equal(holdingSubStatusOf("reserved", { locked: false, overridden: false }), "reserved_awaiting_lock");
+assert.equal(holdingSubStatusOf("reserved", { locked: true, overridden: false }), "reserved_ready_to_ship");
+assert.equal(holdingSubStatusOf("reserved", { locked: false, overridden: true }), "reserved_ready_to_ship");
+assert.equal(holdingSubStatusOf("sold_pending_settlement", { locked: false, overridden: false }), null);
+assert.equal(holdingSubStatusOf("returned", { locked: true, overridden: false }), null);
 
 const stamp = Timestamp.fromDate(new Date("2026-10-02T12:00:00Z"));
 assert.equal(nfcStageOf(nfcStateOf({}, null)), "unlinked");

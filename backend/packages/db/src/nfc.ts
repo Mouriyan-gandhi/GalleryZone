@@ -139,6 +139,20 @@ export function decideUnlink(state: NfcState, reason: string): UnlinkDecision {
   return { kind: "unlink", previousUid: state.tagUid };
 }
 
+/**
+ * Where a held piece stands on the lock rule (NFC_IMPLEMENTATION.md §5.2a): waiting for the
+ * artist to lock the tag, or ready to ship. The plan names these as holding statuses
+ * (`reserved_awaiting_lock`, `reserved_ready_to_ship`); here they are derived from the
+ * artwork, so they can never disagree with it, and the holding's own `status` stays
+ * `reserved` — the web, the app and several queries filter on exactly that.
+ */
+export type HoldingSubStatus = "reserved_awaiting_lock" | "reserved_ready_to_ship";
+
+export function holdingSubStatusOf(status: string, flags: { locked: boolean; overridden: boolean }): HoldingSubStatus | null {
+  if (status !== "reserved") return null;
+  return flags.locked || flags.overridden ? "reserved_ready_to_ship" : "reserved_awaiting_lock";
+}
+
 export type GateVerdict = "allow" | "warn" | "block";
 
 /** §5 and §12: an unlocked dispatch is refused once the flag is on, and only logged until then. */

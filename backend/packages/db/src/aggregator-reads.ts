@@ -20,6 +20,7 @@ import { Collections, artworkPricingCol, type AggregatorHoldingDoc, type Artwork
 import { isAlreadyExists, postLedgerEntries } from "./ledger-repository.ts";
 import { appendArtworkStatus, latestStatusOf, refreshListing } from "./listing-projection.ts";
 import { getPublicArtwork, type PublicArtworkView } from "./public-artworks.ts";
+import { holdingSubStatusOf, type HoldingSubStatus } from "./nfc.ts";
 import { DbError } from "./errors.ts";
 
 export class AggregatorReadError extends DbError {}
@@ -139,6 +140,8 @@ export interface AggregatorHoldingView {
   expiresAt: string;
   windowExtended: boolean;
   status: AggregatorHoldingDoc["status"];
+  /** While reserved: waiting for the tag to be locked, or ready to ship (derived from the artwork; see nfc.ts). */
+  subStatus: HoldingSubStatus | null;
   returnedAt: string | null;
   /** Month 1: priced above GalleryZone's offer. */
   appreciated: boolean;
@@ -155,18 +158,23 @@ export interface AggregatorHoldingView {
   } | null;
 }
 
-async function holdingArtworkOf(db: Firestore, artworkId: string): Promise<HoldingArtworkView | null> {
+async function holdingArtworkOf(db: Firestore, artworkId: string): Promise<{ view: HoldingArtworkView | null; overridden: boolean }> {
   const [view, doc] = await Promise.all([getPublicArtwork(db, artworkId), db.collection(Collections.artworks).doc(artworkId).get()]);
-  if (!view) return null;
   const artwork = doc.data() as ArtworkDoc | undefined;
-  return { ...view, nfcLinkedAt: artwork?.nfcLinkedAt?.toDate().toISOString() ?? null, nfcLockedAt: artwork?.nfcLockedAt?.toDate().toISOString() ?? null };
+  if (!view) return { view: null, overridden: false };
+  return {
+    view: { ...view, nfcLinkedAt: artwork?.nfcLinkedAt?.toDate().toISOString() ?? null, nfcLockedAt: artwork?.nfcLockedAt?.toDate().toISOString() ?? null },
+    overridden: Boolean(artwork?.nfcShipmentGateOverrideAt),
+  };
 }
 
 async function toHoldingView(db: Firestore, id: string, h: AggregatorHoldingDoc): Promise<AggregatorHoldingView> {
+  const { view: artwork, overridden } = await holdingArtworkOf(db, h.artworkId);
   return {
     id,
     artworkId: h.artworkId,
-    artwork: await holdingArtworkOf(db, h.artworkId),
+    artwork,
+    subStatus: holdingSubStatusOf(h.status, { locked: Boolean(artwork?.nfcLockedAt), overridden }),
     cycleMonth: h.cycleMonth,
     advancePercent: h.advancePercent,
     advancePaise: h.advanceAmountPaise,
