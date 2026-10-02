@@ -2,6 +2,7 @@ import '../../core/api/api_client.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/json_utils.dart';
 import '../../core/payments/payment_gateway.dart';
+import '../../core/pricing.dart';
 import '../models/aggregator.dart';
 import '../models/artist_portal.dart';
 import '../models/customer.dart';
@@ -31,10 +32,28 @@ class RemoteAggregatorRepository implements AggregatorRepository {
 
   // --- Holdings -----------------------------------------------------------------
 
-  Future<List<AggregatorHoldingView>> _holdings() async {
-    final json = await api.getMap('/v1/aggregator/holdings');
-    return asMapList(json['holdings']).map(holdingViewFromApi).toList();
+  /// Requests that are already on their way, by name. A screen that asks for the
+  /// sales, the holdings and the commissions at once would otherwise download the
+  /// same two lists three times over; this shares the one in flight. Nothing is
+  /// kept once it lands, so a refresh after a change always reads fresh data.
+  final _inflight = <String, Future<Object?>>{};
+
+  Future<T> _once<T>(String key, Future<T> Function() load) {
+    final running = _inflight[key];
+    if (running != null) return running as Future<T>;
+    // A block body, on purpose: `remove` returns the stored future, and a callback
+    // that returns a future makes `whenComplete` wait for it - this one, forever.
+    final future = load().whenComplete(() {
+      _inflight.remove(key);
+    });
+    _inflight[key] = future;
+    return future;
   }
+
+  Future<List<AggregatorHoldingView>> _holdings() => _once('holdings', () async {
+        final json = await api.getMap('/v1/aggregator/holdings');
+        return asMapList(json['holdings']).map(holdingViewFromApi).toList();
+      });
 
   @override
   Future<List<AggregatorHoldingView>> listCollection() => _holdings();
@@ -111,11 +130,11 @@ class RemoteAggregatorRepository implements AggregatorRepository {
 
   // --- Sales --------------------------------------------------------------------------
 
-  Future<List<AggregatorSale>> _sales() async {
-    final sales = (await api.getList('/v1/aggregator/sales')).map(saleFromApi).toList();
-    sales.sort((a, b) => b.soldAt.compareTo(a.soldAt));
-    return sales;
-  }
+  Future<List<AggregatorSale>> _sales() => _once('sales', () async {
+        final sales = (await api.getList('/v1/aggregator/sales')).map(saleFromApi).toList();
+        sales.sort((a, b) => b.soldAt.compareTo(a.soldAt));
+        return sales;
+      });
 
   @override
   Future<List<AggregatorSale>> listSales() => _sales();
@@ -183,7 +202,9 @@ class RemoteAggregatorRepository implements AggregatorRepository {
       ShipmentStatus.delivered => null,
     };
     if (to == null) throw Exception('Shipment is already delivered');
-    final ref = courierRef?.trim() ?? '';
+    // The API writes the reference it is given on EVERY step (null if none), so
+    // delivering a piece must send the one dispatch recorded or it is erased.
+    final ref = (courierRef ?? current.courierRef)?.trim() ?? '';
     await api.patch(
       '/v1/aggregator/sales/${Uri.encodeComponent(saleId)}/shipment',
       body: {'to': to, if (ref.isNotEmpty) 'courierRef': ref},
@@ -293,30 +314,80 @@ class RemoteAggregatorRepository implements AggregatorRepository {
 
   // --- Settlements ------------------------------------------------------------------------------
 
+  /// What the ledger credited for each holding's sale. The API posts the
+  /// commission to the wallet in the same transaction that records the sale, so
+  /// this is the exact figure; the feed is a recent window, which is why
+  /// [saleCommissions] keeps a rule to fall back on.
+  Future<Map<String, double>> _creditedCommissions() async {
+    final feed = await api.getMap('/v1/aggregator/wallet/transactions');
+    final credited = <String, double>{};
+    for (final row in asMapList(feed['transactions'])) {
+      final holdingId = row['holdingId'];
+      if (row['reason'] != 'aggregator_commission' || holdingId is! String) continue;
+      credited[holdingId] = (credited[holdingId] ?? 0) + rupeesAt(row, 'amountPaise');
+    }
+    return credited;
+  }
+
+  /// MOU §8 as the API applies it, for a sale the ledger feed no longer reaches.
+  /// The artist's price is worked back from the price the piece was listed at.
+  double _commissionByRule(AggregatorHoldingView? view) => view == null
+      ? 0
+      : aggregatorCommissionOf(view.holding.displayPrice, artistPriceFrom(view.artwork.customerPrice));
+
+  Map<String, double> _commissionsOf(
+    List<AggregatorSale> sales,
+    List<AggregatorHoldingView> holdings,
+    Map<String, double> credited,
+  ) =>
+      {
+        for (final sale in sales)
+          sale.id: credited[sale.holdingId] ??
+              _commissionByRule(holdings.where((h) => h.holding.id == sale.holdingId).firstOrNull),
+      };
+
+  @override
+  Future<Map<String, double>> saleCommissions() async {
+    final results = await Future.wait([_sales(), _holdings(), _creditedCommissions()]);
+    return _commissionsOf(
+      results[0] as List<AggregatorSale>,
+      results[1] as List<AggregatorHoldingView>,
+      results[2] as Map<String, double>,
+    );
+  }
+
   /// Settlements are run by GalleryZone; this view derives them from the
   /// aggregator's sales so they can see what is owed.
+  ///
+  /// The website works the commission out as the sold price less the display
+  /// price, which is always nothing now that a sale must be at the holding's own
+  /// price - so its Settlements page shows 0 against every sale. Here it is what
+  /// the ledger credited.
   @override
   Future<List<Settlement>> listSettlements() async {
-    final results = await Future.wait([_sales(), _holdings()]);
+    final results = await Future.wait([_sales(), _holdings(), _creditedCommissions()]);
     final sales = results[0] as List<AggregatorSale>;
     final holdings = results[1] as List<AggregatorHoldingView>;
+    final commissions = _commissionsOf(sales, holdings, results[2] as Map<String, double>);
     return [
       for (final sale in sales)
         () {
           final view = holdings.where((h) => h.holding.id == sale.holdingId).firstOrNull;
-          final settled = sale.remittedAt != null || sale.paymentRoute == PaymentRoute.directToGalleryZone;
+          final direct = sale.paymentRoute == PaymentRoute.directToGalleryZone;
+          final settled = sale.remittedAt != null || direct;
           return Settlement(
             id: 'stl-${sale.id}',
             orderId: sale.id,
             artworkTitle: view?.artwork.title ?? sale.artworkId,
             artistName: view?.artwork.artistName ?? '',
             artistAmount: 0,
-            aggregatorCommission:
-                (sale.soldPrice - (view?.holding.displayPrice ?? sale.soldPrice)).clamp(0, double.infinity),
+            aggregatorCommission: commissions[sale.id] ?? 0,
             platformRevenue: 0,
             status: settled ? SettlementStatus.processed : SettlementStatus.pending,
             createdAt: sale.soldAt,
-            processedAt: sale.remittedAt,
+            // Money that came straight to GalleryZone was settled the day of the
+            // sale; cash is settled when it is paid in.
+            processedAt: sale.remittedAt ?? (direct ? sale.soldAt : null),
           );
         }(),
     ];

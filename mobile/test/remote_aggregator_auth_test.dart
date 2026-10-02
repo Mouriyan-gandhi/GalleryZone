@@ -10,6 +10,7 @@ import 'package:gallery_zone/data/models/artist_network.dart' show DeactivationS
 import 'package:gallery_zone/data/models/artist_portal.dart';
 import 'package:gallery_zone/data/models/artwork.dart';
 import 'package:gallery_zone/data/models/auth.dart';
+import 'package:gallery_zone/data/remote/mappers/commerce_mappers.dart' show describeLedgerReason;
 import 'package:gallery_zone/data/remote/mappers/portal_mappers.dart';
 import 'package:gallery_zone/data/remote/remote_aggregator_repository.dart';
 import 'package:gallery_zone/data/remote/remote_artist_network_repository.dart';
@@ -59,9 +60,16 @@ Map<String, dynamic> _holding(String id, {String status = 'reserved', int month 
       'extensionRequest': null,
     };
 
-Map<String, dynamic> _sale(String id, {String route = 'direct_to_galleryzone', String ship = 'preparing'}) => {
+Map<String, dynamic> _sale(
+  String id, {
+  String route = 'direct_to_galleryzone',
+  String ship = 'preparing',
+  String holdingId = 'h1',
+  String? courierRef,
+}) =>
+    {
       'id': id,
-      'holdingId': 'h1',
+      'holdingId': holdingId,
       'artworkId': 'aw1',
       'soldPricePaise': 13650000,
       'buyerName': 'Ravi',
@@ -76,7 +84,7 @@ Map<String, dynamic> _sale(String id, {String route = 'direct_to_galleryzone', S
       'shipmentStatus': ship,
       'dispatchedAt': null,
       'deliveredAt': null,
-      'courierRef': null,
+      'courierRef': courierRef,
       'soldAt': {'_seconds': 1790000000, '_nanoseconds': 0},
     };
 
@@ -289,6 +297,76 @@ void main() {
         ..json('PATCH /v1/aggregator/sales/s1/shipment', _sale('s1', ship: 'delivered'));
       await repoFor(delivered).advanceShipment('s1');
       expect(delivered.bodiesOf('PATCH /v1/aggregator/sales/s1/shipment').single, {'to': 'delivered'});
+    });
+
+    test('delivering a dispatched sale re-sends the courier reference dispatch recorded - the API writes null otherwise', () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/sales', [_sale('s1', ship: 'dispatched', courierRef: 'BD-4471')])
+        ..json('PATCH /v1/aggregator/sales/s1/shipment', _sale('s1', ship: 'delivered', courierRef: 'BD-4471'));
+      await repoFor(api).advanceShipment('s1');
+      expect(api.bodiesOf('PATCH /v1/aggregator/sales/s1/shipment').single, {'to': 'delivered', 'courierRef': 'BD-4471'});
+    });
+
+    test('loads that overlap share one request; nothing is kept once it lands', () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/sales', [_sale('s1')])
+        ..json('GET /v1/aggregator/holdings', {'holdings': [_holding('h1')]});
+      final repo = repoFor(api);
+      int gets(String path) => api.calls.where((c) => c == 'GET $path').length;
+
+      await Future.wait([repo.listSales(), repo.listCustomers(), repo.listSales(), repo.listCollection(), repo.listCollection()]);
+      expect(gets('/v1/aggregator/sales'), 1, reason: 'three asks, one download');
+      expect(gets('/v1/aggregator/holdings'), 1);
+
+      // Not a cache: asking again, after a change, reads again.
+      await repo.listSales();
+      expect(gets('/v1/aggregator/sales'), 2);
+    });
+
+    test('a sale\'s commission is what the ledger credited; the rule covers only sales the feed no longer reaches', () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/sales', [_sale('s1', holdingId: 'h1'), _sale('s2', holdingId: 'h2')])
+        ..json('GET /v1/aggregator/holdings', {'holdings': [_holding('h1'), _holding('h2')]})
+        ..json('GET /v1/aggregator/wallet/transactions', {
+          'transactions': [
+            {'id': 't1', 'amountPaise': 1234500, 'reason': 'aggregator_commission', 'holdingId': 'h1', 'at': '2026-10-02T00:00:00.000Z'},
+            {'id': 't2', 'amountPaise': -900000, 'reason': 'reservation_hold', 'holdingId': 'h2', 'at': '2026-10-01T00:00:00.000Z'},
+          ],
+        });
+      final commissions = await repoFor(api).saleCommissions();
+      expect(commissions['s1'], 12345, reason: 'credited');
+      // 20% of the markup over the artist price, both before GST: a 1,36,500 piece listed from 1,00,000.
+      expect(commissions['s2'], 6000, reason: 'no credit in the feed: worked out by the rule');
+    });
+
+    test('settlements carry that commission - the website\'s own sum comes to nothing - and processed dates', () async {
+      final api = FakeApi()
+        ..json('GET /v1/aggregator/sales', [
+          _sale('s1', holdingId: 'h1'),
+          _sale('s2', holdingId: 'h2', route: 'cash_at_premises'),
+        ])
+        ..json('GET /v1/aggregator/holdings', {'holdings': [_holding('h1'), _holding('h2')]})
+        ..json('GET /v1/aggregator/wallet/transactions', {
+          'transactions': [
+            {'id': 't1', 'amountPaise': 1234500, 'reason': 'aggregator_commission', 'holdingId': 'h1', 'at': '2026-10-02T00:00:00.000Z'},
+          ],
+        });
+      final settlements = await repoFor(api).listSettlements();
+
+      final direct = settlements.firstWhere((s) => s.orderId == 's1');
+      expect(direct.aggregatorCommission, 12345);
+      expect(direct.status, SettlementStatus.processed);
+      expect(direct.processedAt, direct.createdAt, reason: 'the buyer paid GalleryZone, so it was settled the day of the sale');
+
+      final owed = settlements.firstWhere((s) => s.orderId == 's2');
+      expect(owed.aggregatorCommission, 6000);
+      expect(owed.status, SettlementStatus.pending, reason: 'cash not yet paid in');
+      expect(owed.processedAt, isNull);
+    });
+
+    test('the wallet ledger names cash paid in and money paid out', () {
+      expect(describeLedgerReason('cash_sale_paid_from_wallet').label, 'Cash sale paid to GalleryZone');
+      expect(describeLedgerReason('payable_discharged').label, 'Paid out to your bank');
     });
 
     test('a delivered shipment cannot be moved again', () async {

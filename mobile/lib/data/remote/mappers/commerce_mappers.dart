@@ -176,6 +176,9 @@ SupportTicket supportTicketFromApi(Map<String, dynamic> json) => SupportTicket(
     'advance_returned_to_wallet': (type: WalletTransactionType.refund, label: 'Advance returned'),
     'hold_returned_to_wallet': (type: WalletTransactionType.refund, label: 'Held amount returned after sale'),
     'aggregator_commission': (type: WalletTransactionType.commission, label: 'Commission on sale'),
+    'cash_sale_paid_from_wallet': (type: WalletTransactionType.adjustment, label: 'Cash sale paid to GalleryZone'),
+    // Either wallet, once a withdrawal has actually been paid out.
+    'payable_discharged': (type: WalletTransactionType.withdrawal, label: 'Paid out to your bank'),
   };
   final hit = known[reason];
   if (hit != null) return hit;

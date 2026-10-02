@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gallery_zone/core/format.dart';
 import 'package:gallery_zone/core/pricing.dart';
 import 'package:gallery_zone/data/mock/mock_aggregator_repository.dart';
 import 'package:gallery_zone/data/mock/mock_artist_repository.dart';
@@ -20,7 +21,12 @@ const _address = DeliveryAddress(
   pincode: '560001',
 );
 
-RecordSaleInput _sale(String artworkId, {double soldPrice = 50000, String email = 'buyer@example.com'}) =>
+RecordSaleInput _sale(
+  String artworkId, {
+  double soldPrice = 50000,
+  String email = 'buyer@example.com',
+  PaymentRoute route = PaymentRoute.directToGalleryZone,
+}) =>
     RecordSaleInput(
       artworkId: artworkId,
       soldPrice: soldPrice,
@@ -29,6 +35,7 @@ RecordSaleInput _sale(String artworkId, {double soldPrice = 50000, String email 
       buyerPhone: '9845012345',
       deliveryAddress: _address,
       deliveryMode: DeliveryMode.courier,
+      paymentRoute: route,
     );
 
 void main() {
@@ -396,6 +403,128 @@ void main() {
     expect(customers, hasLength(1));
     expect(customers.single.orderCount, 2);
     expect(customers.single.totalSpend, 50000);
+  });
+
+
+  group('cash sales: GalleryZone\'s money in the aggregator\'s till', () {
+    const cash = PaymentRoute.cashAtPremises;
+
+    Future<AggregatorHoldingView> reservedSeed() async =>
+        (await repository.listCollection()).firstWhere((v) => v.holding.status == HoldingStatus.reserved);
+
+    test('a cash sale is due two days after it is made; one paid straight to GalleryZone is never due', () async {
+      final views = (await repository.listCollection())
+          .where((v) => v.holding.status == HoldingStatus.reserved)
+          .take(2)
+          .toList();
+      final owed = await repository.recordSale(_sale(views[0].artwork.id, route: cash));
+      final direct = await repository.recordSale(_sale(views[1].artwork.id));
+
+      expect(cashRemittanceDays, 2);
+      expect(direct.remitDueAt, isNull);
+      expect(
+        DateTime.parse(owed.remitDueAt!).difference(DateTime.parse(owed.soldAt)),
+        const Duration(days: cashRemittanceDays),
+      );
+      expect((await repository.listRemittancesDue()).map((sale) => sale.id), [owed.id]);
+    });
+
+    test('paying from the wallet takes the free balance and writes it in the ledger', () async {
+      final view = await reservedSeed();
+      final sale = await repository.recordSale(_sale(view.artwork.id, soldPrice: 40000, route: cash));
+      final before = await repository.getWallet();
+
+      final paid = await repository.markRemitted(sale.id);
+
+      expect(paid.remittedVia, RemitVia.wallet);
+      expect(paid.remittedAt, isNotNull);
+      expect((await repository.getWallet()).balance, before.balance - 40000);
+      final newest = (await repository.listWalletTransactions()).first;
+      expect(newest.label, 'Cash sale paid to GalleryZone · ${view.artwork.title}');
+      expect(newest.amount, -40000);
+      expect(await repository.listRemittancesDue(), isEmpty);
+    });
+
+    test('it cannot overdraw: money held for reservations is not free, and the shortfall is named', () async {
+      // Two reservations set money aside; selling one releases only its own.
+      final pieces = (await repository.listReservableInventory()).take(2).toList();
+      final first = await repository.reserve(pieces[0].artwork.id);
+      final second = await repository.reserve(pieces[1].artwork.id);
+      final stillHeld = second.advanceAmount + second.deliveryDeposit;
+      final free = 500000 - stillHeld;
+
+      // Within the balance, but not within what is free.
+      final price = 500000 - stillHeld / 2;
+      final sale = await repository.recordSale(_sale(first.artworkId, soldPrice: price, route: cash));
+      expect((await repository.getWallet()).balance, 500000);
+
+      await expectLater(
+        repository.markRemitted(sale.id),
+        throwsA(
+          predicate(
+            (e) => '$e'.contains('Your wallet has ${formatInr(free)} free') &&
+                '$e'.contains('Add ${formatInr(price - free)} to your wallet'),
+            'names the free balance and the shortfall',
+          ),
+        ),
+      );
+      expect((await repository.getWallet()).balance, 500000, reason: 'a refusal takes nothing');
+      expect(await repository.listRemittancesDue(), hasLength(1));
+    });
+
+    test('a bank transfer moves no wallet money and is taken on their word', () async {
+      final view = await reservedSeed();
+      final sale = await repository.recordSale(_sale(view.artwork.id, soldPrice: 40000, route: cash));
+      final before = await repository.getWallet();
+      final ledger = (await repository.listWalletTransactions()).length;
+
+      final paid = await repository.markRemitted(sale.id, via: RemitVia.bank);
+
+      expect(paid.remittedVia, RemitVia.bank);
+      expect((await repository.getWallet()).balance, before.balance);
+      expect((await repository.listWalletTransactions()), hasLength(ledger));
+      expect(await repository.listRemittancesDue(), isEmpty);
+    });
+
+    test('only a cash sale is paid in, and only once', () async {
+      final views = (await repository.listCollection())
+          .where((v) => v.holding.status == HoldingStatus.reserved)
+          .take(2)
+          .toList();
+      final direct = await repository.recordSale(_sale(views[0].artwork.id));
+      final owed = await repository.recordSale(_sale(views[1].artwork.id, route: cash));
+
+      await expectLater(repository.markRemitted(direct.id), throwsA(isA<Exception>()));
+      await repository.markRemitted(owed.id, via: RemitVia.bank);
+      await expectLater(repository.markRemitted(owed.id, via: RemitVia.bank), throwsA(isA<Exception>()));
+      await expectLater(repository.markRemitted('nope'), throwsA(isA<Exception>()));
+    });
+  });
+
+  test('the commission shown for a sale is the one credited for it', () async {
+    final item = (await repository.listReservableInventory()).first;
+    final holding = await repository.reserve(item.artwork.id, sellingPrice: item.offer.sellingPrice + 10000);
+    final sale = await repository.recordSale(_sale(item.artwork.id));
+
+    final expected = aggregatorCommissionFor(
+      displayPrice: holding.displayPrice,
+      artistPrice: artistPriceOf(item.artwork),
+    );
+    expect(expected, greaterThan(0));
+    expect((await repository.saleCommissions())[sale.id], expected);
+    expect((await repository.getWallet()).pendingBalance, expected);
+  });
+
+  test('sales come newest first and customers biggest spender first', () async {
+    final views = (await repository.listCollection())
+        .where((v) => v.holding.status == HoldingStatus.reserved)
+        .take(2)
+        .toList();
+    final small = await repository.recordSale(_sale(views[0].artwork.id, soldPrice: 20000, email: 'small@example.com'));
+    final big = await repository.recordSale(_sale(views[1].artwork.id, soldPrice: 90000, email: 'big@example.com'));
+
+    expect((await repository.listSales()).map((sale) => sale.id), [big.id, small.id]);
+    expect((await repository.listCustomers()).map((customer) => customer.buyerEmail), ['big@example.com', 'small@example.com']);
   });
 
   test('a shipment advances one step at a time and then stops', () async {

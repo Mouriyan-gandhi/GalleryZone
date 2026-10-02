@@ -565,6 +565,9 @@ class MockAggregatorRepository implements AggregatorRepository {
         // Cash taken at the counter is GalleryZone's money sitting in the
         // aggregator's till until they transfer it.
         remittedAt: null,
+        remitDueAt: input.paymentRoute == PaymentRoute.cashAtPremises
+            ? now.add(const Duration(days: cashRemittanceDays)).toIso8601String()
+            : null,
         courierRef: input.deliveryMode == DeliveryMode.courier
             ? 'CR-${stamp.toRadixString(36).toUpperCase()}'
             : null,
@@ -635,7 +638,8 @@ class MockAggregatorRepository implements AggregatorRepository {
   }
 
   @override
-  Future<List<AggregatorSale>> listSales() => mockDelay(_readSales);
+  Future<List<AggregatorSale>> listSales() =>
+      mockDelay(() => _readSales()..sort((a, b) => b.soldAt.compareTo(a.soldAt)));
 
   @override
   Future<List<AggregatorCustomer>> listCustomers() => mockDelay(() {
@@ -652,8 +656,12 @@ class MockAggregatorRepository implements AggregatorRepository {
             totalSpend: (existing?.totalSpend ?? 0) + sale.soldPrice,
           );
         }
-        return byEmail.values.toList();
+        return byEmail.values.toList()..sort((a, b) => b.totalSpend.compareTo(a.totalSpend));
       });
+
+  @override
+  Future<Map<String, double>> saleCommissions() =>
+      mockDelay(() => {for (final sale in _readSales()) sale.id: _commissionForSale(sale)});
 
   @override
   Future<AggregatorSale> advanceShipment(String saleId, {String? courierRef}) {
@@ -779,22 +787,43 @@ class MockAggregatorRepository implements AggregatorRepository {
     final sales = _readSales();
     final sale = sales.where((s) => s.id == saleId).firstOrNull;
     if (sale == null) return mockError('Sale not found');
+    if (sale.paymentRoute != PaymentRoute.cashAtPremises) {
+      return mockError('Only cash sales need paying in to GalleryZone');
+    }
     if (sale.remittedAt != null) return mockError('Already marked as transferred');
+
+    // From the wallet it is the FREE balance that pays - what is held for pieces
+    // on display is not available. Checked here as the API checks it, so a
+    // stale screen can't overdraw.
+    final wallet = _readWallet();
+    final free = math.max(0.0, wallet.balance - wallet.lockedBalance);
+    if (via == RemitVia.wallet && free < sale.soldPrice) {
+      return mockError(
+        'Your wallet has ${formatInr(free)} free and this sale is ${formatInr(sale.soldPrice)}. '
+        'Add ${formatInr(sale.soldPrice - free)} to your wallet, then pay it in.',
+      );
+    }
 
     return mockDelay(() {
       final now = DateTime.now();
       final updated = sale.copyWith(remittedAt: now.toIso8601String(), remittedVia: via);
       _writeSales([for (final s in sales) s.id == saleId ? updated : s]);
-      _pushTransactions([
-        WalletTransaction(
-          id: 'wt-${now.microsecondsSinceEpoch}',
-          type: WalletTransactionType.adjustment,
-          label: 'Transferred to GalleryZone — sale ${sale.id}',
-          amount: -sale.soldPrice,
-          date: now.toIso8601String().substring(0, 10),
-          status: WalletTransactionStatus.completed,
-        ),
-      ]);
+      // A bank transfer moves no wallet money: the cash the sale already counted
+      // has arrived at GalleryZone's account.
+      if (via == RemitVia.wallet) {
+        _writeWallet(wallet.copyWith(balance: wallet.balance - sale.soldPrice));
+        final title = _artworkById(sale.artworkId)?.title;
+        _pushTransactions([
+          WalletTransaction(
+            id: 'wt-${now.microsecondsSinceEpoch}',
+            type: WalletTransactionType.adjustment,
+            label: title == null ? 'Cash sale paid to GalleryZone' : 'Cash sale paid to GalleryZone · $title',
+            amount: -sale.soldPrice,
+            date: now.toIso8601String().substring(0, 10),
+            status: WalletTransactionStatus.completed,
+          ),
+        ]);
+      }
       return updated;
     });
   }

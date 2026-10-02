@@ -37,6 +37,10 @@ double aggregatorCommissionFor({
 /// [placementWindow].
 const holdingWindow = Duration(days: aggregatorPlacementDays);
 
+/// Cash taken at the counter is GalleryZone's money, due in full this many days
+/// after the sale (client, 30 Sep 2026; `CASH_REMITTANCE_DAYS` on the API).
+const cashRemittanceDays = 2;
+
 /// One wallet top-up, in whole rupees: the same bounds as the API
 /// (`WALLET_TOPUP_MIN_PAISE` / `WALLET_TOPUP_MAX_PAISE`).
 const aggregatorTopupMin = 1000.0;
@@ -222,6 +226,11 @@ abstract class AggregatorRepository {
   Future<List<AggregatorSale>> listSales();
   Future<List<AggregatorCustomer>> listCustomers();
 
+  /// What each sale earned the aggregator, by sale id: 20% of the markup over the
+  /// artist's price, both before GST (MOU §8). Against the API this is what the
+  /// ledger actually credited when the sale was recorded.
+  Future<Map<String, double>> saleCommissions();
+
   /// preparing → dispatched → delivered, one step per call. [courierRef] is
   /// the courier's tracking reference, given when dispatching a courier sale.
   Future<AggregatorSale> advanceShipment(String saleId, {String? courierRef});
@@ -252,7 +261,9 @@ abstract class AggregatorRepository {
   Future<List<AggregatorSale>> listRemittancesDue();
 
   /// Records that the cash from [saleId] has been paid in to GalleryZone:
-  /// taken from the wallet, or declared as a bank transfer.
+  /// taken from the free wallet balance ([RemitVia.wallet], refused with the
+  /// shortfall if there isn't enough), or declared as a bank transfer
+  /// ([RemitVia.bank], taken on their word).
   Future<AggregatorSale> markRemitted(String saleId, {RemitVia via = RemitVia.wallet});
 
   /// Manual "simulate settlement": moves this sale's pending commission into

@@ -47,6 +47,12 @@ final aggregatorRemittancesDueProvider =
   return ref.watch(aggregatorRepositoryProvider).listRemittancesDue();
 });
 
+/// What each sale earned, by sale id - the Commission figure on Orders and
+/// Settlements, so the two can never disagree.
+final aggregatorSaleCommissionsProvider = FutureProvider.autoDispose<Map<String, double>>((ref) {
+  return ref.watch(aggregatorRepositoryProvider).saleCommissions();
+});
+
 final aggregatorCustomersProvider =
     FutureProvider.autoDispose<List<AggregatorCustomer>>((ref) {
   return ref.watch(aggregatorRepositoryProvider).listCustomers();
@@ -120,6 +126,7 @@ void invalidateAggregatorSaleFlowIn(ProviderContainer container) {
     ..invalidate(aggregatorCollectionProvider)
     ..invalidate(aggregatorHoldingProvider)
     ..invalidate(aggregatorSalesProvider)
+    ..invalidate(aggregatorSaleCommissionsProvider)
     ..invalidate(aggregatorRemittancesDueProvider)
     ..invalidate(aggregatorCustomersProvider)
     ..invalidate(aggregatorWalletProvider)
