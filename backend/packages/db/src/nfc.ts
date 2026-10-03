@@ -508,6 +508,31 @@ export interface NfcOverview {
 const AWAITING_LOCK_CAP = 50;
 const RECENT_CAP = 50;
 
+// This is the one query in the pane that pairs an `action` filter with an
+// ordering on another field, so it needs the composite index declared in
+// firestore.indexes.json. The counts and the lock queue are what the pane is
+// for, so until that index is live a missing one costs this list rather than
+// the whole page. The ordering stays: these events are written on every
+// dispatch that the gate would have blocked, so the list has to be the newest
+// few rather than all of them.
+async function recentNfcEvents(db: Firestore): Promise<NfcOverview["recent"]> {
+  try {
+    const snap = await db
+      .collection(Collections.auditLog)
+      .where("action", "in", [...NFC_WATCHED_ACTIONS])
+      .orderBy("createdAt", "desc")
+      .limit(RECENT_CAP)
+      .get();
+    return snap.docs.map((d) => {
+      const e = d.data() as AuditLogDoc;
+      return { id: d.id, action: e.action, artworkId: e.entityId, title: e.entityLabel, actorId: e.adminId, at: iso(e.createdAt) ?? new Date(0).toISOString(), detail: e.detail };
+    });
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "nfc.overview_recent_unavailable", reason: (error as Error).message }));
+    return [];
+  }
+}
+
 export async function getNfcOverview(db: Firestore): Promise<NfcOverview> {
   const artworks = db.collection(Collections.artworks);
   const [gateEnforced, total, linked, locked, overridden, linkedDocs, events] = await Promise.all([
@@ -518,7 +543,7 @@ export async function getNfcOverview(db: Firestore): Promise<NfcOverview> {
     artworks.where("nfcShipmentGateOverrideAt", "!=", null).count().get(),
     // Filtered in memory: a null-equality plus a not-null filter on two fields would need its own composite index.
     artworks.where("nfcLinkedAt", "!=", null).select("title", "artistId", "nfcLinkedAt", "nfcLockedAt").get(),
-    db.collection(Collections.auditLog).where("action", "in", [...NFC_WATCHED_ACTIONS]).orderBy("createdAt", "desc").limit(RECENT_CAP).get(),
+    recentNfcEvents(db),
   ]);
 
   const awaitingLock = linkedDocs.docs
@@ -540,9 +565,6 @@ export async function getNfcOverview(db: Firestore): Promise<NfcOverview> {
       gateOverridden: overridden.data().count,
     },
     awaitingLock,
-    recent: events.docs.map((d) => {
-      const e = d.data() as AuditLogDoc;
-      return { id: d.id, action: e.action, artworkId: e.entityId, title: e.entityLabel, actorId: e.adminId, at: iso(e.createdAt) ?? new Date(0).toISOString(), detail: e.detail };
-    }),
+    recent: events,
   };
 }
