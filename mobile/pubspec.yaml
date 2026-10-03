@@ -1,0 +1,170 @@
+name: gallery_zone
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+  flutter_riverpod: ^3.4.2
+  riverpod_annotation: ^4.0.6
+  go_router: ^17.5.0
+  dio: ^5.11.0
+  shared_preferences: ^2.5.5
+  flutter_secure_storage: ^10.3.1 # 11.x requires compileSdk 37, past AGP 9.1.0's supported max of 36
+  fl_chart: ^1.2.0
+  image_picker: ^1.2.3
+  flutter_svg: ^2.3.0
+  json_annotation: ^4.12.0
+  google_fonts: ^8.2.1
+  freezed_annotation: ^3.1.0
+  # lucide_icons (the 0.257.0 port) is dead: its LucideIconData extends
+  # IconData, which Flutter 3.47 made a final class — it no longer compiles.
+  # lucide_icons_flutter is the maintained set, same icon names.
+  lucide_icons_flutter: ^3.1.15
+  intl: ^0.20.3
+  url_launcher: ^6.3.2
+  qr_flutter: ^4.1.0
+  pdf: ^3.13.1
+  printing: ^5.15.1
+  razorpay_flutter: ^1.4.7
+  flutter_nfc_kit: ^3.6.2
+  ndef: ^0.4.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+  build_runner: ^2.16.0
+  freezed: ^4.0.0-dev.3
+  json_serializable: ^6.14.1
+  riverpod_generator: ^4.0.8
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.8
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # Artwork/artist imagery, copied from `frontend-web/public/` (the same
+  # files the seed fixtures reference by their web paths) and re-encoded as
+  # JPEG at max 1200px — 24MB of source PNGs is not going in an APK. The
+  # seeds still carry the web paths, so `ArtworkImageView` maps
+  # `/artworks/bird.png` to `assets/images/artworks/bird.jpg`.
+  assets:
+    # The brand mark, taken from production's `public/brand/gz-logo.png` with
+    # its white studio background keyed out. Drawn twice at launch: by
+    # flutter_native_splash before Flutter boots, and by SplashScreen after,
+    # so the handoff is invisible.
+    - assets/brand/gz-logo.png
+    - assets/images/artworks/
+    - assets/images/early-program/
+    - assets/images/ecosystem/
+    - assets/images/identity/
+    - assets/images/journey/
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/to/resolution-aware-images
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/to/asset-from-package
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/to/font-from-package
+
+# ---------------------------------------------------------------------------
+# Store presence (Phase 8). Both blocks are build-time generator config, not
+# app config — after editing either, re-run its generator and commit what it
+# writes:
+#
+#   dart run flutter_launcher_icons
+#   dart run flutter_native_splash:create
+#
+# Sources live in assets/icon/ and are generated themselves, by the script
+# documented in assets/icon/README.md.
+# ---------------------------------------------------------------------------
+flutter_launcher_icons:
+  android: true
+  # No Mac on this machine, so iOS assets aren't generated — flip this when
+  # the iOS decision lands (open decision 4).
+  ios: false
+  image_path: assets/icon/app_icon.png
+  # Adaptive icon: Android composites foreground over background and masks the
+  # pair to whatever shape the launcher uses, so the background is a flat
+  # brand black rather than part of the artwork.
+  adaptive_icon_background: "#0B0A08"
+  adaptive_icon_foreground: assets/icon/app_icon_foreground.png
+  min_sdk_android: 21
+
+flutter_native_splash:
+  # The app opens in light mode regardless of the device setting, so both
+  # splashes use the light background — a dark one would flash black before
+  # the first Flutter frame.
+  color: "#F7F3E9"
+  image: assets/brand/splash.png
+  color_dark: "#F7F3E9"
+  image_dark: assets/brand/splash.png
+  android_12:
+    color: "#F7F3E9"
+    color_dark: "#F7F3E9"
+    # Android 12+ masks the splash icon to a circle and shows only the inner
+    # two-thirds, which would crop the wider image above.
+    image: assets/brand/splash_android12.png
+    image_dark: assets/brand/splash_android12.png

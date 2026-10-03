@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links (NFC_IMPLEMENTATION.md section 7.6): the passport opens in the app when a
+	     tag or QR code is scanned. Needs /.well-known/apple-app-site-association on the site to
+	     name this app (IOS_APP_ID on the web host). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:www.galleryzone.art</string>
+	</array>
+	<!-- "Near Field Communication Tag Reading" (section 7.2). Tag reading is granted
+	     automatically to apps that ask; the capability also has to be switched on for the app id
+	     in the Apple developer account. -->
+	<key>com.apple.developer.nfc.readersession.formats</key>
+	<array>
+		<string>TAG</string>
+	</array>
+</dict>
+</plist>

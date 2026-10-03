@@ -1,0 +1,98 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The artist portal's artwork upload asks for no runtime permissions,
+         deliberately. `image_picker` captures through ACTION_IMAGE_CAPTURE and
+         reads through the system photo picker; both hand back a result the app
+         never had permission to fetch itself.
+
+         Declaring CAMERA here would make things worse, not more explicit:
+         Android requires a *declared* CAMERA permission to also be granted
+         before it will serve ACTION_IMAGE_CAPTURE, so adding it turns a
+         working flow into a SecurityException unless a runtime request is
+         added alongside. Same for READ_MEDIA_IMAGES — from API 33 the photo
+         picker supplies the image directly and the permission is never needed.
+
+         `required="false"` keeps the Play listing available to devices with no
+         camera, where the gallery path still works. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+
+    <!-- NFC tags (NFC_IMPLEMENTATION.md section 7.3): the artist links and locks the chip
+         on a piece from this app. `required="false"` so a phone without NFC can still
+         install it; it just isn't offered the Link and Lock buttons. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
+    <application
+        android:label="GalleryZone"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Specifies an Android theme to apply to this Activity as soon as
+                 the Android process has started. This theme is visible to the user
+                 while the Flutter UI initializes. After that, this theme continues
+                 to determine the Window background behind the Flutter UI. -->
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Android App Links (NFC_IMPLEMENTATION.md section 7.6). A tag, a printed QR code
+                 or a shared link to https://www.galleryzone.art/verify/<id> opens the passport
+                 here instead of the browser, once the site's /.well-known/assetlinks.json names
+                 this app's signing key (ANDROID_APP_SHA256_FINGERPRINTS on the web host).
+                 Flutter hands the URL to go_router, which already has the /verify/:id route.
+                 The host is the one the chips are written with (AppConfig.siteUrl): it is
+                 permanent on a locked chip, and the apex domain redirects, so only www is claimed. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="www.galleryzone.art" android:pathPrefix="/verify/"/>
+            </intent-filter>
+        </activity>
+        <!-- Don't delete the meta-data below.
+             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <!-- Required to query activities that can process text, see:
+         https://developer.android.com/training/package-visibility and
+         https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Required by url_launcher. Android 11+ hides other packages from the
+             app unless they are declared here, and without these three
+             `launchUrl` fails silently for the marketing links (https), the
+             support contact address (mailto) and its phone number (tel). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+            <data android:scheme="tel"/>
+        </intent>
+    </queries>
+</manifest>

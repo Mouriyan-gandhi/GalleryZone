@@ -1,0 +1,199 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'aggregator.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+_DeliveryAddress _$DeliveryAddressFromJson(Map<String, dynamic> json) =>
+    _DeliveryAddress(
+      line1: json['line1'] as String,
+      city: json['city'] as String,
+      state: json['state'] as String,
+      pincode: json['pincode'] as String,
+    );
+
+Map<String, dynamic> _$DeliveryAddressToJson(_DeliveryAddress instance) =>
+    <String, dynamic>{
+      'line1': instance.line1,
+      'city': instance.city,
+      'state': instance.state,
+      'pincode': instance.pincode,
+    };
+
+_AggregatorSale _$AggregatorSaleFromJson(Map<String, dynamic> json) =>
+    _AggregatorSale(
+      id: json['id'] as String,
+      holdingId: json['holdingId'] as String,
+      artworkId: json['artworkId'] as String,
+      soldPrice: (json['soldPrice'] as num).toDouble(),
+      buyerName: json['buyerName'] as String,
+      buyerEmail: json['buyerEmail'] as String,
+      buyerPhone: json['buyerPhone'] as String,
+      deliveryAddress: DeliveryAddress.fromJson(
+        json['deliveryAddress'] as Map<String, dynamic>,
+      ),
+      deliveryMode: $enumDecode(_$DeliveryModeEnumMap, json['deliveryMode']),
+      soldAt: json['soldAt'] as String,
+      shipmentStatus: $enumDecode(
+        _$ShipmentStatusEnumMap,
+        json['shipmentStatus'],
+      ),
+      dispatchedAt: json['dispatchedAt'] as String?,
+      deliveredAt: json['deliveredAt'] as String?,
+      paymentRoute:
+          $enumDecodeNullable(_$PaymentRouteEnumMap, json['paymentRoute']) ??
+          PaymentRoute.directToGalleryZone,
+      remittedAt: json['remittedAt'] as String?,
+      remitDueAt: json['remitDueAt'] as String?,
+      remittedVia: $enumDecodeNullable(_$RemitViaEnumMap, json['remittedVia']),
+      courierRef: json['courierRef'] as String?,
+      nfcReady: json['nfcReady'] as bool? ?? true,
+    );
+
+Map<String, dynamic> _$AggregatorSaleToJson(_AggregatorSale instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'holdingId': instance.holdingId,
+      'artworkId': instance.artworkId,
+      'soldPrice': instance.soldPrice,
+      'buyerName': instance.buyerName,
+      'buyerEmail': instance.buyerEmail,
+      'buyerPhone': instance.buyerPhone,
+      'deliveryAddress': instance.deliveryAddress,
+      'deliveryMode': _$DeliveryModeEnumMap[instance.deliveryMode]!,
+      'soldAt': instance.soldAt,
+      'shipmentStatus': _$ShipmentStatusEnumMap[instance.shipmentStatus]!,
+      'dispatchedAt': instance.dispatchedAt,
+      'deliveredAt': instance.deliveredAt,
+      'paymentRoute': _$PaymentRouteEnumMap[instance.paymentRoute]!,
+      'remittedAt': instance.remittedAt,
+      'remitDueAt': instance.remitDueAt,
+      'remittedVia': _$RemitViaEnumMap[instance.remittedVia],
+      'courierRef': instance.courierRef,
+      'nfcReady': instance.nfcReady,
+    };
+
+const _$DeliveryModeEnumMap = {
+  DeliveryMode.courier: 'courier',
+  DeliveryMode.selfPickup: 'self_pickup',
+};
+
+const _$ShipmentStatusEnumMap = {
+  ShipmentStatus.preparing: 'preparing',
+  ShipmentStatus.dispatched: 'dispatched',
+  ShipmentStatus.delivered: 'delivered',
+};
+
+const _$PaymentRouteEnumMap = {
+  PaymentRoute.directToGalleryZone: 'direct_to_galleryzone',
+  PaymentRoute.cashAtPremises: 'cash_at_premises',
+};
+
+const _$RemitViaEnumMap = {RemitVia.wallet: 'wallet', RemitVia.bank: 'bank'};
+
+_GallerySpace _$GallerySpaceFromJson(Map<String, dynamic> json) =>
+    _GallerySpace(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      addressLine1: json['addressLine1'] as String,
+      city: json['city'] as String,
+      state: json['state'] as String,
+      pincode: json['pincode'] as String,
+      capacity: (json['capacity'] as num).toInt(),
+      coordinatorName: json['coordinatorName'] as String,
+    );
+
+Map<String, dynamic> _$GallerySpaceToJson(_GallerySpace instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'addressLine1': instance.addressLine1,
+      'city': instance.city,
+      'state': instance.state,
+      'pincode': instance.pincode,
+      'capacity': instance.capacity,
+      'coordinatorName': instance.coordinatorName,
+    };
+
+_AggregatorProfile _$AggregatorProfileFromJson(Map<String, dynamic> json) =>
+    _AggregatorProfile(
+      companyName: json['companyName'] as String,
+      contactPerson: json['contactPerson'] as String,
+      avatar: json['avatar'] as String,
+      gstNumber: json['gstNumber'] as String,
+      phone: json['phone'] as String,
+      addressLine1: json['addressLine1'] as String,
+      bankAccountMasked: json['bankAccountMasked'] as String,
+      ifsc: json['ifsc'] as String,
+      securityDepositStatus: json['securityDepositStatus'] as String,
+      gstStatus:
+          $enumDecodeNullable(_$ReviewStatusEnumMap, json['gstStatus']) ??
+          ReviewStatus.notSubmitted,
+      email: json['email'] as String? ?? '',
+      country: json['country'] as String? ?? 'IN',
+      addressCity: json['addressCity'] as String? ?? '',
+      addressState: json['addressState'] as String? ?? '',
+      addressPincode: json['addressPincode'] as String? ?? '',
+      aadhaarStatus:
+          $enumDecodeNullable(_$ReviewStatusEnumMap, json['aadhaarStatus']) ??
+          ReviewStatus.notSubmitted,
+      aadhaarMasked: json['aadhaarMasked'] as String?,
+      coordinatorDesignation: json['coordinatorDesignation'] as String? ?? '',
+      coordinatorPhone: json['coordinatorPhone'] as String? ?? '',
+      coordinatorEmail: json['coordinatorEmail'] as String? ?? '',
+      mouAcceptance: json['mouAcceptance'] == null
+          ? null
+          : MouAcceptance.fromJson(
+              json['mouAcceptance'] as Map<String, dynamic>,
+            ),
+    );
+
+Map<String, dynamic> _$AggregatorProfileToJson(_AggregatorProfile instance) =>
+    <String, dynamic>{
+      'companyName': instance.companyName,
+      'contactPerson': instance.contactPerson,
+      'avatar': instance.avatar,
+      'gstNumber': instance.gstNumber,
+      'phone': instance.phone,
+      'addressLine1': instance.addressLine1,
+      'bankAccountMasked': instance.bankAccountMasked,
+      'ifsc': instance.ifsc,
+      'securityDepositStatus': instance.securityDepositStatus,
+      'gstStatus': _$ReviewStatusEnumMap[instance.gstStatus]!,
+      'email': instance.email,
+      'country': instance.country,
+      'addressCity': instance.addressCity,
+      'addressState': instance.addressState,
+      'addressPincode': instance.addressPincode,
+      'aadhaarStatus': _$ReviewStatusEnumMap[instance.aadhaarStatus]!,
+      'aadhaarMasked': instance.aadhaarMasked,
+      'coordinatorDesignation': instance.coordinatorDesignation,
+      'coordinatorPhone': instance.coordinatorPhone,
+      'coordinatorEmail': instance.coordinatorEmail,
+      'mouAcceptance': instance.mouAcceptance,
+    };
+
+const _$ReviewStatusEnumMap = {
+  ReviewStatus.notSubmitted: 'not_submitted',
+  ReviewStatus.submitted: 'submitted',
+  ReviewStatus.approved: 'approved',
+  ReviewStatus.rejected: 'rejected',
+};
+
+_AggregatorSettings _$AggregatorSettingsFromJson(Map<String, dynamic> json) =>
+    _AggregatorSettings(
+      notifyNewAssignment: json['notifyNewAssignment'] as bool,
+      notifySaleRecorded: json['notifySaleRecorded'] as bool,
+      notifySettlementProcessed: json['notifySettlementProcessed'] as bool,
+      notifyExpiryReminder: json['notifyExpiryReminder'] as bool,
+    );
+
+Map<String, dynamic> _$AggregatorSettingsToJson(_AggregatorSettings instance) =>
+    <String, dynamic>{
+      'notifyNewAssignment': instance.notifyNewAssignment,
+      'notifySaleRecorded': instance.notifySaleRecorded,
+      'notifySettlementProcessed': instance.notifySettlementProcessed,
+      'notifyExpiryReminder': instance.notifyExpiryReminder,
+    };

@@ -1,0 +1,108 @@
+{
+  "artworks": [
+    {
+      "id": "VKThgTXRfCNP3OEc4S5j",
+      "productCode": "GZ000004",
+      "artistId": "artist-1",
+      "artistName": "Test Artist 1",
+      "title": "Poster",
+      "description": "Postr art",
+      "category": "photography",
+      "medium": "acrylic-on-canvas",
+      "dimensions": "10 x 10 x 10 in",
+      "yearCreated": 2014,
+      "images": [
+        {
+          "url": "https://api-production-9fd9.up.railway.app/v1/images/artworks/VKThgTXRfCNP3OEc4S5j/j62cj1rymucxsvuk.png",
+          "thumbnailUrl": null,
+          "altText": "Poster",
+          "sortOrder": 0
+        }
+      ],
+      "displayPricePaise": 2529072,
+      "insured": false,
+      "status": "marketplace",
+      "listingType": "marketplace_and_aggregator",
+      "rarityType": null,
+      "createdAt": "2026-09-17T13:41:28.333Z",
+      "artistLocation": "Udaipur, Rajasthan",
+      "sizeBand": "small"
+    },
+    {
+      "id": "TLYRm1NlwPtsRYPra0wt",
+      "productCode": "GZ000003",
+      "artistId": "artist-1",
+      "artistName": "Test Artist 1",
+      "title": "Make a thon",
+      "description": "poster",
+      "category": "photography",
+      "medium": "watercolor",
+      "dimensions": "54 x 55 x 55 in",
+      "yearCreated": 2026,
+      "images": [],
+      "displayPricePaise": 682500,
+      "insured": false,
+      "status": "marketplace",
+      "listingType": "marketplace_and_aggregator",
+      "rarityType": null,
+      "createdAt": "2026-09-17T12:59:10.992Z",
+      "artistLocation": "Udaipur, Rajasthan",
+      "sizeBand": "large"
+    },
+    {
+      "id": "I0mc3ae4PmzyxvWlXLAi",
+      "productCode": "GZ000002",
+      "artistId": "artist-2",
+      "artistName": "Test Artist 2",
+      "title": "TESTIN",
+      "description": "TESTING",
+      "category": "mixed-media",
+      "medium": "acrylic-on-canvas",
+      "dimensions": "65 x 65 x 654 in",
+      "yearCreated": 2024,
+      "images": [],
+      "displayPricePaise": 1362407,
+      "insured": false,
+      "status": "marketplace",
+      "listingType": "marketplace_only",
+      "rarityType": null,
+      "createdAt": "2026-09-16T18:51:56.516Z",
+      "artistLocation": null,
+      "sizeBand": "large"
+    }
+  ],
+  "total": 4,
+  "page": 1,
+  "pageSize": 3,
+  "facets": {
+    "categories": [
+      "mixed-media",
+      "painting",
+      "photography"
+    ],
+    "mediums": [
+      "acrylic-on-canvas",
+      "Oil on canvas",
+      "watercolor"
+    ],
+    "rarities": [],
+    "rarityCounts": {},
+    "locations": [
+      "Udaipur, Rajasthan"
+    ],
+    "artists": [
+      {
+        "id": "artist-1",
+        "name": "Test Artist 1"
+      },
+      {
+        "id": "artist-2",
+        "name": "Test Artist 2"
+      }
+    ],
+    "priceRangePaise": {
+      "min": 682500,
+      "max": 13650000
+    }
+  }
+}

@@ -1,0 +1,253 @@
+import '../../core/pricing.dart';
+import '../models/artwork.dart';
+import '../models/order.dart';
+import '../repositories/checkout_repository.dart';
+import '../storage/mock_db.dart';
+import '../models/customer.dart';
+import 'mock_artist_repository.dart'
+    show creditArtistForSale, markSettlementsDelivered, releaseDueArtistSettlements;
+import 'mock_customer_repository.dart'
+    show activeResaleListing, creditSellerForResale, settleSellerForResale;
+import 'mock_artwork_repository.dart' show promoteApprovedSubmissions, seedArtworksCollection;
+import 'mock_utils.dart';
+import 'seed/customer_seed.dart';
+
+/// Platform fee is ₹0 during the early launch period, and applies equally to
+/// marketplace and aggregator-channel sales. Everything else about the money
+/// — GST, delivery, the convenience fee — comes from `core/pricing.dart`,
+/// which is the port of the web's `lib/pricing.ts`. Nothing in this file
+/// computes a rupee figure of its own any more.
+const checkoutPlatformFee = 0.0;
+
+const _ordersKey = 'orders';
+const _artworksKey = 'artworks';
+
+/// The order lifecycle, in order. `cancelled` is not on this path — nothing
+/// in the app cancels an order.
+const orderProgression = [
+  OrderStatus.pending,
+  OrderStatus.paid,
+  OrderStatus.confirmed,
+  OrderStatus.packed,
+  OrderStatus.transit,
+  OrderStatus.delivered,
+];
+
+class MockCheckoutRepository implements CheckoutRepository {
+  List<Order> _readOrders() =>
+      MockDb.getCollection(_ordersKey, seedOrders, Order.fromJson, (o) => o.toJson());
+
+  List<Artwork> _readArtworks() {
+    promoteApprovedSubmissions();
+    return MockDb.getCollection(
+      _artworksKey,
+      seedArtworksCollection,
+      Artwork.fromJson,
+      (a) => a.toJson(),
+    );
+  }
+
+  void _writeArtwork(Artwork updated) => MockDb.setCollection(
+    _artworksKey,
+    [for (final a in _readArtworks()) a.id == updated.id ? updated : a],
+    (a) => a.toJson(),
+  );
+
+  @override
+  Future<CheckoutQuote> getQuote(String artworkId) {
+    final artwork = _readArtworks().where((a) => a.id == artworkId).firstOrNull;
+    if (artwork == null) return mockError('Artwork not found');
+    final totals = checkoutTotal(artwork.customerPrice);
+    return mockDelay(
+      () => CheckoutQuote(
+        artworkId: artworkId,
+        displayPrice: totals.displayPrice,
+        gstIncluded: totals.gstIncluded,
+        gstRate: gstRate,
+        convenienceFee: totals.convenienceFee,
+        convenienceGst: 0,
+        deliveryCharge: totals.deliveryCharge,
+        total: totals.total,
+      ),
+    );
+  }
+
+  /// The real API joins "what was bought" onto every order; the offline
+  /// fixtures do not store it, so it is joined here on the way out. Screens then
+  /// read `order.artwork` in both worlds and never look the piece up themselves.
+  Order _withSnapshot(Order order) {
+    if (order.artwork != null) return order;
+    final artwork = _readArtworks().where((a) => a.id == order.artworkId).firstOrNull;
+    if (artwork == null) return order;
+    return order.copyWith(
+      artwork: OrderArtwork(
+        title: artwork.title,
+        artistName: artwork.artistName,
+        artistId: artwork.artistId,
+        thumbnailUrl: artwork.thumbnailUrl,
+        productCode: artwork.productCode ?? '',
+      ),
+    );
+  }
+
+  @override
+  Future<List<Order>> listOrders() => mockDelay(() => [for (final o in _readOrders()) _withSnapshot(o)]);
+
+  @override
+  Future<Order?> getOrder(String id) =>
+      mockDelay(() => _readOrders().where((o) => o.id == id).map(_withSnapshot).firstOrNull);
+
+  @override
+  Future<Order> createOrder({
+    required String artworkId,
+    required String addressId,
+    required PaymentMethod paymentMethod,
+    bool simulateFailure = false,
+  }) {
+    // The mock payment "gateway": the only thing standing between the buyer
+    // and an order. A real one goes here, behind this same call — which is
+    // why the declined path is exercised rather than assumed.
+    if (simulateFailure) {
+      return mockError('Payment declined by your bank. No money has been taken.');
+    }
+
+    final artworks = _readArtworks();
+    final artwork = artworks.where((a) => a.id == artworkId).firstOrNull;
+    if (artwork == null) return mockError('Artwork not found');
+    if (artwork.status != ArtworkStatus.marketplace) {
+      return mockError('This artwork is no longer available for purchase');
+    }
+
+    final totals = checkoutTotal(artwork.customerPrice);
+    final now = DateTime.now().toIso8601String();
+    final order = Order(
+      id: 'order-${DateTime.now().microsecondsSinceEpoch}',
+      artworkId: artworkId,
+      addressId: addressId,
+      // GST is inside customerPrice; totals.gstIncluded is the portion of it
+      // that is tax, recorded for the receipt and never added on top.
+      amount: totals.displayPrice,
+      gstAmount: totals.gstIncluded,
+      deliveryCharge: totals.deliveryCharge,
+      // Paid on arrival: payment succeeded a line ago, so the order is never
+      // observable in `pending`. The event stays in the history because the
+      // buyer's status timeline should still show that it happened.
+      status: OrderStatus.paid,
+      createdAt: now,
+      paymentMethod: paymentMethod,
+      statusHistory: [
+        OrderStatusEvent(status: OrderStatus.pending, changedAt: now),
+        OrderStatusEvent(status: OrderStatus.paid, changedAt: now),
+      ],
+    );
+    MockDb.setCollection(_ordersKey, [order, ..._readOrders()], (o) => o.toJson());
+
+    // Sold artworks come off the open marketplace — pipeline Stage 9 ("Sale
+    // & Ownership Transfer"): a sold one-of-a-kind original can't be bought
+    // twice.
+    MockDb.setCollection(
+      _artworksKey,
+      artworks
+          .map(
+            (a) => a.id != artworkId
+                ? a
+                : a.copyWith(
+                    status: ArtworkStatus.sold,
+                    statusHistory: [
+                      ...a.statusHistory,
+                      ArtworkStatusEvent(status: ArtworkStatus.sold, changedAt: now),
+                    ],
+                  ),
+          )
+          .toList(),
+      (a) => a.toJson(),
+    );
+
+    // Who gets paid depends on who is selling. On a resale the money is the
+    // reselling collector's, not the artist's — the artist was paid the first
+    // time this piece sold, and paying them again for someone else's sale is
+    // the obvious bug in a marketplace that handles both.
+    final resale = activeResaleListing(artworkId);
+    if (resale != null) {
+      creditSellerForResale(listing: resale, amount: artwork.customerPrice);
+    } else {
+      creditArtistForSale(artwork: artwork, orderId: order.id);
+    }
+
+    return mockDelay(() => _withSnapshot(order));
+  }
+
+  /// The resale listing this order bought, if any. Matched on the pending
+  /// wallet row rather than the listing's status, because the listing was
+  /// already closed at purchase time.
+  ResaleListing? _resaleListingFor(Order order) => MockDb.getCollection(
+    'customerResaleListings',
+    () => const <ResaleListing>[],
+    ResaleListing.fromJson,
+    (l) => l.toJson(),
+  ).where((l) => l.artworkId == order.artworkId && l.status == ResaleListingStatus.sold).firstOrNull;
+
+  @override
+  Future<Order> advanceOrder(String id) {
+    final orders = _readOrders();
+    final order = orders.where((o) => o.id == id).firstOrNull;
+    if (order == null) return mockError('Order not found');
+
+    final index = orderProgression.indexOf(order.status);
+    if (index == -1 || index == orderProgression.length - 1) {
+      return mockError('This order is already delivered');
+    }
+
+    return mockDelay(() {
+      final next = orderProgression[index + 1];
+      final now = DateTime.now().toIso8601String();
+      final updated = order.copyWith(
+        status: next,
+        statusHistory: [
+          ...order.statusHistory,
+          OrderStatusEvent(status: next, changedAt: now),
+        ],
+      );
+      MockDb.setCollection(
+        _ordersKey,
+        [for (final o in orders) o.id == id ? updated : o],
+        (o) => o.toJson(),
+      );
+
+      if (next == OrderStatus.delivered) {
+        final artwork = _readArtworks().where((a) => a.id == order.artworkId).firstOrNull;
+        if (artwork != null) {
+          // Delivery moves both the record and the money: the piece is now
+          // owned by and with the collector, and the artist's pending credit
+          // becomes withdrawable.
+          _writeArtwork(
+            artwork.copyWith(
+              status: ArtworkStatus.delivered,
+              statusHistory: [
+                ...artwork.statusHistory,
+                ArtworkStatusEvent(status: ArtworkStatus.delivered, changedAt: now),
+              ],
+              custody: const ArtworkCustody(
+                legalOwner: CustodyParty.customer,
+                custodian: CustodyParty.customer,
+                locationLabel: 'With the collector',
+              ),
+            ),
+          );
+          final soldResale = _resaleListingFor(order);
+          if (soldResale != null) {
+            settleSellerForResale(listingId: soldResale.id, amount: order.amount);
+          } else {
+            // Delivery starts the 7-day clock; it does not release the
+            // money. releaseDueArtistSettlements() moves it when the clock
+            // runs out, on the next wallet read.
+            markSettlementsDelivered(order.id);
+            releaseDueArtistSettlements();
+          }
+        }
+      }
+
+      return updated;
+    });
+  }
+}

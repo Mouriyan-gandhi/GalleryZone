@@ -1,0 +1,327 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+import 'artwork.dart' show ReviewStatus;
+
+// MouAcceptance lives in mou.dart now; re-exported so every file that took it
+// from here keeps compiling.
+export 'mou.dart' show MouAcceptance;
+
+part 'artist_portal.freezed.dart';
+part 'artist_portal.g.dart';
+
+/// Artist-portal shapes: `features/dashboard/dashboard-data.ts`,
+/// `types/message.ts`, `types/admin.ts`'s `Settlement` and
+/// `types/aggregator.ts`'s `AggregatorHolding`.
+
+/// Activity entries are persisted, so they carry a `kind` string rather than
+/// an icon — an icon isn't JSON-serializable, and the feed maps kind to a
+/// glyph at render time.
+enum ActivityKind {
+  @JsonValue('artwork_approved')
+  artworkApproved,
+  @JsonValue('artwork_submitted')
+  artworkSubmitted,
+  settlement,
+  verification,
+  withdrawal,
+}
+
+@freezed
+abstract class ActivityEntry with _$ActivityEntry {
+  const factory ActivityEntry({
+    required String id,
+    required ActivityKind kind,
+    required String title,
+    required String detail,
+    required String time,
+  }) = _ActivityEntry;
+
+  factory ActivityEntry.fromJson(Map<String, dynamic> json) => _$ActivityEntryFromJson(json);
+}
+
+/// The Early Artist Program: no charge for the first six months after joining,
+/// twelve for artists on the survey list. Nothing bills yet — this is a dated
+/// record and a message. Worked out on read from the join date, so adding
+/// emails to the survey list later upgrades accounts that already exist.
+@freezed
+abstract class FreeAccess with _$FreeAccess {
+  const factory FreeAccess({
+    /// When the free period ends (ISO).
+    required String until,
+    required int months,
+    @Default(false) bool surveyRespondent,
+    @Default(true) bool active,
+  }) = _FreeAccess;
+
+  factory FreeAccess.fromJson(Map<String, dynamic> json) => _$FreeAccessFromJson(json);
+}
+
+/// The artist's own KYC/payout record. Distinct from [ArtistProfile] in
+/// `artist.dart`, which is the *public* profile a collector sees — this one
+/// carries bank and Aadhaar detail that never leaves the artist's own
+/// screens.
+@freezed
+abstract class ArtistProfileDetails with _$ArtistProfileDetails {
+  const factory ArtistProfileDetails({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String bio,
+    required String instagram,
+    required String website,
+    required String bankAccountMasked,
+    required String ifsc,
+    required ReviewStatus aadhaarStatus,
+    required String aadhaarMasked,
+
+    /// Mandatory for an artist to go live (client, 30 Aug 2026), reviewed by
+    /// GalleryZone — see [gstStatus]. Validated for shape only: there is no
+    /// GST portal integration, which the business deliberately does not want.
+    String? gstin,
+
+    /// Where the GST number stands with GalleryZone's reviewers. A new or
+    /// changed number goes back to "submitted".
+    @Default(ReviewStatus.notSubmitted) ReviewStatus gstStatus,
+
+    /// PAN, kept private (admin-only; never on the public profile).
+    String? pan,
+
+    /// One public line of what they make, and where they work. Mirrored onto
+    /// the public artist page.
+    String? headline,
+    String? location,
+
+    /// A link to a short video that vouches for the work.
+    String? socialProofVideoUrl,
+
+    /// On GalleryZone since (ISO).
+    @Default('') String joinedAt,
+
+    /// The Early Artist Program's free period. Null once it has no meaning
+    /// (not an artist) or the API didn't say.
+    FreeAccess? freeAccess,
+
+    /// Where the courier collects. Private, and the one thing without which a
+    /// delivery cannot be quoted at all: shipping is priced on the distance
+    /// between two pincodes, and this is the origin for both the leg to an
+    /// aggregator and the leg to a buyer.
+    @Default('') String pickupLine1,
+    @Default('') String pickupLine2,
+    @Default('') String pickupCity,
+    @Default('') String pickupState,
+    @Default('') String pickupPincode,
+  }) = _ArtistProfileDetails;
+
+  const ArtistProfileDetails._();
+
+  /// Enough to quote a delivery from. The pincode is the part that actually
+  /// matters to a courier's rate card, so it is required alongside the lines
+  /// a driver needs to find the door.
+  bool get hasPickupAddress =>
+      pickupLine1.trim().isNotEmpty &&
+      pickupCity.trim().isNotEmpty &&
+      pickupState.trim().isNotEmpty &&
+      pickupPincode.trim().length == 6;
+
+  factory ArtistProfileDetails.fromJson(Map<String, dynamic> json) =>
+      _$ArtistProfileDetailsFromJson(json);
+}
+
+@freezed
+abstract class ArtistSettings with _$ArtistSettings {
+  const factory ArtistSettings({
+    required bool notifyArtworkApproved,
+    required bool notifyNewSale,
+    required bool notifyWithdrawalProcessed,
+    required bool notifyNewMessage,
+  }) = _ArtistSettings;
+
+  factory ArtistSettings.fromJson(Map<String, dynamic> json) => _$ArtistSettingsFromJson(json);
+}
+
+enum SettlementStatus { pending, processed, failed }
+
+@freezed
+abstract class Settlement with _$Settlement {
+  const factory Settlement({
+    required String id,
+    required String orderId,
+    required String artworkTitle,
+    required String artistName,
+    required double artistAmount,
+    required double aggregatorCommission,
+    required double platformRevenue,
+    required SettlementStatus status,
+    required String createdAt,
+    String? processedAt,
+
+    /// When this money becomes withdrawable — 7 days after the piece was
+    /// DELIVERED, not after it sold. Null until delivery, because until then
+    /// there is no clock running.
+    String? releaseAfter,
+  }) = _Settlement;
+
+  factory Settlement.fromJson(Map<String, dynamic> json) => _$SettlementFromJson(json);
+}
+
+@freezed
+abstract class MessageThread with _$MessageThread {
+  const factory MessageThread({
+    required String id,
+    required String from,
+    required String subject,
+    required String preview,
+    required String body,
+    required bool unread,
+    required String receivedAt,
+  }) = _MessageThread;
+
+  factory MessageThread.fromJson(Map<String, dynamic> json) => _$MessageThreadFromJson(json);
+}
+
+enum HoldingStatus {
+  reserved,
+  @JsonValue('sold_pending_settlement')
+  soldPendingSettlement,
+
+  /// The piece did not sell and went back to GalleryZone. Kept rather than
+  /// deleted: the artwork's cycle month is counted from how many aggregators
+  /// have already had it, so this history is what decides the next
+  /// aggregator's price and advance.
+  returned,
+}
+
+enum AssignmentSource {
+  @JsonValue('self_reserved')
+  selfReserved,
+  @JsonValue('gz_assigned')
+  gzAssigned,
+}
+
+enum ExtensionStatus { pending, approved, declined }
+
+/// An aggregator's request to keep a piece past its thirty days, with their
+/// written assurance that it will sell. GalleryZone decides each time.
+@freezed
+abstract class HoldingExtensionRequest with _$HoldingExtensionRequest {
+  const factory HoldingExtensionRequest({
+    required ExtensionStatus status,
+    required String assurance,
+    required String requestedAt,
+    String? decidedAt,
+
+    /// GalleryZone's note with its answer, if it left one.
+    String? note,
+
+    /// Where the window ended before this request.
+    @Default('') String previousExpiresAt,
+  }) = _HoldingExtensionRequest;
+
+  factory HoldingExtensionRequest.fromJson(Map<String, dynamic> json) =>
+      _$HoldingExtensionRequestFromJson(json);
+}
+
+/// An artwork physically placed with an aggregator. The artist sees these on
+/// Gallery Spaces; the aggregator portal (Phase 6) writes them.
+@freezed
+abstract class AggregatorHolding with _$AggregatorHolding {
+  const factory AggregatorHolding({
+    required String id,
+    required String artworkId,
+
+    /// 5% in the first two months, 3% from the third - see `core/pricing.dart`.
+    required int advancePercent,
+    required double advanceAmount,
+    required double displayPrice,
+    required String assignedAt,
+    required String expiresAt,
+    required HoldingStatus status,
+    required AssignmentSource assignmentSource,
+
+    /// Paid with the advance before taking possession (MOU §7). The
+    /// money-flow sheet returns it only if the piece sells — an unsold piece
+    /// going back to GalleryZone refunds the advance alone.
+    @Default(0.0) double deliveryDeposit,
+
+    /// Which month of the artwork's five-month aggregator cycle this
+    /// placement is. A piece that doesn't sell moves to a DIFFERENT
+    /// aggregator each month, at a lower price and a different advance rate,
+    /// so the month is a property of the artwork's journey rather than of any
+    /// one aggregator. Seeded holdings predate the field; 1 is the default.
+    @Default(1) int cycleMonth,
+
+    /// Set when the aggregator priced the piece above GalleryZone's offer as
+    /// they reserved it (month 1 only). The price is fixed from then on.
+    String? displayPriceSetAt,
+
+    /// Set when the piece went back to GalleryZone unsold.
+    String? returnedAt,
+
+    /// True when this placement runs past the usual thirty days because what
+    /// would have been left of the artist's 180 days was too short to hand to
+    /// anyone else. The last aggregator keeps it rather than the piece making
+    /// one more journey for a fortnight.
+    @Default(false) bool windowExtended,
+
+    /// Month 1: the aggregator priced above GalleryZone's offer, which starts
+    /// the next aggregator's monthly drops a month later.
+    @Default(false) bool appreciated,
+
+    /// Priced far enough above the offer that GalleryZone was warned. It never
+    /// blocks the reservation.
+    @Default(false) bool priceWarning,
+
+    /// The latest request to keep the piece past its window, and GalleryZone's
+    /// answer.
+    HoldingExtensionRequest? extensionRequest,
+  }) = _AggregatorHolding;
+
+  factory AggregatorHolding.fromJson(Map<String, dynamic> json) =>
+      _$AggregatorHoldingFromJson(json);
+}
+
+@freezed
+abstract class RevenuePoint with _$RevenuePoint {
+  const factory RevenuePoint({required String month, required double amount}) = _RevenuePoint;
+
+  factory RevenuePoint.fromJson(Map<String, dynamic> json) => _$RevenuePointFromJson(json);
+}
+
+enum VerificationTierStatus { complete, active, locked }
+
+/// One rung of the 3-tier ladder to the Gold ✦ Verified badge. Worked out from
+/// the profile, the signed agreement and the artworks (see
+/// `verification_tiers.dart`), never stored.
+class VerificationTier {
+  const VerificationTier({
+    required this.tier,
+    required this.title,
+    required this.description,
+    required this.detail,
+    required this.status,
+    this.completedOn,
+  });
+
+  final int tier;
+  final String title;
+  final String description;
+  final String detail;
+  final VerificationTierStatus status;
+  final String? completedOn;
+}
+
+/// A dashboard headline figure. Derived on read from the wallet and the
+/// artist's own artworks — never persisted, so it can't go stale.
+class ArtistKpi {
+  const ArtistKpi({
+    required this.label,
+    required this.value,
+    required this.delta,
+    required this.positive,
+  });
+
+  final String label;
+  final String value;
+  final String delta;
+  final bool positive;
+}
