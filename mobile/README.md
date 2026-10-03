@@ -45,7 +45,7 @@ and the screens in `lib/features/nfc/`. The rules are in
   locking is permanent.
 - The demo build (`GZ_MOCK=true`) runs the whole flow without the API.
 - A scanned tag opens the passport in the app once the site serves a matching
-  `/.well-known/assetlinks.json` (see `../.env.example`).
+  `/.well-known/assetlinks.json` (`ANDROID_APP_SHA256_FINGERPRINTS` on the web host).
 
 ## Release builds
 
