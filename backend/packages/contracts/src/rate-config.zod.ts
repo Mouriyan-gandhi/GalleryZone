@@ -65,6 +65,9 @@ export const pricingRatesSchema = z
     minCustomerWithdrawalPaise: z.number().int().min(0),
     insuranceThresholdPaise: z.number().int().min(0),
     earningsAbove5LThresholdPaise: z.number().int().min(0),
+    // Optional on the wire so a console that predates the flag can still propose
+    // an unrelated change; the controller then keeps the flag as it is in force.
+    nfcShipmentGateEnforced: z.boolean().optional(),
   })
   .strict();
 

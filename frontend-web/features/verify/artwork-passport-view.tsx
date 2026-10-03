@@ -69,10 +69,10 @@ export function ArtworkPassportView({ artworkId }: { artworkId: string }) {
         />
       </div>
 
-      {artwork.nfcTagId && (
+      {passport?.nfcLinked && (
         <p className="mx-auto mt-6 flex max-w-md items-center justify-center gap-2 text-xs text-muted-foreground">
           <Nfc className="size-3.5 text-gold-bright" strokeWidth={1.75} />
-          Physical tag <span className="font-mono">{artwork.nfcTagId}</span>
+          {passport.nfcLocked ? "Physical tag linked and locked" : "Physical tag linked, not yet locked"}
         </p>
       )}
 

@@ -57,4 +57,9 @@ assert.ok(
 assert.ok(!/coa/i.test(customerBody), `CustomerArtworkDto must not carry the COA:\n${customerBody}`);
 assert.ok(/coaCertificateNumber/.test(ownerBody), "sanity check failed: OwnerArtworkDto should carry the COA");
 
-console.log("packages/contracts/artwork-dto.ts: price-leak contract test passed (CustomerArtworkDto is clean, and has no COA)");
+// Nor does it carry the NFC chip: the UID is for the artist and admins (NFC_IMPLEMENTATION.md §3).
+assert.ok(!/nfc/i.test(customerBody), `CustomerArtworkDto must not carry NFC fields:
+${customerBody}`);
+assert.ok(/nfcTagUid/.test(ownerBody), "sanity check failed: OwnerArtworkDto should carry the NFC chip");
+
+console.log("packages/contracts/artwork-dto.ts: price-leak contract test passed (CustomerArtworkDto is clean, and has no COA or NFC fields)");

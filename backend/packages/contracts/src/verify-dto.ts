@@ -34,7 +34,44 @@ export interface VerifyPassportDto {
     displayEndsAt: string | null;
     displayEndedAt: string | null;
   }[];
+  /** A physical tag is linked to the piece (the app wrote it and the server recorded it). The chip's own ID is never public. */
+  nfcLinked: boolean;
+  /** The tag was locked read-only for good: it cannot be rewritten to point anywhere else. */
+  nfcLocked: boolean;
+  /** Everything that happened to the piece, oldest first: made, approved, listed, shown at a gallery, sold, handed over, delivered. */
+  lifecycle: LifecycleEntry[];
 }
+
+export interface LifecycleLocation {
+  city: string;
+  /** Empty when the source only said which country. */
+  state: string;
+  country: string;
+}
+
+interface LifecycleBase {
+  id: string;
+  /** ISO. */
+  at: string;
+  /** A short line of context, such as which month of the gallery cycle. */
+  note: string | null;
+}
+
+/** The artist and a gallery: a place can be shown, because both are public by nature. */
+export type VenueLifecycleEntry = LifecycleBase & {
+  kind: "created" | "listed" | "placed_with_gallery" | "returned_from_gallery" | "sold_at_gallery";
+  actor: { kind: "artist" | "gallery"; displayName: string };
+  location: LifecycleLocation | null;
+};
+
+/** A collector or GalleryZone itself. A collector's home is private, so the place is always null, and the type cannot hold one. */
+export type PrivateLifecycleEntry = LifecycleBase & {
+  kind: "approved" | "sold_marketplace" | "transferred" | "displayed" | "delivered";
+  actor: { kind: "collector" | "platform"; displayName: string };
+  location: null;
+};
+
+export type LifecycleEntry = VenueLifecycleEntry | PrivateLifecycleEntry;
 
 /** How the signed-in viewer is connected to a piece: they own it, made it, or hold it on display. */
 export type PassportRelation = "owner" | "artist" | "holder";

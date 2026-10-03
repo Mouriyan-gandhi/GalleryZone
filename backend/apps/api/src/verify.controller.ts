@@ -7,7 +7,7 @@
 // this DTO too (verify-dto.check.ts).
 
 import { Controller, Get, Header, Inject, NotFoundException, Param } from "@nestjs/common";
-import { getCurrentOwner, getPublicArtwork, listOwnershipEvents, OwnershipNotFoundError, type Db, type OwnershipEvent } from "@galleryzone/db";
+import { getCurrentOwner, getPublicArtwork, listOwnershipEvents, loadPassportExtras, OwnershipNotFoundError, type Db, type OwnershipEvent } from "@galleryzone/db";
 import type { VerifyPassportDto } from "@galleryzone/contracts";
 import { Public } from "./auth/roles.decorator.ts";
 import { DB } from "./db.module.ts";
@@ -51,6 +51,7 @@ async function buildPassport(db: Db, artworkId: string): Promise<VerifyPassportD
     throw error;
   }
   const events = await listOwnershipEvents(db, artworkId);
+  const { nfcLinked, nfcLocked, lifecycle } = await loadPassportExtras(db, artworkId, events);
 
   // Built field-by-field: no spread of the artwork view, so a future field
   // on it can't leak here by accident.
@@ -71,6 +72,10 @@ async function buildPassport(db: Db, artworkId: string): Promise<VerifyPassportD
     listedAt: artwork.createdAt,
     owner: { kind: owner.kind, displayName: owner.displayName },
     events: events.map(toPublicEvent),
+    // Whether a tag is linked and locked, never which chip: the UID is not public.
+    nfcLinked,
+    nfcLocked,
+    lifecycle,
   };
 }
 

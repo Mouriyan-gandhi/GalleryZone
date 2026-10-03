@@ -63,6 +63,7 @@ export const Collections = {
   publicProfiles: "publicProfiles",
   addresses: "addresses",
   artworks: "artworks",
+  artworkNfc: "artworkNfc",
   categories: "categories",
   externalSalePenalties: "externalSalePenalties",
   physicalCoaRequests: "physicalCoaRequests",
@@ -175,7 +176,20 @@ export interface ArtworkDoc {
   coaCertificateNumber: string | null;
   /** When the certificate number was issued (coa.ts). Null until then. */
   coaIssuedAt: FirebaseFirestore.Timestamp | null;
-  nfcTagId: string | null;
+  /**
+   * The NFC chip on this piece (nfc.ts, NFC_IMPLEMENTATION.md §3): unlinked
+   * (both null), linked-unlocked (linkedAt), linked-locked (both; irreversible).
+   * firestore.rules lets ANYONE read this document, so it carries only the
+   * timestamps. The chip's UID and the admin override note live in
+   * artworkNfc/{artworkId}, which no client can read — the doc requires the UID
+   * to reach only the artist, the holding aggregator and admins.
+   * Pieces from before the feature have neither field until the migration
+   * script runs, so reads treat a missing one as null.
+   */
+  nfcLinkedAt: FirebaseFirestore.Timestamp | null;
+  nfcLockedAt: FirebaseFirestore.Timestamp | null;
+  /** Admin escape hatch for dispatching a piece whose tag is not locked (legacy pieces). The reason is in artworkNfc and the audit log. */
+  nfcShipmentGateOverrideAt?: FirebaseFirestore.Timestamp | null;
   insuranceNumber: string | null;
   insuranceStatus: ReviewStatus | null;
   /** Artist opted into transit insurance (MOU §10). Absent on older docs = false. */
@@ -188,6 +202,21 @@ export interface ArtworkDoc {
   createdAt: FirebaseFirestore.Timestamp;
   /** Denormalised read model (listing-projection.ts). Absent on docs written before it existed — reindex fills it. */
   listing?: ListingProjection;
+}
+
+/**
+ * The private half of an artwork's NFC state, at artworkNfc/{artworkId}. Server-only
+ * (the catch-all rule denies clients), the same reason the artist's price lives in
+ * a pricing document and not on the artwork. Absent until a tag is first linked.
+ */
+export interface ArtworkNfcDoc {
+  /** 7-byte chip UID, lowercase hex, no separators. Null after an admin unlink. */
+  tagUid: string | null;
+  shipmentGateOverrideReason: string | null;
+  shipmentGateOverrideBy: string | null;
+  /** Reminder emails to lock a linked-but-unlocked tag, so each goes out once per link (nfc-reminders.ts). */
+  reminder48hAt?: FirebaseFirestore.Timestamp | null;
+  reminder7dAt?: FirebaseFirestore.Timestamp | null;
 }
 
 export interface ArtworkPhysical {

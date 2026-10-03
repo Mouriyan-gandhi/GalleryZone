@@ -25,6 +25,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PriceTag } from "@/components/shared/price-tag";
 import { cn } from "@/lib/utils";
 import { useCollection } from "@/hooks/useCollection";
+import { useVerifyPassport } from "@/hooks/useVerify";
 import type { CollectionItem } from "@/services/customerCollectionService";
 import { TransferRightsDialog } from "@/features/verify/transfer-rights-dialog";
 import { PhysicalCoaRequest } from "./physical-coa-request";
@@ -151,6 +152,8 @@ function CollectionItemDialog({
   onClose: () => void;
   onTransfer: (item: CollectionItem) => void;
 }) {
+  // Whether the piece's tag is linked and locked is on its public passport; the listing doesn't carry it.
+  const { data: passport } = useVerifyPassport(item?.artwork.id ?? "");
   return (
     <Dialog open={Boolean(item)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-md">
@@ -165,7 +168,7 @@ function CollectionItemDialog({
               <p className="font-mono text-xs text-muted-foreground">
                 {item.artwork.coaCertificateNumber}
               </p>
-              <NfcPill tagged={Boolean(item.artwork.nfcTagId)} />
+              <NfcPill linked={passport?.nfcLinked ?? false} locked={passport?.nfcLocked ?? false} />
             </div>
 
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 text-sm">
@@ -259,22 +262,22 @@ function CollectionItemDialog({
   );
 }
 
-function NfcPill({ tagged }: { tagged: boolean }) {
+function NfcPill({ linked, locked }: { linked: boolean; locked: boolean }) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap",
-        tagged
+        linked
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
           : "border-border bg-secondary text-muted-foreground",
       )}
     >
-      {tagged ? (
+      {linked ? (
         <ScanLine className="size-3" strokeWidth={2} />
       ) : (
         <BadgeCheck className="size-3" strokeWidth={2} />
       )}
-      {tagged ? "NFC tagged" : "Digital certificate only"}
+      {locked ? "NFC tagged · locked" : linked ? "NFC tagged" : "Digital certificate only"}
     </span>
   );
 }

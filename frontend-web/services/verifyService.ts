@@ -23,6 +23,38 @@ export interface VerifyPassport {
   listedAt: string;
   owner: { kind: "artist" | "collector"; displayName: string };
   events: PassportEvent[];
+  /** A physical tag is linked to the piece. The chip's own ID is never public. */
+  nfcLinked: boolean;
+  /** The tag was locked read-only for good, so it can't be rewritten to point elsewhere. */
+  nfcLocked: boolean;
+  /** Everything that happened to the piece, oldest first. */
+  lifecycle: LifecycleEntry[];
+}
+
+export type LifecycleKind =
+  | "created"
+  | "approved"
+  | "listed"
+  | "placed_with_gallery"
+  | "returned_from_gallery"
+  | "sold_marketplace"
+  | "sold_at_gallery"
+  | "transferred"
+  | "displayed"
+  | "delivered";
+
+/**
+ * One step in a piece's life. `location` is a place only for the artist and a gallery; for a
+ * collector or GalleryZone it is always null (a collector's home is private) and the server's
+ * types cannot say otherwise.
+ */
+export interface LifecycleEntry {
+  id: string;
+  kind: LifecycleKind;
+  at: string;
+  actor: { kind: "artist" | "gallery" | "collector" | "platform"; displayName: string };
+  location: { city: string; state: string; country: string } | null;
+  note: string | null;
 }
 
 export interface PassportEvent {

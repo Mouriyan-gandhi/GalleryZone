@@ -5,8 +5,10 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useState } from "react";
 import Image from "next/image";
 import {
+  AlertTriangle,
   BadgeCheck,
   History,
+  Lock,
   ScanLine,
   UserRoundCheck,
   Link2,
@@ -20,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { useArtistDashboardArtworks } from "@/hooks/useArtistArtworks";
 import { cn } from "@/lib/utils";
+import { NFC_STAGE_LABEL, nfcStageOf, type NfcStage } from "@/lib/nfc";
 import { resolveCustody } from "@/types/artwork";
 import { TransferRightsDialog } from "@/features/verify/transfer-rights-dialog";
 import { PhysicalCoaQueue } from "./physical-coa-queue";
@@ -43,6 +46,8 @@ export function CoaNfcBoard() {
   );
 
   const rows = artworks ?? [];
+  // Linked but not locked: these cannot be dispatched until the artist finishes in the app.
+  const awaitingLock = rows.filter((a) => nfcStageOf(a) === "linked_unlocked").length;
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,6 +61,23 @@ export function CoaNfcBoard() {
         </p>
       </div>
 
+      {awaitingLock > 0 && (
+        <div
+          id="nfc-lock-warning"
+          role="alert"
+          className="flex items-start gap-2.5 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-400" />
+          <p className="text-xs leading-relaxed text-red-200">
+            <span className="font-medium text-red-300">
+              {awaitingLock === 1 ? "1 piece has" : `${awaitingLock} pieces have`} a tag that isn&apos;t locked.
+            </span>{" "}
+            Open the GalleryZone app and lock {awaitingLock === 1 ? "it" : "each one"}: a piece can&apos;t be dispatched
+            to a buyer or a gallery until its tag is locked.
+          </p>
+        </div>
+      )}
+
       <PhysicalCoaQueue />
 
       {rows.length === 0 ? (
@@ -66,7 +88,9 @@ export function CoaNfcBoard() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {rows.map((artwork) => (
+          {rows.map((artwork) => {
+            const stage = nfcStageOf(artwork);
+            return (
             <div
               key={artwork.id}
               className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -92,7 +116,7 @@ export function CoaNfcBoard() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                {artwork.nfcTagId && (
+                {stage !== "unlinked" && (
                   <div className="mr-3 hidden flex-col items-end sm:flex">
                     <p className="text-[10px] tracking-wider text-muted-foreground uppercase">
                       Public verify URL (written to tag)
@@ -108,9 +132,19 @@ export function CoaNfcBoard() {
                   </div>
                 )}
 
-                <NfcPill tagged={Boolean(artwork.nfcTagId)} />
+                <NfcPill stage={stage} />
 
-                {!artwork.nfcTagId && (
+                {stage === "linked_unlocked" && (
+                  <span
+                    id={`nfc-must-lock-${artwork.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-medium whitespace-nowrap text-red-300"
+                  >
+                    <AlertTriangle className="size-3" strokeWidth={2} />
+                    Must lock before shipping
+                  </span>
+                )}
+
+                {stage !== "linked_locked" && (
                   <button
                     id={`link-nfc-${artwork.id}`}
                     type="button"
@@ -118,7 +152,7 @@ export function CoaNfcBoard() {
                     className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:border-emerald-400 hover:bg-emerald-500/20"
                   >
                     <Link2 className="size-3.5" />
-                    Link Tag
+                    {stage === "unlinked" ? "Link Tag" : "Replace tag"}
                   </button>
                 )}
 
@@ -140,7 +174,8 @@ export function CoaNfcBoard() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -152,6 +187,7 @@ export function CoaNfcBoard() {
           }}
           artworkId={linkingNfc.id}
           artworkTitle={linkingNfc.title}
+          replacing={nfcStageOf(linkingNfc) === "linked_unlocked"}
         />
       )}
 
@@ -210,22 +246,26 @@ function HistoryDialog({
   );
 }
 
-function NfcPill({ tagged }: { tagged: boolean }) {
+// Three states, not two (NFC_IMPLEMENTATION.md §3). "Linked, unlocked" is deliberately not
+// the gold of a finished tag: the piece cannot ship in it.
+function NfcPill({ stage }: { stage: NfcStage }) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap",
-        tagged
-          ? "border-gold/40 bg-gold/10 text-gold-bright"
-          : "border-border bg-secondary text-muted-foreground",
+        stage === "linked_locked" && "border-gold/40 bg-gold/10 text-gold-bright",
+        stage === "linked_unlocked" && "border-amber-500/40 bg-amber-500/10 text-amber-300",
+        stage === "unlinked" && "border-border bg-secondary text-muted-foreground",
       )}
     >
-      {tagged ? (
+      {stage === "linked_locked" ? (
+        <Lock className="size-3" strokeWidth={2} />
+      ) : stage === "linked_unlocked" ? (
         <ShieldCheck className="size-3" strokeWidth={2} />
       ) : (
         <ScanLine className="size-3" strokeWidth={2} />
       )}
-      {tagged ? "NFC Tagged" : "Not yet tagged"}
+      {NFC_STAGE_LABEL[stage]}
     </span>
   );
 }

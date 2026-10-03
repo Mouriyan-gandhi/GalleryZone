@@ -41,6 +41,8 @@ interface RejectReasonDialogProps {
   label?: string;
   placeholder?: string;
   confirmLabel?: string;
+  /** The line under the box. Defaults to the rejection wording; override where nobody is notified. */
+  helpText?: string;
   /** Pass a mutation's `isPending`; omitted, the dialog awaits onSubmit itself. */
   isPending?: boolean;
   /**
@@ -62,6 +64,7 @@ export function RejectReasonDialog({
   label = "Reason for rejection",
   placeholder = "Explain what needs to change...",
   confirmLabel = "Reject",
+  helpText = "This is recorded on the audit log and sent to the recipient.",
   isPending,
   onSubmit,
 }: RejectReasonDialogProps) {
@@ -155,9 +158,7 @@ export function RejectReasonDialog({
                   aria-invalid={fieldState.invalid}
                   {...field}
                 />
-                <FieldDescription>
-                  This is recorded on the audit log and sent to the recipient.
-                </FieldDescription>
+                <FieldDescription>{helpText}</FieldDescription>
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}

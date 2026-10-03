@@ -3,7 +3,8 @@
 import { useAggregatorCollection } from "@/hooks/useAggregatorCollection";
 
 import Image from "next/image";
-import { Truck, PackageCheck, PackageSearch } from "lucide-react";
+import { Lock, Truck, PackageCheck, PackageSearch } from "lucide-react";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -173,6 +174,15 @@ function OutboundList() {
                   >
                     {shipment.shipmentStatus}
                   </span>
+                  {shipment.shipmentStatus === "preparing" && !shipment.nfcReady && (
+                    <span
+                      id={`nfc-unlocked-${shipment.id}`}
+                      className="mt-1.5 flex w-fit items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-red-300"
+                    >
+                      <Lock className="size-3" strokeWidth={2} />
+                      Unlocked — lock the tag first
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3.5">
                   {nextAction ? (
@@ -180,7 +190,11 @@ function OutboundList() {
                       size="sm"
                       variant="outline"
                       disabled={advanceMutation.isPending}
-                      onClick={() => advanceMutation.mutate(shipment.id)}
+                      onClick={() =>
+                        advanceMutation.mutate(shipment.id, {
+                          onError: (error) => toast.error("Couldn't update the shipment", { description: error instanceof Error ? error.message : "Please try again." }),
+                        })
+                      }
                     >
                       {nextAction}
                     </Button>

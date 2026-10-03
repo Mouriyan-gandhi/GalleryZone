@@ -12,7 +12,16 @@ import { toOwnerArtwork, type OwnerArtworkDto } from "@/services/artistArtworkAp
 
 interface AdminArtworkDto extends OwnerArtworkDto {
   artistEmail: string | null;
+  nfcShipmentGateOverrideAt: string | null;
+  nfcShipmentGateOverrideReason: string | null;
+  nfcShipmentGateOverrideBy: string | null;
 }
+
+const toAdminArtwork = (dto: AdminArtworkDto): Artwork => ({
+  ...toOwnerArtwork(dto),
+  nfcShipmentGateOverrideAt: dto.nfcShipmentGateOverrideAt,
+  nfcShipmentGateOverrideReason: dto.nfcShipmentGateOverrideReason,
+});
 
 interface AdminUserDto {
   id: string;
@@ -146,7 +155,7 @@ export const adminApi = {
 
   async listAllArtworks(): Promise<Artwork[]> {
     const { artworks } = await http.get<{ artworks: AdminArtworkDto[] }>("/v1/admin/artworks");
-    return artworks.map(toOwnerArtwork);
+    return artworks.map(toAdminArtwork);
   },
 
   async listPendingArtworks(): Promise<Artwork[]> {
@@ -155,7 +164,7 @@ export const adminApi = {
 
   async getArtwork(id: string): Promise<Artwork | undefined> {
     try {
-      return toOwnerArtwork(await http.get<AdminArtworkDto>(ADMIN_ARTWORK(id)));
+      return toAdminArtwork(await http.get<AdminArtworkDto>(ADMIN_ARTWORK(id)));
     } catch (error) {
       if (isApiError(error, 404)) return undefined;
       throw error;

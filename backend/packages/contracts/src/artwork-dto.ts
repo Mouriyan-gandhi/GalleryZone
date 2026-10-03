@@ -42,11 +42,18 @@ export interface OwnerArtworkDto extends CustomerArtworkDto {
     marketplace: number;
     aggregatorEstimate: number;
   };
+  /** The NFC chip (NFC_IMPLEMENTATION.md §3, §4.5). The UID reaches only the artist and admins; the public passport carries nfcLinked/nfcLocked flags instead. */
+  nfcTagUid: string | null;
+  nfcLinkedAt: string | null;
+  nfcLockedAt: string | null;
 }
 
 export interface AdminArtworkDto extends OwnerArtworkDto {
   insuranceNumber: string | null;
   insuranceStatus: string | null;
-  nfcTagId: string | null;
   editableUntil: string;
+  /** When an admin let this piece ship without a locked tag (§4.4). The reason and who are on the single-artwork view only. */
+  nfcShipmentGateOverrideAt: string | null;
+  nfcShipmentGateOverrideReason: string | null;
+  nfcShipmentGateOverrideBy: string | null;
 }

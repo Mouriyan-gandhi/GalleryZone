@@ -1,51 +1,59 @@
 import { http } from "@/lib/api";
 
-// NFC tag linking service — bridges a physical NTAG 424 DNA chip to a
-// specific artwork record. In production the "link" call would:
-//   1. POST the tag UID + CMAC to the backend (which calls GCP KMS to verify
-//      the SUN signature and confirm the chip is genuine).
-//   2. The backend records nfc_tags.artwork_id and writes an ownership_event.
-// For the dashboard "simulate" flow we generate a client-side tag ID and hit
-// the same patch endpoint the artwork submit form uses (nfcTagId field on the
-// artwork write payload). The real implementation should live behind
-// /v1/artist/artworks/:id/nfc-tag when the NFC provisioning flow lands.
+// Linking a physical NFC chip to an artwork (NFC_IMPLEMENTATION.md §4, §8).
+//
+// The browser can write a chip (Web NFC, Chrome on Android) and tell the server;
+// it cannot lock one, so there is no lock call here — that is the mobile app's job.
+// The server keeps the chip's UID private: only the owning artist and admins see it.
 
-export interface LinkNfcTagResult {
+/** What link, unlink and the admin calls answer with. */
+export interface NfcStateResult {
   artworkId: string;
-  nfcTagId: string;
-  linkedAt: string;
+  nfcTagUid: string | null;
+  nfcLinkedAt: string | null;
+  nfcLockedAt: string | null;
 }
 
-/**
- * Generates a locally-unique NFC tag ID (mirrors the format the backend will
- * assign during real NTAG 424 provisioning: `NFC-` + 8 random hex chars).
- */
-export function generateNfcTagId(): string {
-  const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .toUpperCase();
-  return `NFC-${hex}`;
+export type NfcCheckAction = "link" | "replace" | "lock" | "noop";
+
+const artworkPath = (artworkId: string) => `/v1/artist/artworks/${encodeURIComponent(artworkId)}`;
+const adminArtworkPath = (artworkId: string) => `/v1/admin/artworks/${encodeURIComponent(artworkId)}`;
+
+export interface NfcOverview {
+  gateEnforced: boolean;
+  counts: { total: number; unlinked: number; linkedUnlocked: number; locked: number; gateOverridden: number };
+  awaitingLock: { artworkId: string; title: string; artistId: string; linkedAt: string }[];
+  recent: { id: string; action: string; artworkId: string; title: string | null; actorId: string; at: string; detail: unknown }[];
 }
 
-/**
- * Links a physical NFC tag to an artwork by PATCH-ing the artwork's nfcTagId
- * field. Idempotent: calling again with a different tagId replaces it.
- */
 export const nfcTagService = {
-  linkTag: async (
-    artworkId: string,
-    nfcTagId: string,
-  ): Promise<LinkNfcTagResult> => {
-    // The artwork patch endpoint accepts `nfcTagId` as part of the standard
-    // artwork write payload — same field the submit form populates.
-    await http.patch(`/v1/artist/artworks/${encodeURIComponent(artworkId)}`, {
-      nfcTagId,
-    });
-    return {
-      artworkId,
-      nfcTagId,
-      linkedAt: new Date().toISOString(),
-    };
+  /** Before touching the chip: would linking it be allowed? Throws the server's refusal (tag_already_bound, nfc_already_locked, ...). */
+  checkLink: (artworkId: string, tagUid: string) =>
+    http.post<{ artworkId: string; intent: "link"; action: NfcCheckAction }>(`${artworkPath(artworkId)}/nfc/check`, { tagUid, intent: "link" }),
+
+  /** After the URL is written: record the chip. The same chip again is a no-op; a different one replaces it until it is locked. */
+  confirmLinked: (artworkId: string, tagUid: string) => http.post<NfcStateResult>(`${artworkPath(artworkId)}/nfc/link`, { tagUid }),
+
+  /** The app tells the server a write failed on the phone, so it reaches Sentry with the step it failed at. Never throws. */
+  reportFailure: async (artworkId: string, step: string, message: string): Promise<void> => {
+    try {
+      await http.post(`${artworkPath(artworkId)}/nfc/failure`, { step, message: message.slice(0, 300) });
+    } catch {
+      // Reporting is best-effort; the artist already has their error.
+    }
   },
+
+  // --- Admin ---------------------------------------------------------------------------
+
+  /** Reset a link made to a defective chip. Only before the lock; a reason is required. */
+  adminUnlink: (artworkId: string, reason: string) => http.post<NfcStateResult>(`${adminArtworkPath(artworkId)}/nfc/unlink`, { reason }),
+
+  /** Let one piece be dispatched without a locked tag (legacy pieces). A reason is required and audit-logged. */
+  adminSkipShipmentGate: (artworkId: string, reason: string) =>
+    http.post<{ artworkId: string; nfcShipmentGateOverrideAt: string; nfcShipmentGateOverrideReason: string }>(`${adminArtworkPath(artworkId)}/nfc/skip-shipment-gate`, { reason }),
+
+  /** Email the artist to link or lock the tag. */
+  adminRemind: (artworkId: string) => http.post<{ sent: boolean }>(`${adminArtworkPath(artworkId)}/nfc/remind`),
+
+  adminOverview: () => http.get<NfcOverview>("/v1/admin/nfc/overview"),
 };

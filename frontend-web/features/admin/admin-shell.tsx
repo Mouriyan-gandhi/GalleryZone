@@ -13,6 +13,7 @@ import {
   UserMinus,
   ReceiptText,
   Frame,
+  Nfc,
   Tags,
   Palette,
   Building2,
@@ -128,6 +129,7 @@ const NAV_GROUPS: AdminNavGroup[] = [
     heading: "Catalog",
     items: [
       { label: "Artworks", href: "/admin/artworks", icon: Frame },
+      { label: "NFC tags", href: "/admin/nfc", icon: Nfc },
       { label: "Categories", href: "/admin/categories", icon: Tags },
     ],
   },

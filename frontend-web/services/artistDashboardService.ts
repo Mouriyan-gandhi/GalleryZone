@@ -100,7 +100,6 @@ export interface SubmitArtworkInput {
   insuranceOpted: boolean;
   insuranceNumber: string | null;
   physical: ArtworkPhysical;
-  nfcTagId: string | null;
   images: SubmitImage[];
   mode: "draft" | "review";
 }

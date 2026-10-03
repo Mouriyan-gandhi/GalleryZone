@@ -20,6 +20,7 @@ import { Collections, artworkPricingCol, type AggregatorHoldingDoc, type Artwork
 import { isAlreadyExists, postLedgerEntries } from "./ledger-repository.ts";
 import { appendArtworkStatus, latestStatusOf, refreshListing } from "./listing-projection.ts";
 import { getPublicArtwork, type PublicArtworkView } from "./public-artworks.ts";
+import { holdingSubStatusOf, type HoldingSubStatus } from "./nfc.ts";
 import { DbError } from "./errors.ts";
 
 export class AggregatorReadError extends DbError {}
@@ -118,10 +119,17 @@ export async function listAggregatorInventory(db: Firestore, rates: PricingRates
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+/**
+ * The piece as its holder sees it: the public view plus whether its NFC tag is linked and
+ * locked (NFC_IMPLEMENTATION.md §4.7). The holder is told "locked" or "lock it before you
+ * ship"; the chip's UID is never part of it.
+ */
+export type HoldingArtworkView = PublicArtworkView & { nfcLinkedAt: string | null; nfcLockedAt: string | null };
+
 export interface AggregatorHoldingView {
   id: string;
   artworkId: string;
-  artwork: PublicArtworkView | null;
+  artwork: HoldingArtworkView | null;
   cycleMonth: number;
   advancePercent: number;
   advancePaise: number;
@@ -132,6 +140,8 @@ export interface AggregatorHoldingView {
   expiresAt: string;
   windowExtended: boolean;
   status: AggregatorHoldingDoc["status"];
+  /** While reserved: waiting for the tag to be locked, or ready to ship (derived from the artwork; see nfc.ts). */
+  subStatus: HoldingSubStatus | null;
   returnedAt: string | null;
   /** Month 1: priced above GalleryZone's offer. */
   appreciated: boolean;
@@ -148,11 +158,23 @@ export interface AggregatorHoldingView {
   } | null;
 }
 
+async function holdingArtworkOf(db: Firestore, artworkId: string): Promise<{ view: HoldingArtworkView | null; overridden: boolean }> {
+  const [view, doc] = await Promise.all([getPublicArtwork(db, artworkId), db.collection(Collections.artworks).doc(artworkId).get()]);
+  const artwork = doc.data() as ArtworkDoc | undefined;
+  if (!view) return { view: null, overridden: false };
+  return {
+    view: { ...view, nfcLinkedAt: artwork?.nfcLinkedAt?.toDate().toISOString() ?? null, nfcLockedAt: artwork?.nfcLockedAt?.toDate().toISOString() ?? null },
+    overridden: Boolean(artwork?.nfcShipmentGateOverrideAt),
+  };
+}
+
 async function toHoldingView(db: Firestore, id: string, h: AggregatorHoldingDoc): Promise<AggregatorHoldingView> {
+  const { view: artwork, overridden } = await holdingArtworkOf(db, h.artworkId);
   return {
     id,
     artworkId: h.artworkId,
-    artwork: await getPublicArtwork(db, h.artworkId),
+    artwork,
+    subStatus: holdingSubStatusOf(h.status, { locked: Boolean(artwork?.nfcLockedAt), overridden }),
     cycleMonth: h.cycleMonth,
     advancePercent: h.advancePercent,
     advancePaise: h.advanceAmountPaise,

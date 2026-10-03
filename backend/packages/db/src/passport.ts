@@ -66,7 +66,7 @@ export async function listPassportLinks(db: Firestore, userId: string, role: Use
     artist: (made?.docs ?? [])
       .map((d) => ({ id: d.id, doc: d.data() as ArtworkDoc }))
       .sort((a, b) => createdMillis(b.doc) - createdMillis(a.doc))
-      .map(({ id, doc }) => ({ artworkId: id, nfcLinked: Boolean(doc.nfcTagId) })),
+      .map(({ id, doc }) => ({ artworkId: id, nfcLinked: Boolean(doc.nfcLinkedAt) })),
     holder: (held?.docs ?? [])
       .map((d) => ({ id: d.id, doc: d.data() as AggregatorHoldingDoc }))
       .sort((a, b) => assignedMillis(b.doc) - assignedMillis(a.doc))

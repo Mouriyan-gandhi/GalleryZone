@@ -22,6 +22,7 @@ import { RarityBadge } from "@/components/shared/rarity-badge";
 import { TransferRightsDialog } from "@/features/verify/transfer-rights-dialog";
 import { PullBackHoldingDialog } from "./pull-back-holding-dialog";
 import { HoldingExtensionPanel } from "./holding-extension-panel";
+import { NfcAdminPanel } from "./nfc-admin-panel";
 import { useAdminAuditStore } from "@/store/useAdminAuditStore";
 import { formatINR } from "@/lib/utils";
 import { AGGREGATOR_CYCLE_MONTHS } from "@/lib/pricing";
@@ -301,6 +302,8 @@ export function ArtworkAdminDetail({ artwork }: { artwork: Artwork }) {
             <ExternalLink className="size-3.5" />
           </Link>
         </section>
+
+        <NfcAdminPanel artwork={artwork} />
 
         {artwork.insured && (
           <section className="rounded-xl border border-border bg-card p-5">

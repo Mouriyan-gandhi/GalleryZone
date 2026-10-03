@@ -10,12 +10,11 @@ import {
   CheckCircle2,
   Nfc,
   ShieldCheck,
-  Sparkles,
   User,
   Warehouse,
   MapPin,
   Clock,
-  ArrowRight,
+  Lock,
 } from "lucide-react";
 import { CUSTODY_PARTY_LABEL, resolveCustody } from "@/types/artwork";
 import { useArtwork } from "@/hooks/useArtwork";
@@ -23,12 +22,15 @@ import { useVerifyPassport } from "@/hooks/useVerify";
 import { useArtistProfile } from "@/hooks/useArtistProfile";
 import { DownloadCoaButton } from "@/features/coa/download-coa-button";
 import { ArtworkQr } from "./artwork-qr";
+import { NfcLifecycleTimeline } from "./lifecycle-timeline";
 
 // ─── NFC Banner ────────────────────────────────────────────────────────────────
 // Shown only when the artwork has a linked NFC tag — gives the collector
 // immediate visual confirmation that the tap resolved to a live passport.
+// A tag that is linked but not locked is said to be exactly that: it could
+// still be rewritten, so it is not presented as verified-and-sealed.
 
-function NfcVerifiedBanner() {
+function NfcVerifiedBanner({ locked }: { locked: boolean }) {
   const [visible, setVisible] = useState(false);
 
   // Animate in on mount so the banner catches the eye immediately on tap.
@@ -55,7 +57,7 @@ function NfcVerifiedBanner() {
           <span className="absolute inset-0 animate-ping rounded-full bg-gold/40" style={{ animationDuration: "1.6s" }} />
           <Nfc className="relative size-4" strokeWidth={2} />
         </span>
-        Verified via NFC scan
+        {locked ? "Verified via NFC + locked" : "NFC tag linked — not yet locked"}
         <CheckCircle2 className="size-4" strokeWidth={2} />
       </div>
     </div>
@@ -81,76 +83,6 @@ function FactCard({ icon, label, value }: FactCardProps) {
       </p>
       <p className="text-sm font-medium leading-tight text-foreground">{value}</p>
     </div>
-  );
-}
-
-// ─── Provenance Timeline ───────────────────────────────────────────────────────
-// Reuses the passport events from the verify endpoint (not the artwork status
-// history) so the public chain of custody is always the ledger projection.
-
-interface ProvenanceEntry {
-  id: string;
-  fromName: string;
-  toName: string;
-  kind: string;
-  date: string;
-  isLatest: boolean;
-}
-
-function NfcProvenanceTimeline({ entries }: { entries: ProvenanceEntry[] }) {
-  if (entries.length === 0) return null;
-
-  return (
-    <section aria-labelledby="provenance-heading" className="mt-10">
-      <h2
-        id="provenance-heading"
-        className="text-xs font-semibold tracking-[0.15em] text-muted-foreground uppercase"
-      >
-        Provenance
-      </h2>
-      <ol className="mt-4 flex flex-col gap-0">
-        {entries.map((entry, i) => (
-          <li key={entry.id} className="relative flex gap-4 pb-6 last:pb-0">
-            {/* Vertical connector */}
-            {i < entries.length - 1 && (
-              <span
-                className="absolute top-8 left-[13px] h-full w-px bg-border"
-                aria-hidden="true"
-              />
-            )}
-            {/* Node */}
-            <span
-              className={`relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border ${entry.isLatest ? "border-gold/60 bg-gold/15" : "border-border bg-card"}`}
-            >
-              {entry.isLatest ? (
-                <Sparkles className="size-3.5 text-gold-bright" />
-              ) : (
-                <CheckCircle2 className="size-3.5 text-muted-foreground" strokeWidth={1.75} />
-              )}
-            </span>
-            <div className="flex flex-1 flex-col gap-0.5">
-              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm">
-                <span className="text-muted-foreground">{entry.fromName}</span>
-                <ArrowRight className="size-3 shrink-0 text-gold-bright" strokeWidth={2} />
-                <span className="font-medium text-foreground">{entry.toName}</span>
-                {entry.kind === "display" && (
-                  <span className="rounded-full border border-gold/40 px-2 py-0.5 text-[10px] font-medium text-gold-bright">
-                    Display
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {new Intl.DateTimeFormat("en-IN", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                }).format(new Date(entry.date))}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
   );
 }
 
@@ -240,23 +172,8 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
   const coverImage =
     [...artwork.images].sort((a, b) => a.sortOrder - b.sortOrder)[0]?.url ??
     artwork.thumbnailUrl;
-  const hasNfc = Boolean(artwork.nfcTagId);
-
-  // Build provenance entries from passport events (ownership transfers)
-  const provenanceEntries: ProvenanceEntry[] = (passport?.events ?? [])
-    .filter((e) => e.status !== "cancelled")
-    .sort(
-      (a, b) =>
-        new Date(a.initiatedAt).getTime() - new Date(b.initiatedAt).getTime(),
-    )
-    .map((e, i, arr) => ({
-      id: e.id,
-      fromName: e.fromName,
-      toName: e.toName,
-      kind: e.kind,
-      date: e.acceptedAt ?? e.initiatedAt,
-      isLatest: i === arr.length - 1,
-    }));
+  const hasNfc = Boolean(passport?.nfcLinked);
+  const nfcLocked = Boolean(passport?.nfcLocked);
 
   return (
     <div className="relative min-h-dvh">
@@ -283,7 +200,7 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
       </div>
 
       {/* NFC Verified Banner — at the very top */}
-      {hasNfc && <NfcVerifiedBanner />}
+      {hasNfc && <NfcVerifiedBanner locked={nfcLocked} />}
 
       {/* Content */}
       <div className="mx-auto w-full max-w-md px-5 pb-16 pt-8">
@@ -350,11 +267,14 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
                 </div>
               </div>
 
-              {/* NFC tag ID */}
+              {/* The chip's own ID is never public: only whether it is linked and locked. */}
               {hasNfc && (
-                <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <Nfc className="size-3.5 text-gold-bright" strokeWidth={1.75} />
-                  <span className="font-mono">{artwork.nfcTagId}</span>
+                <p
+                  id="passport-nfc-chip"
+                  className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium ${nfcLocked ? "border-gold/40 bg-gold/10 text-gold-bright" : "border-amber-500/40 bg-amber-500/10 text-amber-300"}`}
+                >
+                  {nfcLocked ? <Lock className="size-3.5" strokeWidth={1.75} /> : <Nfc className="size-3.5" strokeWidth={1.75} />}
+                  {nfcLocked ? "Verified via NFC + locked" : "NFC tag linked · not yet locked"}
                 </p>
               )}
             </div>
@@ -395,8 +315,8 @@ export function NfcArtworkPassportView({ artworkId }: { artworkId: string }) {
           </div>
         )}
 
-        {/* ── Provenance Timeline ────────────────────────────────────────────── */}
-        <NfcProvenanceTimeline entries={provenanceEntries} />
+        {/* ── Lifecycle ─────────────────────────────────────────────────────── */}
+        <NfcLifecycleTimeline entries={passport?.lifecycle ?? []} />
 
         {/* ── QR + Download ─────────────────────────────────────────────────── */}
         <div className="mt-10 flex flex-col items-center gap-4">

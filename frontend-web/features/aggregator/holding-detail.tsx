@@ -10,6 +10,7 @@ import {
   CircleX,
   GalleryVerticalEnd,
   Hourglass,
+  Lock,
   ShieldOff,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +30,8 @@ import {
 } from "@/hooks/useAggregatorCollection";
 import { AGGREGATOR_CYCLE_MONTHS } from "@/lib/pricing";
 import { formatINR } from "@/lib/utils";
+import { nfcStageOf } from "@/lib/nfc";
+import { verifyUrlFor } from "@/lib/verify-url";
 import type { HoldingExtensionRequest } from "@/types/aggregator";
 
 function formatDate(iso: string): string {
@@ -107,6 +110,8 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
   // stops showing here — it isn't deleted, just no longer this aggregator's
   // to see (types/artwork.ts's coa fields live permanently on the artwork).
   const showPassport = !isReturned;
+  // Whether the piece's tag is locked is the lock-before-shipping rule seen from the gallery (NFC_IMPLEMENTATION.md §4.7).
+  const nfcStage = nfcStageOf(artwork);
 
 
   return (
@@ -155,6 +160,28 @@ export function HoldingDetail({ holdingId }: { holdingId: string }) {
             </Link>{" "}
             to reserve something else.
           </p>
+        </div>
+      )}
+
+      {!isReturned && nfcStage !== "linked_locked" && (
+        <div id="holding-nfc-banner" role="alert" className="flex flex-col gap-3 rounded-lg border border-red-500/40 bg-red-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5">
+            <Lock className="mt-0.5 size-4 shrink-0 text-red-400" />
+            <div>
+              <p className="text-sm font-medium text-red-300">This piece&rsquo;s NFC tag is not locked</p>
+              <p className="text-sm text-red-200/90">
+                {nfcStage === "unlinked"
+                  ? "No tag is linked to it yet. Link and lock one in the GalleryZone app before you put it on display or ship it."
+                  : "Lock it in the GalleryZone app before you put it on display or ship it: it can't be dispatched to a buyer until it is."}
+              </p>
+            </div>
+          </div>
+          <a
+            href={verifyUrlFor(artwork.id)}
+            className="inline-flex shrink-0 items-center justify-center rounded-md border border-red-400/50 px-3 py-1.5 text-xs font-medium text-red-200 transition-colors hover:bg-red-500/10"
+          >
+            Open in the app
+          </a>
         </div>
       )}
 
