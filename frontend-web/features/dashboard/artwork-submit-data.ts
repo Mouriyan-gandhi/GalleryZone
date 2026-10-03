@@ -3,7 +3,6 @@ import type { ListingType } from "@/types/artwork";
 export const ARTWORK_CATEGORIES = [
   { value: "painting", label: "Painting" },
   { value: "sculpture", label: "Sculpture" },
-  { value: "photography", label: "Photography" },
   { value: "printmaking", label: "Printmaking" },
   { value: "mixed-media", label: "Mixed Media" },
   { value: "textile", label: "Textile Art" },

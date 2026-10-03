@@ -9,7 +9,6 @@ export const metadata: Metadata = {
 const CATEGORIES = [
   "All",
   "Painting",
-  "Photography",
   "Sculpture",
   "Textile Art",
   "Printmaking",

@@ -22,7 +22,7 @@ Change any password with **Forgot password** on `/login` — the email is real (
 
 - Pricing rules v1 proposed by Admin #1 and approved by Admin #2 (`/admin/settings` shows them). Checkout works.
 - The test artist's piece "Test Canvas" is **approved and live** (certificate `GZ-COA-2026-0001`) — `/marketplace`, `/artists`, `/verify/KPLfLUGiuoj0GFXpkJRG` all show it.
-- Still to do by hand: `/admin/categories` → create the categories artists may pick (Painting, Sculpture, Photography, …).
+- Still to do by hand: `/admin/categories` → create the categories artists may pick (Painting, Sculpture, …).
 
 ## Flow 1 — Artist lists a piece
 
