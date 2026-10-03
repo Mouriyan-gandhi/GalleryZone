@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { queryMarketplace, toMarketplaceView, type PublicArtworkView } from "./public-artworks.ts";
 import { sizeBandOf } from "./listing-projection.ts";
-import { normalizeRarity } from "./collections.ts";
+import { normalizeRarity, publicRank } from "./collections.ts";
 
 const piece = (over: Partial<PublicArtworkView>): PublicArtworkView => ({
   id: "a",
@@ -56,6 +56,12 @@ assert.equal(normalizeRarity("N"), "S");
 assert.equal(normalizeRarity("S"), "S");
 assert.equal(normalizeRarity("X"), null);
 assert.equal(normalizeRarity(null), null);
+// A buyer never sees an unranked painting: it reads as Standard until an admin ranks it.
+assert.equal(publicRank(null), "S");
+assert.equal(publicRank(undefined), "S");
+assert.equal(publicRank("X"), "S");
+assert.equal(publicRank("N"), "S");
+assert.equal(publicRank("U"), "U");
 assert.deepEqual(ids(queryMarketplace(all, { minPricePaise: 150_00, maxPricePaise: 250_00 })), ["c"]);
 assert.deepEqual(ids(queryMarketplace(all, { q: "ravi" })), ["c"], "search matches artist name");
 assert.deepEqual(ids(queryMarketplace(all, { q: "BULL" })), ["b"], "search is case-insensitive");

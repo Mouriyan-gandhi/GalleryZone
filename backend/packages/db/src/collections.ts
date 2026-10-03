@@ -53,6 +53,15 @@ export function normalizeRarity(value: string | null | undefined): ArtworkRarity
   return (artworkRarityValues as readonly string[]).includes(value ?? "") ? (value as ArtworkRarity) : null;
 }
 
+/**
+ * The rank a buyer sees. Every painting has one: approval refuses to go live
+ * without it, and a piece approved before that rule reads as Standard until an
+ * admin ranks it. Admin screens use normalizeRarity, so they still show it as unranked.
+ */
+export function publicRank(value: string | null | undefined): ArtworkRarity {
+  return normalizeRarity(value) ?? "S";
+}
+
 // --- Collection name constants -------------------------------------------------
 // Firestore has no schema enforcement, so these constants are the only
 // thing stopping a typo from silently creating collection "artwork"
