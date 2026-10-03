@@ -1,4 +1,4 @@
-# GalleryZone main website
+# GalleryZone
 
 A marketplace for original artwork, built around one idea: every piece carries a
 verifiable identity — who made it, who owns it now, and everywhere it has been.
@@ -6,12 +6,13 @@ Three portals run on the same catalogue: **artists** list and price their work,
 **aggregators** take pieces on display in real galleries, and **collectors** buy,
 own and resell them. A QR code on each piece resolves to its public passport.
 
-This repository is the website and its API.
+This repository is all of it: the website, its API and the mobile app.
 
 | Folder | What it is |
 |---|---|
 | `frontend-web/` | Next.js 16 site (App Router). Deployed on Vercel. |
 | `backend/` | NestJS API on Firestore (Firebase Admin SDK is the only writer). npm-workspaces monorepo: `apps/api`, `packages/{domain,db,contracts,config}`. |
+| `mobile/` | Flutter app (Android and iOS) for artists, aggregators and collectors. Talks to the same API. See [`mobile/README.md`](mobile/README.md). |
 | `docs/` | Design notes, the backend master plan, audits. |
 
 ## Running it locally

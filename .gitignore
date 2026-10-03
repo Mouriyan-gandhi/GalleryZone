@@ -1,9 +1,10 @@
-# Website-only repo: the Next.js site (frontend-web/) and its NestJS API
-# (backend/). Everything else at the root is workspace scratch and stays
-# untracked unless listed here.
+# The whole product in one repo: the Next.js site (frontend-web/), its NestJS
+# API (backend/) and the Flutter app (mobile/). Everything else at the root is
+# workspace scratch and stays untracked unless listed here.
 /*
 !/frontend-web/
 !/backend/
+!/mobile/
 !/docs/
 !/.github/
 !/.gitignore
