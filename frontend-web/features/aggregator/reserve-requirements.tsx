@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { FileSignature, Receipt, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAggregatorProfile } from "@/hooks/useAggregatorProfile";
 
 // What GalleryZone needs from an aggregator before it places a piece with
@@ -45,26 +51,67 @@ const GST_NOTICE = {
   },
 } as const;
 
-export function ReserveRequirementsNotice({ className }: { className?: string }) {
-  const { mouSigned, gstStatus, gstApproved } = useReserveRequirements();
-  if (mouSigned !== false && gstApproved !== false) return null;
+interface RequirementItem {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  action: boolean;
+}
 
-  const gst = gstStatus && gstStatus !== "approved" ? GST_NOTICE[gstStatus] : null;
+function useRequirementItems(): RequirementItem[] {
+  const { mouSigned, gstStatus, gstApproved } = useReserveRequirements();
+  const items: RequirementItem[] = [];
+  if (mouSigned === false) {
+    items.push({
+      icon: FileSignature,
+      title: "Sign your Aggregator MOU to reserve artwork.",
+      body: "It covers custody, pricing and settlement — GalleryZone can't place a piece with you until it's signed.",
+      action: true,
+    });
+  }
+  if (gstApproved === false && gstStatus && gstStatus !== "approved") {
+    items.push({ icon: Receipt, ...GST_NOTICE[gstStatus] });
+  }
+  return items;
+}
+
+export function ReserveRequirementsNotice({ className }: { className?: string }) {
+  const items = useRequirementItems();
+  if (items.length === 0) return null;
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {mouSigned === false && (
-        <Requirement
-          icon={FileSignature}
-          title="Sign your Aggregator MOU to reserve artwork."
-          body="It covers custody, pricing and settlement — GalleryZone can't place a piece with you until it's signed."
-          action
-        />
-      )}
-      {gstApproved === false && gst && (
-        <Requirement icon={Receipt} title={gst.title} body={gst.body} action={gst.action} />
-      )}
+      {items.map((item) => (
+        <Requirement key={item.title} {...item} />
+      ))}
     </div>
+  );
+}
+
+// The same message as the notice, shown when someone presses Reserve while a
+// requirement is still open. A disabled button says nothing when clicked.
+export function ReserveBlockedDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const items = useRequirementItems();
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>You can&rsquo;t reserve this yet</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {items.map((item) => (
+            <Requirement key={item.title} {...item} className="sm:flex-col sm:items-start" />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -73,14 +120,15 @@ function Requirement({
   title,
   body,
   action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  body: string;
-  action: boolean;
-}) {
+  className,
+}: RequirementItem & { className?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gold/40 bg-gold/5 p-4 sm:flex-row sm:items-center">
+    <div
+      className={cn(
+        "flex flex-col gap-3 rounded-lg border border-gold/40 bg-gold/5 p-4 sm:flex-row sm:items-center",
+        className,
+      )}
+    >
       <div className="flex items-start gap-3 sm:flex-1 sm:items-center">
         <Icon
           className="mt-0.5 size-4 shrink-0 text-gold-bright sm:mt-0"

@@ -172,8 +172,13 @@ for (const gate of GATES) {
     await page.goto('/aggregator/inventory');
     await expect(page.getByText(gate.notice)).toBeVisible();
     await expect(page.getByRole('link', { name: 'Go to My Profile' })).toHaveCount(gate.profileLink ? 1 : 0);
-    await expect(page.getByRole('button', { name: 'Reserve Artwork' })).toBeDisabled();
 
+    // Pressing Reserve explains why, in a popup, instead of doing nothing.
+    await page.getByRole('button', { name: 'Reserve Artwork' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText(gate.notice)).toBeVisible();
+    await expect(dialog.getByRole('link', { name: 'Go to My Profile' })).toHaveCount(gate.profileLink ? 1 : 0);
+    await expect(page).toHaveURL(/\/aggregator\/inventory$/);
     // The same wall stands on the reserve screen itself.
     await page.goto('/aggregator/inventory/a1/reserve');
     await expect(page.getByText(gate.notice)).toBeVisible();

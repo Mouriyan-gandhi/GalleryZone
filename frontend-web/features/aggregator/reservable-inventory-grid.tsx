@@ -23,6 +23,7 @@ import { formatINR, cn } from "@/lib/utils";
 import type { ReservableArtwork } from "@/services/aggregatorService";
 import { CycleStepper } from "./cycle-stepper";
 import {
+  ReserveBlockedDialog,
   ReserveRequirementsNotice,
   useReserveRequirements,
 } from "./reserve-requirements";
@@ -50,7 +51,9 @@ function monthLine(offer: ReservableArtwork["offer"]): string {
 
 export function ReservableInventoryGrid() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const { blockedReason } = useReserveRequirements();
+  const onBlocked = blockedReason === undefined ? undefined : () => setBlockedOpen(true);
   const { data, isPending, isError } = useReservableInventory();
   // What this aggregator holds or has sold is what "more like these" is
   // measured against. A returned piece wasn't theirs to show, so it doesn't count.
@@ -182,30 +185,33 @@ export function ReservableInventoryGrid() {
             <InventoryArtworkCard
               key={artwork.id}
               artwork={artwork}
-              blockedReason={blockedReason}
+              onBlocked={onBlocked}
             />
           ) : (
             <InventoryArtworkListRow
               key={artwork.id}
               artwork={artwork}
-              blockedReason={blockedReason}
+              onBlocked={onBlocked}
             />
           )
         )}
       </div>
+
+      <ReserveBlockedDialog open={blockedOpen} onOpenChange={setBlockedOpen} />
     </>
   );
 }
 
 function InventoryArtworkCard({
   artwork,
-  blockedReason,
+  onBlocked,
 }: {
   artwork: ReservableArtwork;
-  blockedReason?: string | undefined;
+  /** Set while a requirement is open: the button explains instead of navigating. */
+  onBlocked?: (() => void) | undefined;
 }) {
   const { offer } = artwork;
-  const disabled = blockedReason !== undefined;
+  const blocked = onBlocked !== undefined;
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 ease-out hover:-translate-y-1 hover:border-gold/50 hover:shadow-lg active:scale-[0.99]">
       <Link
@@ -275,14 +281,13 @@ function InventoryArtworkCard({
         </div>
 
         <Button
-          nativeButton={disabled}
+          nativeButton={blocked}
           render={
-            disabled ? undefined : (
+            blocked ? undefined : (
               <Link href={`/aggregator/inventory/${artwork.id}/reserve`} />
             )
           }
-          disabled={disabled}
-          title={blockedReason}
+          onClick={onBlocked}
           className="mt-4 h-11 w-full rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-gold-deep shadow-sm"
         >
           Reserve Artwork
@@ -294,13 +299,13 @@ function InventoryArtworkCard({
 
 function InventoryArtworkListRow({
   artwork,
-  blockedReason,
+  onBlocked,
 }: {
   artwork: ReservableArtwork;
-  blockedReason?: string | undefined;
+  onBlocked?: (() => void) | undefined;
 }) {
   const { offer } = artwork;
-  const disabled = blockedReason !== undefined;
+  const blocked = onBlocked !== undefined;
   return (
     <div className="group relative flex items-stretch gap-4 rounded-xl border border-border bg-card p-3 transition-colors duration-200 ease-out hover:border-gold/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
       {/* Left: Image */}
@@ -371,14 +376,13 @@ function InventoryArtworkListRow({
             </p>
           </div>
           <Button
-            nativeButton={disabled}
+            nativeButton={blocked}
             render={
-              disabled ? undefined : (
+              blocked ? undefined : (
                 <Link href={`/aggregator/inventory/${artwork.id}/reserve`} />
               )
             }
-            disabled={disabled}
-            title={blockedReason}
+            onClick={onBlocked}
             className="h-10 w-full sm:w-auto sm:px-6 rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground hover:bg-gold-deep shadow-sm shrink-0"
           >
             Reserve
