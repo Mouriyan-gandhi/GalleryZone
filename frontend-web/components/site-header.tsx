@@ -75,6 +75,7 @@ const SELL_WITH_US = [
 const SIMPLE_LINKS = [
   { label: "Explore", href: "/marketplace" },
   { label: "Artists", href: "/artists" },
+  { label: "Art Supplies", href: "/art-supplies" },
   { label: "About", href: "/about" },
   { label: "FAQ", href: "/faq" },
 ];

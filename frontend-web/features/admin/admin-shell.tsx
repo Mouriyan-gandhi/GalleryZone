@@ -15,6 +15,7 @@ import {
   Frame,
   Nfc,
   Tags,
+  ShoppingBag,
   Palette,
   Building2,
   Users,
@@ -131,6 +132,7 @@ const NAV_GROUPS: AdminNavGroup[] = [
       { label: "Artworks", href: "/admin/artworks", icon: Frame },
       { label: "NFC tags", href: "/admin/nfc", icon: Nfc },
       { label: "Categories", href: "/admin/categories", icon: Tags },
+      { label: "Art supplies", href: "/admin/art-supplies", icon: ShoppingBag },
     ],
   },
   {
