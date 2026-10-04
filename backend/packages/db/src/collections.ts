@@ -97,6 +97,7 @@ export const Collections = {
   artistSales: "artistSales",
   supportTickets: "supportTickets",
   artistConnections: "artistConnections",
+  affiliateProducts: "affiliateProducts",
 } as const;
 
 // Subcollection path helpers — Firestore subcollections are addressed as
@@ -302,6 +303,26 @@ export interface OwnershipEventDoc {
 export interface CategoryDoc {
   name: string;
   slug: string;
+}
+
+/**
+ * An Amazon product GalleryZone recommends, earning a commission on the sale.
+ * `url` is the affiliate link exactly as Amazon issued it (it carries the
+ * associate tag), so a click is always attributed. No price or rating is
+ * stored: the Associates policy allows showing those only from Amazon's own
+ * API, refreshed daily, and a stale price shown as current breaks it.
+ * Images are Amazon's own CDN URLs, served from Amazon, never re-hosted.
+ */
+export interface AffiliateProductDoc {
+  url: string;
+  asin: string | null;
+  title: string;
+  brand: string | null;
+  category: string;
+  images: string[];
+  active: boolean;
+  createdAt: FirebaseFirestore.Timestamp;
+  updatedAt: FirebaseFirestore.Timestamp;
 }
 
 export interface ExternalSalePenaltyDoc {

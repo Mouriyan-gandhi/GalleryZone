@@ -9,3 +9,6 @@ build/
 # Firebase Admin SDK service-account keys — real credentials, never committed.
 *firebase-adminsdk*.json
 *service-account*.json
+
+# Firebase emulator logs (npm run check:affiliate-db and scripts/affiliate-e2e.sh start them)
+*-debug.log

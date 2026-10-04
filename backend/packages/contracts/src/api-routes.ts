@@ -201,4 +201,12 @@ export const apiRoutes: readonly RouteSpec[] = [
   { method: "POST", path: "/v1/account/resale", authRole: "customer", summary: "List an owned artwork for resale", replaces: "customerResaleService.createListing" },
   { method: "POST", path: "/v1/account/resale/:id/withdraw", authRole: "customer", summary: "Withdraw a resale listing", replaces: "customerResaleService.withdrawListing" },
   { method: "POST", path: "/v1/account/resale/:id/complete", authRole: "customer", summary: "Complete a resale sale, credit wallet", replaces: "customerResaleService.completeSale" },
+
+  // --- Affiliate shelf (Amazon) ---------------------------------------------------
+  { method: "GET", path: "/v1/affiliate-products", authRole: "public", summary: "Active Amazon affiliate products, in the order added", replaces: "n/a — new" },
+  { method: "GET", path: "/v1/admin/affiliate-products", authRole: "admin", summary: "Every affiliate product, hidden ones included", replaces: "n/a — new" },
+  { method: "POST", path: "/v1/admin/affiliate-products/lookup", authRole: "admin", summary: "Read an Amazon link's title, brand and photos to pre-fill the add form; saves nothing", replaces: "n/a — new" },
+  { method: "POST", path: "/v1/admin/affiliate-products", authRole: "admin", summary: "Add an affiliate product (keyed by ASIN, so never twice)", replaces: "n/a — new" },
+  { method: "PATCH", path: "/v1/admin/affiliate-products/:id", authRole: "admin", summary: "Edit, hide or show an affiliate product", replaces: "n/a — new" },
+  { method: "DELETE", path: "/v1/admin/affiliate-products/:id", authRole: "admin", summary: "Remove an affiliate product", replaces: "n/a — new" },
 ] as const;
